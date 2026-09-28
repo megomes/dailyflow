@@ -1,0 +1,56 @@
+<title>DailyFlow Review</title>
+<meta name="description" content="Revisão interativa do planejamento do DailyFlow: fluxos, histórias, telas, regras, perguntas abertas e design system.">
+<link rel="icon" type="image/png" href="__ICON__">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap">
+<style>
+/*__CSS__*/
+/*__WFCSS__*/
+</style>
+
+<div class="app">
+  <aside class="sidebar" id="sidebar" aria-label="Navegação">
+    <div class="brand"><img data-icon alt="" width="26" height="26">DailyFlow<small>Revisão</small></div>
+    <label class="search" for="q">
+      <svg class="i sm" viewBox="0 0 24 24" aria-hidden="true"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/></svg>
+      <input id="q" type="search" placeholder="Buscar em tudo" autocomplete="off" aria-label="Buscar em tudo">
+      <kbd>⌘K</kbd>
+    </label>
+    <nav class="nav" id="nav"></nav>
+    <div class="side-foot">
+      <div class="progress-line"><span>Revisado</span><span id="progTxt">0 de 0</span></div>
+      <div class="bar"><i id="progBar" style="width:0"></i></div>
+      <div class="sync" id="sync" data-s="local"><span class="dot"></span><span id="syncTxt">Salvo neste navegador</span></div>
+      <div class="foot-row">
+        <button type="button" class="btn sm" data-act="theme" title="Mudar tema"><svg class="i" viewBox="0 0 24 24"></svg><span>Tema</span></button>
+        <a class="btn sm" href="#exportar" data-nav="exportar"><svg class="i" viewBox="0 0 24 24" aria-hidden="true"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><path d="m7 10 5 5 5-5"/><path d="M12 15V3"/></svg>Exportar</a>
+      </div>
+    </div>
+  </aside>
+  <div class="scrim" data-act="menu"></div>
+  <main class="main">
+    <header class="mhead">
+      <button type="button" class="btn icon ghost" data-act="menu" aria-label="Abrir menu"><svg class="i" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 6h16"/><path d="M4 12h16"/><path d="M4 18h16"/></svg></button>
+      <div class="brand"><img data-icon alt="" width="24" height="24">DailyFlow</div>
+      <span class="sp"></span>
+      <button type="button" class="btn icon ghost" data-act="theme" title="Mudar tema"><svg class="i" viewBox="0 0 24 24"></svg></button>
+    </header>
+    <div class="page" id="page"></div>
+  </main>
+</div>
+<div class="toast" id="toast" role="status" aria-live="polite"></div>
+
+<script>
+/*__CONTENT__*/
+</script>
+<script>
+/*__WF__*/
+</script>
+<script>
+/*__STAGES__*/
+</script>
+<script>
+document.querySelectorAll('img[data-icon]').forEach(i => { i.src = document.querySelector('link[rel="icon"]').href; });
+/*__APP__*/
+</script>

@@ -1,0 +1,116 @@
+/* DailyFlow — Design tokens
+ * Fonte da verdade: design/DESIGN_SYSTEM.md
+ * Dark-first. Light é a proposta v0.1 (em validação).
+ * Uso: dark é o padrão em :root; light via [data-theme="light"]
+ * ou prefers-color-scheme: light quando nenhum tema foi escolhido.
+ */
+
+:root {
+  color-scheme: dark;
+
+  /* Backgrounds */
+  --bg-app: #141416;
+  --bg-sidebar: #1C1C1E;
+  --bg-surface: #19191B;
+  --bg-surface-hover: #242426;
+  --bg-surface-active: #343436;
+  --bg-elevated: #29292B;
+  --bg-input: #19191B;
+  --bg-segmented: #18181A;
+  --bg-button: #28282A;
+
+  /* Borders */
+  --border-default: #303033;
+  --border-subtle: #262629;
+  --border-strong: #3A3A3D;
+  --border-input: #39393C;
+  --grid-line: #29292C;
+
+  /* Text */
+  --text-primary: #F3F3F4;
+  --text-secondary: #A1A1A6;
+  --text-muted: #717176;
+  --text-disabled: #55555A;
+  --text-placeholder: #77777C;
+
+  /* Accents (categorias, status, eventos) */
+  --accent-blue: #248CF2;
+  --accent-purple: #7557E8;
+  --accent-pink: #DC3D92;
+  --accent-orange: #EF6B2E;
+  --accent-green: #19B66A;
+  --accent-cyan: #27A7DC;
+  --accent-yellow: #E5BA43;
+
+  /* Event pills: bg / fg / border */
+  --pill-blue-bg: #123E71;   --pill-blue-fg: #70B6FA;   --pill-blue-bd: #195492;
+  --pill-purple-bg: #332566; --pill-purple-fg: #B8A6FF; --pill-purple-bd: #44338A;
+  --pill-pink-bg: #64163F;   --pill-pink-fg: #FF9CCA;   --pill-pink-bd: #82204F;
+  --pill-green-bg: #0C5737;  --pill-green-fg: #73E3AA;  --pill-green-bd: #117046;
+  --pill-orange-bg: #5E2710; --pill-orange-fg: #FFAA7F; --pill-orange-bd: #7C3517;
+  --pill-yellow-bg: #4F3E0E; --pill-yellow-fg: #F5D27A; --pill-yellow-bd: #6A5415;
+  --pill-cyan-bg: #0E4460;   --pill-cyan-fg: #7FD3F5;   --pill-cyan-bd: #145A7E;
+
+  /* Tipografia */
+  --font-sans: Inter, "SF Pro Display", "SF Pro Text", -apple-system, BlinkMacSystemFont, sans-serif;
+  --font-mono: "SF Mono", ui-monospace, Menlo, Consolas, monospace;
+
+  /* Espaçamento (base 4px) */
+  --space-1: 4px; --space-2: 8px; --space-3: 12px; --space-4: 16px;
+  --space-5: 20px; --space-6: 24px; --space-8: 32px; --space-10: 40px;
+
+  /* Raios */
+  --radius-sm: 5px; --radius-md: 7px; --radius-lg: 10px;
+
+  /* Layout */
+  --sidebar-width: 280px;
+  --page-padding-x: 32px;
+  --page-padding-y: 28px;
+
+  /* Motion */
+  --transition-fast: background-color 120ms ease, border-color 120ms ease, color 120ms ease, opacity 120ms ease;
+  --theme-transition-ms: 720ms;
+}
+
+/* Light — proposta v0.1 */
+:root[data-theme="light"] {
+  color-scheme: light;
+
+  --bg-app: #F6F6F7;
+  --bg-sidebar: #EEEEF0;
+  --bg-surface: #FFFFFF;
+  --bg-surface-hover: #EAEAEC;
+  --bg-surface-active: #E1E1E4;
+  --bg-elevated: #FFFFFF;
+  --bg-input: #FFFFFF;
+  --bg-segmented: #EBEBED;
+  --bg-button: #FFFFFF;
+
+  --border-default: #E2E2E5;
+  --border-subtle: #EBEBED;
+  --border-strong: #D2D2D7;
+  --border-input: #D6D6DB;
+  --grid-line: #E6E6E9;
+
+  --text-primary: #17171A;
+  --text-secondary: #55555C;
+  --text-muted: #85858D;
+  --text-disabled: #B2B2B9;
+  --text-placeholder: #9A9AA2;
+
+  --accent-blue: #1574D6;
+  --accent-purple: #5F3FD0;
+  --accent-pink: #C22A7A;
+  --accent-orange: #CF5518;
+  --accent-green: #0F9254;
+  --accent-cyan: #1486B6;
+  --accent-yellow: #A67F12;
+
+  --pill-blue-bg: #E6F1FD;   --pill-blue-fg: #0F5BAE;   --pill-blue-bd: #C4DDF9;
+  --pill-purple-bg: #EFEBFD; --pill-purple-fg: #4C2FB5; --pill-purple-bd: #D8CFFA;
+  --pill-pink-bg: #FCE8F2;   --pill-pink-fg: #A5205F;   --pill-pink-bd: #F6C8DE;
+  --pill-green-bg: #E3F6EC;  --pill-green-fg: #0B7543;  --pill-green-bd: #BFE8D2;
+  --pill-orange-bg: #FDEEE5; --pill-orange-fg: #A9420F; --pill-orange-bd: #F8D3BD;
+  --pill-yellow-bg: #FBF3DC; --pill-yellow-fg: #7E600B; --pill-yellow-bd: #EEDDA6;
+  --pill-cyan-bg: #E2F3FA;   --pill-cyan-fg: #0B6A91;   --pill-cyan-bd: #BCE2F2;
+}

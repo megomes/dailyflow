@@ -1,6 +1,7 @@
 'use client';
 import { useEffect, useState, type ReactNode } from 'react';
 import { endSession, installErrorLogging, track } from '@/lib/analytics';
+import { collectContext } from '@/lib/clientContext';
 import { SYNC_INTERVAL_MS } from '@/lib/config';
 import { seedIfEmpty } from '@/lib/repo';
 import { pushEvents, startSyncLoop, syncNow } from '@/lib/sync';
@@ -23,11 +24,20 @@ export function Providers({ children }: { children: ReactNode }) {
         await seedIfEmpty();
         await Promise.race([syncNow('boot'), new Promise(r => setTimeout(r, 2500))]);
         booted = true;
+        const ctx = await collectContext();
         track('app_opened', {
           cold_start_ms: Math.round(t0),
           boot_ms: Math.round(performance.now() - t0),
-          installed: window.matchMedia('(display-mode: standalone)').matches,
+          installed: ctx.device.surface === 'pwa',
           online: navigator.onLine,
+          version: ctx.app.version,
+          os: ctx.device.os,
+          browser: ctx.device.browser,
+          layout: ctx.device.layout,
+          viewport: ctx.screen.viewport,
+          dpr: ctx.screen.dpr,
+          network: ctx.network.type,
+          theme: ctx.screen.theme,
         });
       }
       setReady(true);

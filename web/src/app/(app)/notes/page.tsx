@@ -1,8 +1,9 @@
 'use client';
 import { useEffect, useMemo, useState } from 'react';
-import { ChevronRight, GitCommitHorizontal, Pencil, RotateCcw, Trash2 } from 'lucide-react';
+import { ChevronRight, GitCommitHorizontal, MonitorSmartphone, Pencil, RotateCcw, Trash2 } from 'lucide-react';
 import { m } from '@/i18n/en';
 import { previousScreen, track } from '@/lib/analytics';
+import { collectContext, summarizeContext, type ClientContext } from '@/lib/clientContext';
 
 type Kind = 'bug' | 'idea' | 'ux' | 'question';
 type Status = 'open' | 'discussing' | 'in_progress' | 'done' | 'ignored';
@@ -12,9 +13,9 @@ interface LogEntry { ts: string; actor: 'user' | 'claude'; action: string; messa
 interface Resolution { summary?: string; done?: string[]; ignored?: string[]; decisions?: string[]; follow_ups?: string[]; commits?: string[]; deployed?: string }
 interface Note {
   id: number; body: string; kind: Kind; status: Status; stage: string | null; appVersion: string | null; screen: string | null;
-  resolution: Resolution; createdAt: string; updatedAt: string; log: LogEntry[];
+  resolution: Resolution; context: Partial<ClientContext> & { server?: Record<string, unknown> }; createdAt: string; updatedAt: string; log: LogEntry[];
 }
-interface Pending { clientId: string; body: string; kind: Kind; screen: string; createdAt: string }
+interface Pending { clientId: string; body: string; kind: Kind; screen: string; createdAt: string; context: ClientContext }
 
 const KINDS: Kind[] = ['bug', 'idea', 'ux', 'question'];
 const KIND_COLOR: Record<Kind, string> = { bug: 'red', idea: 'yellow', ux: 'purple', question: 'cyan' };
@@ -42,7 +43,9 @@ async function flushPending(): Promise<Pending[]> {
   const left: Pending[] = [];
   for (const p of readPending()) {
     try {
-      const r = await api('/api/notes', { method: 'POST', body: JSON.stringify({ body: p.body, kind: p.kind, screen: p.screen, clientId: p.clientId }) });
+      // Written offline if the note waited more than a few seconds before being sent.
+      const context = { ...p.context, writtenAt: p.createdAt, sentAt: new Date().toISOString(), queuedOffline: Date.now() - Date.parse(p.createdAt) > 10_000 };
+      const r = await api('/api/notes', { method: 'POST', body: JSON.stringify({ body: p.body, kind: p.kind, screen: p.screen, clientId: p.clientId, context }) });
       if (!r.ok) left.push(p);
     } catch { left.push(p); }
   }
@@ -88,8 +91,9 @@ export default function NotesPage() {
   const shown = (notes ?? []).filter(n => inFilter(n.status, filter));
 
   async function add(body: string, kind: Kind) {
-    const p: Pending = { clientId: crypto.randomUUID(), body, kind, screen: previousScreen() || 'notes', createdAt: new Date().toISOString() };
-    track('note_created', { kind, chars: body.length, from: p.screen });
+    const context = await collectContext();
+    const p: Pending = { clientId: crypto.randomUUID(), body, kind, screen: previousScreen() || 'notes', createdAt: new Date().toISOString(), context };
+    track('note_created', { kind, chars: body.length, from: p.screen, surface: context.device.surface, layout: context.device.layout });
     writePending([...readPending(), p]);
     setPending(readPending());
     reload();
@@ -180,7 +184,7 @@ function NoteCard({ note, onChanged }: { note: Note; onChanged: () => void }) {
   const hasResolution = !!(r.summary || r.done?.length || r.ignored?.length || r.decisions?.length || r.follow_ups?.length || r.commits?.length || r.deployed);
 
   async function save() {
-    const res = await api(`/api/notes/${note.id}`, { method: 'PATCH', body: JSON.stringify({ body: body.trim(), kind }) });
+    const res = await api(`/api/notes/${note.id}`, { method: 'PATCH', body: JSON.stringify({ body: body.trim(), kind, context: await collectContext() }) });
     if (res.status === 409) { setMsg(m.notes.locked); return; }
     track('note_edited', { id: note.id });
     setEditing(false); onChanged();
@@ -193,7 +197,7 @@ function NoteCard({ note, onChanged }: { note: Note; onChanged: () => void }) {
     onChanged();
   }
   async function reopen() {
-    await api(`/api/notes/${note.id}`, { method: 'PATCH', body: JSON.stringify({ action: 'reopen' }) });
+    await api(`/api/notes/${note.id}`, { method: 'PATCH', body: JSON.stringify({ action: 'reopen', context: await collectContext() }) });
     track('note_reopened', { id: note.id });
     onChanged();
   }
@@ -216,6 +220,10 @@ function NoteCard({ note, onChanged }: { note: Note; onChanged: () => void }) {
           <button type="button" className="btn sm ghost" onClick={() => void reopen()}><RotateCcw size={13} />{m.notes.reopen}</button>
         )}
       </div>
+
+      {summarizeContext(note.context) && (
+        <div className="note-device hint"><MonitorSmartphone size={13} />{summarizeContext(note.context)}</div>
+      )}
 
       {editing ? (
         <div className="note-edit">
@@ -261,6 +269,12 @@ function NoteCard({ note, onChanged }: { note: Note; onChanged: () => void }) {
             </li>
           ))}
         </ol>
+        {note.context && Object.keys(note.context).length > 0 && (
+          <details className="debug">
+            <summary>Debug info</summary>
+            <pre className="mono">{JSON.stringify(note.context, null, 2)}</pre>
+          </details>
+        )}
       </details>
     </article>
   );

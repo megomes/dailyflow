@@ -270,3 +270,8 @@ html.vt-close::view-transition-new(root) { z-index: 1; }
 .actor { font-size: 11px; font-weight: 600; padding: 0 5px; border-radius: 4px; background: var(--bg-surface-active); }
 .actor.a-claude { background: color-mix(in srgb, var(--c-purple) 22%, var(--bg-surface)); color: color-mix(in srgb, var(--c-purple) 60%, var(--text-primary)); }
 .log-prev { color: var(--text-muted); font-style: italic; flex-basis: 100%; padding-left: 20px; white-space: pre-wrap; }
+.note-device { display: flex; align-items: center; gap: 6px; margin-top: -4px; font-size: 12px; }
+.debug { margin-top: 8px; }
+.debug summary { font-size: 12px; color: var(--text-muted); cursor: pointer; }
+.debug pre { margin: 6px 0 0; padding: 10px; border-radius: 8px; background: var(--bg-app); border: 1px solid var(--border-subtle); font-size: 11px; color: var(--text-secondary); max-height: 320px; overflow: auto; white-space: pre-wrap; word-break: break-word; }
+@media (pointer: coarse) { .composer .hint { display: none; } }

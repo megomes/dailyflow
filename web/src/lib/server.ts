@@ -21,3 +21,18 @@ export async function requireDevice(): Promise<string | null> {
 }
 
 export const unauthorized = () => Response.json({ error: 'unauthorized' }, { status: 401 });
+
+/** What only the server knows about the request (Vercel geolocation headers, UA, build). */
+export function serverContext(req: Request) {
+  const h = req.headers;
+  const dec = (v: string | null) => (v ? decodeURIComponent(v) : undefined);
+  return {
+    userAgent: h.get('user-agent') ?? undefined,
+    country: h.get('x-vercel-ip-country') ?? undefined,
+    region: dec(h.get('x-vercel-ip-country-region')),
+    city: dec(h.get('x-vercel-ip-city')),
+    build: process.env.VERCEL_GIT_COMMIT_SHA?.slice(0, 7) ?? 'local',
+    env: process.env.VERCEL_ENV ?? 'development',
+    receivedAt: new Date().toISOString(),
+  };
+}

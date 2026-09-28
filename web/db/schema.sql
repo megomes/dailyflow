@@ -54,6 +54,8 @@ create table if not exists notes (
   device_id   text,
   -- Written by Claude: { summary, done[], ignored[], decisions[], commits[], deployed, follow_ups[] }
   resolution  jsonb       not null default '{}'::jsonb,
+  -- Environment the note was written in (device, surface, layout, screen, network, app state, server geo/UA).
+  context     jsonb       not null default '{}'::jsonb,
   deleted     boolean     not null default false,
   created_at  timestamptz not null default now(),
   updated_at  timestamptz not null default now()

@@ -300,3 +300,12 @@ html.vt-close::view-transition-new(root) { z-index: 1; }
 .day-seg { align-self: flex-start; }
 .day-seg button { position: relative; min-width: 44px; }
 .today-dot { position: absolute; top: 4px; right: 5px; width: 5px; height: 5px; border-radius: 50%; background: var(--now); }
+.verify { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; padding-top: 10px; border-top: 1px solid var(--border-subtle); }
+.verify .reject { display: flex; flex-direction: column; gap: 8px; width: 100%; }
+.thumb.up:hover { color: var(--c-green); border-color: color-mix(in srgb, var(--c-green) 50%, var(--border-input)); }
+.thumb.down:hover { color: var(--danger); border-color: color-mix(in srgb, var(--danger) 50%, var(--border-input)); }
+.feedback { display: flex; gap: 10px; padding: 9px 12px; border-radius: 8px; background: color-mix(in srgb, var(--c-orange) 10%, var(--bg-surface)); border: 1px solid color-mix(in srgb, var(--c-orange) 35%, var(--border-default)); }
+.feedback > svg { color: var(--c-orange); flex: none; margin-top: 2px; }
+.feedback p { margin: 2px 0 0; font-size: 13.5px; white-space: pre-wrap; }
+.note.s-archived { background: color-mix(in srgb, var(--bg-surface) 60%, var(--bg-app)); }
+.note.s-archived .note-body { color: var(--text-secondary); }

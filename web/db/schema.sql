@@ -47,7 +47,8 @@ create table if not exists notes (
   id          serial      primary key,
   body        text        not null,
   kind        text        not null default 'idea' check (kind in ('bug', 'idea', 'ux', 'question')),
-  status      text        not null default 'open' check (status in ('open', 'discussing', 'in_progress', 'done', 'ignored')),
+  -- archived = the user tested it and confirmed (👍). A 👎 reopens with a comment (note_log action 'rejected').
+  status      text        not null default 'open' check (status in ('open', 'discussing', 'in_progress', 'done', 'ignored', 'archived')),
   stage       text,
   app_version text,
   screen      text,

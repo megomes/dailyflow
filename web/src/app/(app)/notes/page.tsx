@@ -1,12 +1,12 @@
 'use client';
 import { useEffect, useMemo, useState } from 'react';
-import { ChevronRight, GitCommitHorizontal, MonitorSmartphone, Pencil, RotateCcw, Trash2 } from 'lucide-react';
+import { Archive, ArrowLeft, ChevronRight, GitCommitHorizontal, MessageSquareWarning, MonitorSmartphone, Pencil, ThumbsDown, ThumbsUp, Trash2 } from 'lucide-react';
 import { m } from '@/i18n/en';
 import { previousScreen, track } from '@/lib/analytics';
 import { collectContext, summarizeContext, type ClientContext } from '@/lib/clientContext';
 
 type Kind = 'bug' | 'idea' | 'ux' | 'question';
-type Status = 'open' | 'discussing' | 'in_progress' | 'done' | 'ignored';
+type Status = 'open' | 'discussing' | 'in_progress' | 'done' | 'ignored' | 'archived';
 type Filter = 'all' | 'open' | 'in_progress' | 'done' | 'ignored';
 
 interface LogEntry { ts: string; actor: 'user' | 'claude'; action: string; message: string | null; detail: Record<string, unknown> }
@@ -19,11 +19,12 @@ interface Pending { clientId: string; body: string; kind: Kind; screen: string; 
 
 const KINDS: Kind[] = ['bug', 'idea', 'ux', 'question'];
 const KIND_COLOR: Record<Kind, string> = { bug: 'red', idea: 'yellow', ux: 'purple', question: 'cyan' };
-const STATUS_COLOR: Record<Status, string> = { open: 'gray', discussing: 'purple', in_progress: 'blue', done: 'green', ignored: 'gray' };
+const STATUS_COLOR: Record<Status, string> = { open: 'gray', discussing: 'purple', in_progress: 'blue', done: 'green', ignored: 'gray', archived: 'teal' };
 const REPO = 'https://github.com/megomes/dailyflow/commit/';
 const PENDING_KEY = 'df-pending-notes';
 
-const inFilter = (s: Status, f: Filter) => f === 'all' || (f === 'open' ? s === 'open' || s === 'discussing' : s === f);
+const inFilter = (s: Status, f: Filter) => s !== 'archived' && (f === 'all' || (f === 'open' ? s === 'open' || s === 'discussing' : s === f));
+const findLast = <T,>(arr: T[], pred: (x: T) => boolean) => { for (let i = arr.length - 1; i >= 0; i--) if (pred(arr[i])) return i; return -1; };
 const fmtWhen = (iso: string) => new Date(iso).toLocaleString('en-US', { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' });
 
 function readPending(): Pending[] {
@@ -58,6 +59,7 @@ export default function NotesPage() {
   const [pending, setPending] = useState<Pending[]>([]);
   const [error, setError] = useState(false);
   const [filter, setFilter] = useState<Filter>('all');
+  const [showArchived, setShowArchived] = useState(false);
   const [nonce, setNonce] = useState(0);
   const reload = () => setNonce(n => n + 1);
 
@@ -88,7 +90,8 @@ export default function NotesPage() {
     return c;
   }, [notes]);
 
-  const shown = (notes ?? []).filter(n => inFilter(n.status, filter));
+  const archivedCount = (notes ?? []).filter(n => n.status === 'archived').length;
+  const shown = (notes ?? []).filter(n => (showArchived ? n.status === 'archived' : inFilter(n.status, filter)));
 
   async function add(body: string, kind: Kind) {
     const context = await collectContext();
@@ -105,28 +108,39 @@ export default function NotesPage() {
         <div><h1>{m.notes.title}</h1><div className="sub">{m.notes.subtitle}</div></div>
       </header>
 
-      <Composer onAdd={add} />
+      {!showArchived && <Composer onAdd={add} />}
 
       <div className="row wrap" style={{ margin: '18px 0 10px' }}>
-        <div className="seg" role="group" aria-label="Filter">
-          {(['all', 'open', 'in_progress', 'done', 'ignored'] as Filter[]).map(f => (
-            <button key={f} type="button" aria-pressed={filter === f} onClick={() => setFilter(f)}>
-              {m.notes.filters[f]} <span className="muted tabular">{counts[f]}</span>
-            </button>
-          ))}
-        </div>
+        {showArchived ? (
+          <>
+            <button type="button" className="btn sm ghost" onClick={() => setShowArchived(false)}><ArrowLeft size={14} />{m.notes.backToActive}</button>
+            <span className="label">{m.notes.archivedTitle}</span>
+          </>
+        ) : (
+          <>
+            <div className="seg" role="group" aria-label="Filter">
+              {(['all', 'open', 'in_progress', 'done', 'ignored'] as Filter[]).map(f => (
+                <button key={f} type="button" aria-pressed={filter === f} onClick={() => setFilter(f)}>
+                  {m.notes.filters[f]} <span className="muted tabular">{counts[f]}</span>
+                </button>
+              ))}
+            </div>
+            <span className="spacer" />
+            <button type="button" className="btn sm ghost" onClick={() => setShowArchived(true)}><Archive size={14} />{m.notes.archived(archivedCount)}</button>
+          </>
+        )}
       </div>
 
       {error && <p className="hint">{navigator.onLine ? m.notes.loadError : m.notes.offline}</p>}
 
       <div className="notes">
-        {pending.map(p => (
+        {!showArchived && pending.map(p => (
           <article key={p.clientId} className="card note pending">
             <div className="note-head"><span className="note-id mono">#…</span><span className="pill" data-color={KIND_COLOR[p.kind]}>{m.notes.kinds[p.kind]}</span><span className="pill" data-color="yellow">{m.notes.pending}</span></div>
             <p className="note-body">{p.body}</p>
           </article>
         ))}
-        {notes && !shown.length && !pending.length && <p className="hint">{m.notes.empty}</p>}
+        {notes && !shown.length && (showArchived || !pending.length) && <p className="hint">{m.notes.empty}</p>}
         {shown.map(n => <NoteCard key={n.id} note={n} onChanged={reload} />)}
       </div>
     </div>
@@ -179,7 +193,14 @@ function NoteCard({ note, onChanged }: { note: Note; onChanged: () => void }) {
   const [kind, setKind] = useState<Kind>(note.kind);
   const [armed, setArmed] = useState(false);
   const [msg, setMsg] = useState('');
+  const [rejecting, setRejecting] = useState(false);
+  const [comment, setComment] = useState('');
   const r = note.resolution ?? {};
+  const delivered = note.status === 'done' || note.status === 'ignored';
+  // The user's latest 👎 comment, shown until Claude delivers again.
+  const lastReject = findLast(note.log, l => l.action === 'rejected');
+  const lastDelivery = findLast(note.log, l => l.action === 'status' && (l.detail?.status === 'done' || l.detail?.status === 'ignored'));
+  const feedback = lastReject > lastDelivery ? note.log[lastReject] : null;
   const open = note.status === 'open';
   const hasResolution = !!(r.summary || r.done?.length || r.ignored?.length || r.decisions?.length || r.follow_ups?.length || r.commits?.length || r.deployed);
 
@@ -196,10 +217,17 @@ function NoteCard({ note, onChanged }: { note: Note; onChanged: () => void }) {
     track('note_deleted', { id: note.id });
     onChanged();
   }
-  async function reopen() {
-    await api(`/api/notes/${note.id}`, { method: 'PATCH', body: JSON.stringify({ action: 'reopen', context: await collectContext() }) });
-    track('note_reopened', { id: note.id });
+  async function confirm() {
+    await api(`/api/notes/${note.id}`, { method: 'PATCH', body: JSON.stringify({ action: 'confirm', context: await collectContext() }) });
+    track('note_confirmed', { id: note.id, status: note.status });
     onChanged();
+  }
+  async function reject() {
+    const c = comment.trim();
+    if (!c) return;
+    await api(`/api/notes/${note.id}`, { method: 'PATCH', body: JSON.stringify({ action: 'reject', comment: c, context: await collectContext() }) });
+    track('note_rejected', { id: note.id, chars: c.length });
+    setRejecting(false); setComment(''); onChanged();
   }
 
   return (
@@ -215,9 +243,6 @@ function NoteCard({ note, onChanged }: { note: Note; onChanged: () => void }) {
             <button type="button" className="btn sm ghost" onClick={() => { setBody(note.body); setKind(note.kind); setEditing(true); setMsg(''); }}><Pencil size={13} />{m.notes.edit}</button>
             <button type="button" className={`btn sm ghost${armed ? ' danger' : ''}`} onClick={() => void del()}><Trash2 size={13} />{armed ? m.notes.confirmDelete : m.notes.delete}</button>
           </>
-        )}
-        {(note.status === 'done' || note.status === 'ignored') && (
-          <button type="button" className="btn sm ghost" onClick={() => void reopen()}><RotateCcw size={13} />{m.notes.reopen}</button>
         )}
       </div>
 
@@ -239,6 +264,13 @@ function NoteCard({ note, onChanged }: { note: Note; onChanged: () => void }) {
       ) : <p className="note-body">{note.body}</p>}
       {msg && <p className="error" style={{ margin: 0 }}>{msg}</p>}
 
+      {feedback && (
+        <div className="feedback">
+          <MessageSquareWarning size={15} />
+          <div><span className="label">{m.notes.feedback} · {fmtWhen(feedback.ts)}</span><p>{feedback.message}</p></div>
+        </div>
+      )}
+
       {hasResolution && (
         <div className="resolution">
           {r.summary && <div className="res-block"><span className="label">{m.notes.resolution.summary}</span><p>{r.summary}</p></div>}
@@ -252,6 +284,29 @@ function NoteCard({ note, onChanged }: { note: Note; onChanged: () => void }) {
                 <a key={c} className="chip mono" href={`${REPO}${c}`} target="_blank" rel="noreferrer"><GitCommitHorizontal size={13} />{c.slice(0, 7)}</a>
               ))}
               {r.deployed && <span className="hint">{m.notes.resolution.deployed}: {r.deployed}</span>}
+            </div>
+          )}
+        </div>
+      )}
+
+      {delivered && (
+        <div className="verify">
+          {!rejecting ? (
+            <>
+              <span className="label">{m.notes.verify}</span>
+              <span className="spacer" />
+              <button type="button" className="btn sm thumb up" title={m.notes.worksHint} aria-label={`${m.notes.works}: ${m.notes.worksHint}`} onClick={() => void confirm()}><ThumbsUp size={15} />{m.notes.works}</button>
+              <button type="button" className="btn sm thumb down" title={m.notes.notYetHint} aria-label={`${m.notes.notYet}: ${m.notes.notYetHint}`} onClick={() => setRejecting(true)}><ThumbsDown size={15} />{m.notes.notYet}</button>
+            </>
+          ) : (
+            <div className="reject">
+              <textarea className="input" rows={3} autoFocus placeholder={m.notes.rejectPlaceholder} value={comment} onChange={e => setComment(e.target.value)}
+                onKeyDown={e => { if (e.key === 'Enter' && (e.metaKey || e.ctrlKey)) { e.preventDefault(); void reject(); } if (e.key === 'Escape') setRejecting(false); }} />
+              <div className="row">
+                <span className="spacer" />
+                <button type="button" className="btn sm ghost" onClick={() => { setRejecting(false); setComment(''); }}>{m.notes.cancel}</button>
+                <button type="button" className="btn sm primary" disabled={!comment.trim()} onClick={() => void reject()}><ThumbsDown size={14} />{m.notes.rejectSend}</button>
+              </div>
             </div>
           )}
         </div>

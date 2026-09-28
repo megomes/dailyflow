@@ -1,8 +1,10 @@
 import { z } from 'zod';
 import { requireDevice, serverContext, sql, unauthorized } from '@/lib/server';
 
+const Ctx = z.record(z.string(), z.unknown()).optional();
 const Patch = z.union([
-  z.object({ action: z.literal('reopen'), context: z.record(z.string(), z.unknown()).optional() }),
+  z.object({ action: z.enum(['reopen', 'confirm']), context: Ctx }),
+  z.object({ action: z.literal('reject'), comment: z.string().trim().min(1).max(5000), context: Ctx }),
   z.object({ body: z.string().trim().min(1).max(5000), kind: z.enum(['bug', 'idea', 'ux', 'question']), context: z.record(z.string(), z.unknown()).optional() }),
 ]);
 
@@ -24,14 +26,19 @@ export async function PATCH(req: Request, ctx: RouteContext<'/api/notes/[id]'>) 
   // Where the change was made from: recorded in the history entry.
   const where = JSON.stringify({ ...(p.context && JSON.stringify(p.context).length < 16_000 ? p.context : {}), server: serverContext(req) });
 
-  const rows: unknown[] = 'action' in p
+  // 👍 confirm: tested and working → archived. 👎 reject: reopen with what is still wrong. Both only from done/ignored.
+  const transition = 'action' in p
+    ? { confirm: { to: 'archived', log: 'confirmed' }, reject: { to: 'open', log: 'rejected' }, reopen: { to: 'open', log: 'reopened' } }[p.action]
+    : null;
+  const rows: unknown[] = transition && 'action' in p
     ? await sql().query(
       `with old as (select id, status from notes where id = $1 and not deleted and status in ('done', 'ignored')),
-            upd as (update notes n set status = 'open', updated_at = now() from old where n.id = old.id returning n.id, old.status as prev)
-       insert into note_log (note_id, actor, action, detail)
-       select id, 'user', 'reopened', jsonb_build_object('from', prev, 'context', $2::jsonb) from upd returning note_id`,
-      [id, where],
+            upd as (update notes n set status = $3, updated_at = now() from old where n.id = old.id returning n.id, old.status as prev)
+       insert into note_log (note_id, actor, action, message, detail)
+       select id, 'user', $4, $5, jsonb_build_object('from', prev, 'context', $2::jsonb) from upd returning note_id`,
+      [id, where, transition.to, transition.log, p.action === 'reject' ? p.comment : null],
     ) as unknown[]
+    : !('body' in p) ? []
     : await sql().query(
       `with old as (select id, body, kind from notes where id = $1 and not deleted and status = 'open'),
             upd as (update notes n set body = $2, kind = $3, updated_at = now() from old where n.id = old.id

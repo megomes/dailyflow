@@ -15,6 +15,14 @@ A ferramenta de revisão (`review/`) e o artifact publicado (https://claude.ai/a
 - **Progresso do desenvolvimento** fica no db do artifact (não precisa republicar): coleção `progress` (doc por etapa: `state` rascunho|aprovada|dev|validacao|concluida|cortada, `dates`, `feats` {p1…, f1…: todo|doing|done|cut}) e coleção `devlog` (`ts`, `stage`, `text`). Atualize com a ferramenta ArtifactData ao começar/terminar entregas, mudar de estado ou tomar decisões.
 - Decisões aprovadas na revisão também devem ser aplicadas na spec (`daily-os-product-functional-spec.md`).
 
+## App (`web/`)
+
+- Next.js 16 (App Router; `middleware` agora é `src/proxy.ts`; leia `web/node_modules/next/dist/docs/` antes de usar APIs do Next). PWA local-first: Dexie/IndexedDB + outbox → `/api/sync` (Neon, last-writer-wins por `updatedAt`). Eventos de produto → `/api/events` (tabela `product_events`, etapa em `src/lib/config.ts` → `STAGE`). Textos da UI em inglês em `src/i18n/en.ts`.
+- Produção: https://dailyflow-megomes.vercel.app · repo privado github.com/megomes/dailyflow · push na `main` = deploy de produção (Vercel, root `web`, região gru1). Autor dos commits precisa ser `matheuservilha@gmail.com` (senão a Vercel Hobby bloqueia o deploy).
+- Banco: Neon `muddy-shape-19725660` (sa-east-1). Branch `main` = produção; branch `dev` = local (`web/.env.local`) e previews. Schema em `web/db/schema.sql`. Nunca rodar testes contra o `main`.
+- Código de acesso: `.secrets/access-code.txt` (fora do git). Trocar: `npm run hash-code -- "<novo>"` e atualizar `ACCESS_CODE_HASH` na Vercel.
+- Antes de commitar: `npm run lint`, `npm test`, `npm run build` em `web/`.
+
 ## Design
 
 Toda UI (app, protótipos, ferramentas internas, artefatos HTML) segue `design/DESIGN_SYSTEM.md` e usa os tokens de `design/tokens.css`. Dark-first; o light mode é proposta v0.1 em validação.

@@ -27,10 +27,11 @@ describe('time', () => {
     expect(logicalDay(new Date(2026, 8, 28, 4, 0))).toBe('2026-09-28');
     expect(minutesInLogicalDay(new Date(2026, 8, 28, 1, 30))).toBe(25 * 60 + 30);
   });
-  it('picks weekday or weekend template', () => {
-    expect(templateIdForDate('2026-09-28')).toBe('weekday'); // Monday
-    expect(templateIdForDate('2026-10-03')).toBe('weekend'); // Saturday
-    expect(templateIdForDate('2026-10-04')).toBe('weekend'); // Sunday
+  it('picks the template of the day of the week', () => {
+    expect(templateIdForDate('2026-09-28')).toBe('mon');
+    expect(templateIdForDate('2026-09-29')).toBe('tue');
+    expect(templateIdForDate('2026-10-03')).toBe('sat');
+    expect(templateIdForDate('2026-10-04')).toBe('sun');
     expect(addDays('2026-09-30', 1)).toBe('2026-10-01');
   });
 });

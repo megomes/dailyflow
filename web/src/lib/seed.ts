@@ -1,4 +1,5 @@
-import type { Area, TemplateBlock, TemplateId } from './types';
+import { DAY_KEYS } from './time';
+import type { Area, DayKey, TemplateBlock } from './types';
 
 /**
  * Initial data from the product spec (§8, §11). Seeds use a fixed epoch timestamp and
@@ -48,11 +49,19 @@ const WEEKEND: Row[] = [
   [H(21), H(22), 'Reading / Sleep', 'sleep'],
 ];
 
-function rows(templateId: TemplateId, list: Row[]): TemplateBlock[] {
+/**
+ * Template block ids are `tb-<day>:<source id>`, the same ids the Weekday/Weekend → per-day
+ * migration produces, so fresh and migrated devices converge on identical records.
+ */
+export const dayBlockId = (day: DayKey, sourceId: string) => `tb-${day}:${sourceId}`;
+
+function rows(day: DayKey, source: 'weekday' | 'weekend', list: Row[]): TemplateBlock[] {
   return list.map(([start, end, title, area], i) => ({
-    id: `tb-${templateId}-${i + 1}`,
-    templateId, start, end, title, areaId: `area-${area}`, updatedAt: SEED_TS,
+    id: dayBlockId(day, `tb-${source}-${i + 1}`),
+    templateId: day, start, end, title, areaId: `area-${area}`, updatedAt: SEED_TS,
   }));
 }
 
-export const SEED_TEMPLATE_BLOCKS: TemplateBlock[] = [...rows('weekday', WEEKDAY), ...rows('weekend', WEEKEND)];
+/** Monday–Friday start from the spec's Weekday template, Saturday and Sunday from the Weekend one. */
+export const SEED_TEMPLATE_BLOCKS: TemplateBlock[] = DAY_KEYS.flatMap(d =>
+  d === 'sat' || d === 'sun' ? rows(d, 'weekend', WEEKEND) : rows(d, 'weekday', WEEKDAY));

@@ -1,7 +1,7 @@
-import { getDB, tableFor } from './db';
-import { SEED_AREAS, SEED_TEMPLATE_BLOCKS } from './seed';
-import { templateIdForDate } from './time';
-import type { Area, Day, DayBlock, Entity, SyncFields, TemplateBlock } from './types';
+import { getDB, getMeta, setMeta, tableFor } from './db';
+import { dayBlockId, SEED_AREAS, SEED_TEMPLATE_BLOCKS } from './seed';
+import { DAY_KEYS, templateIdForDate } from './time';
+import type { Area, Day, DayBlock, DayKey, Entity, SyncFields, TemplateBlock } from './types';
 
 type Listener = () => void;
 const listeners = new Set<Listener>();
@@ -76,6 +76,46 @@ export async function seedIfEmpty(): Promise<void> {
     if ((await db.areas.count()) === 0) await db.areas.bulkPut(SEED_AREAS);
     if ((await db.templateBlocks.count()) === 0) await db.templateBlocks.bulkPut(SEED_TEMPLATE_BLOCKS);
   });
+}
+
+/**
+ * One-time move from Weekday/Weekend to one template per weekday (note #2): Monday–Friday get
+ * copies of the (possibly edited) Weekday blocks, Saturday/Sunday of the Weekend ones, and the
+ * old blocks are tombstoned. Ids are deterministic so two devices migrating agree. Only runs
+ * after a successful sync in this session, so it starts from the latest server state.
+ * Returns the number of blocks created.
+ */
+export async function migrateToDayTemplates(syncedThisSession: boolean): Promise<number> {
+  if (await getMeta<boolean>('tplPerWeekday', false)) return 0;
+  const db = getDB();
+  const all = await db.templateBlocks.toArray();
+  const legacy = all.filter(b => b.templateId === 'weekday' || b.templateId === 'weekend');
+  const hasDays = all.some(b => (DAY_KEYS as readonly string[]).includes(b.templateId) && !b.deleted);
+  if (!legacy.length || hasDays) { await setMeta('tplPerWeekday', true); return 0; }
+  if (!syncedThisSession) return 0;
+  const live = legacy.filter(b => !b.deleted);
+  const copies: TemplateBlock[] = DAY_KEYS.flatMap(d => {
+    const source = d === 'sat' || d === 'sun' ? 'weekend' : 'weekday';
+    return live.filter(b => b.templateId === source).map(b => ({ ...b, id: dayBlockId(d, b.id), templateId: d }));
+  });
+  await saveMany('template_block', copies);
+  await saveMany('template_block', live.map(b => ({ ...b, deleted: true })));
+  await setMeta('tplPerWeekday', true);
+  return copies.length;
+}
+
+/** Replaces a day's template with a copy of another day's blocks. Returns how many were copied. */
+export async function copyTemplate(from: DayKey, to: DayKey): Promise<number> {
+  if (from === to) return 0;
+  const db = getDB();
+  const [src, dst] = await Promise.all([
+    db.templateBlocks.where('templateId').equals(from).toArray(),
+    db.templateBlocks.where('templateId').equals(to).toArray(),
+  ]);
+  await saveMany('template_block', dst.filter(b => !b.deleted).map(b => ({ ...b, deleted: true })));
+  const copies = src.filter(b => !b.deleted).map(b => ({ ...b, id: uid(), templateId: to }));
+  await saveMany('template_block', copies);
+  return copies.length;
 }
 
 /**

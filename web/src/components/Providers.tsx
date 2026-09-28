@@ -3,8 +3,8 @@ import { useEffect, useState, type ReactNode } from 'react';
 import { endSession, installErrorLogging, track } from '@/lib/analytics';
 import { collectContext } from '@/lib/clientContext';
 import { SYNC_INTERVAL_MS } from '@/lib/config';
-import { seedIfEmpty } from '@/lib/repo';
-import { pushEvents, startSyncLoop, syncNow } from '@/lib/sync';
+import { migrateToDayTemplates, seedIfEmpty } from '@/lib/repo';
+import { getSyncState, pushEvents, startSyncLoop, syncNow } from '@/lib/sync';
 
 let booted = false;
 
@@ -23,6 +23,8 @@ export function Providers({ children }: { children: ReactNode }) {
         installErrorLogging();
         await seedIfEmpty();
         await Promise.race([syncNow('boot'), new Promise(r => setTimeout(r, 2500))]);
+        const migrated = await migrateToDayTemplates(!!getSyncState().lastSyncedAt).catch(() => 0);
+        if (migrated) { track('templates_migrated', { to: 'per_weekday', blocks: migrated }); void syncNow('migration'); }
         booted = true;
         const ctx = await collectContext();
         track('app_opened', {

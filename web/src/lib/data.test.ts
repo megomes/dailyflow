@@ -1,10 +1,10 @@
 import 'fake-indexeddb/auto';
 import { beforeEach, describe, expect, it } from 'vitest';
 import { DailyFlowDB, setDB } from './db';
-import { ensureDay, remove, save, seedIfEmpty, update } from './repo';
+import { copyTemplate, ensureDay, migrateToDayTemplates, remove, save, seedIfEmpty, update } from './repo';
 import { SEED_TS } from './seed';
 import { applyRemote } from './sync';
-import type { DayBlock } from './types';
+import type { DayBlock, TemplateBlock } from './types';
 
 let db: DailyFlowDB;
 beforeEach(async () => {
@@ -14,42 +14,47 @@ beforeEach(async () => {
 });
 
 describe('seed and day creation', () => {
-  it('seeds the 11 areas and both templates once', async () => {
+  it('seeds the 11 areas and one template per weekday once', async () => {
     expect(await db.areas.count()).toBe(11);
-    expect(await db.templateBlocks.where('templateId').equals('weekday').count()).toBe(9);
+    expect(await db.templateBlocks.where('templateId').equals('mon').count()).toBe(9);
+    expect(await db.templateBlocks.where('templateId').equals('tue').count()).toBe(9);
+    expect(await db.templateBlocks.where('templateId').equals('sat').count()).toBe(7);
     await seedIfEmpty();
     expect(await db.areas.count()).toBe(11);
   });
 
-  it('creates a Monday from the weekday template with deterministic ids', async () => {
+  it('creates a Monday from the Monday template with deterministic ids', async () => {
     expect(await ensureDay('2026-09-28')).toBe(true);
+    expect((await db.days.get('2026-09-28'))?.templateId).toBe('mon');
     const blocks = await db.dayBlocks.where('dayId').equals('2026-09-28').toArray();
     expect(blocks).toHaveLength(9);
-    expect(blocks.map(b => b.id)).toContain('2026-09-28:tb-weekday-1');
+    expect(blocks.map(b => b.id)).toContain('2026-09-28:tb-mon:tb-weekday-1');
     expect(await ensureDay('2026-09-28')).toBe(false);
   });
 
   it('editing the day never touches the template', async () => {
     await ensureDay('2026-09-28');
-    const block = (await db.dayBlocks.get('2026-09-28:tb-weekday-4'))!;
+    const block = (await db.dayBlocks.get('2026-09-28:tb-mon:tb-weekday-4'))!;
     await save('day_block', { ...block, start: 13 * 60, end: 14 * 60 });
-    await remove('day_block', '2026-09-28:tb-weekday-1');
-    const tpl = await db.templateBlocks.get('tb-weekday-4');
+    await remove('day_block', '2026-09-28:tb-mon:tb-weekday-1');
+    const tpl = await db.templateBlocks.get('tb-mon:tb-weekday-4');
     expect(tpl?.start).toBe(11 * 60);
-    expect((await db.templateBlocks.get('tb-weekday-1'))?.deleted).toBeFalsy();
-    expect((await db.dayBlocks.get('2026-09-28:tb-weekday-1'))?.deleted).toBe(true);
+    expect((await db.templateBlocks.get('tb-mon:tb-weekday-1'))?.deleted).toBeFalsy();
+    expect((await db.dayBlocks.get('2026-09-28:tb-mon:tb-weekday-1'))?.deleted).toBe(true);
   });
 
   it('uses the edited template for days created afterwards', async () => {
-    const tpl = (await db.templateBlocks.get('tb-weekend-1'))!;
+    const tpl = (await db.templateBlocks.get('tb-sat:tb-weekend-1'))!;
     await save('template_block', { ...tpl, title: 'Slow breakfast' });
     await ensureDay('2026-10-03');
-    expect((await db.dayBlocks.get('2026-10-03:tb-weekend-1'))?.title).toBe('Slow breakfast');
+    expect((await db.dayBlocks.get('2026-10-03:tb-sat:tb-weekend-1'))?.title).toBe('Slow breakfast');
+    await ensureDay('2026-10-04'); // Sunday keeps its own template
+    expect((await db.dayBlocks.get('2026-10-04:tb-sun:tb-weekend-1'))?.title).toBe('Family breakfast');
   });
 
   it('keeps both of two rapid edits to the same block', async () => {
     await ensureDay('2026-09-28');
-    const id = '2026-09-28:tb-weekday-3';
+    const id = '2026-09-28:tb-mon:tb-weekday-3';
     await Promise.all([update<DayBlock>('day_block', id, { title: 'Report' }), update<DayBlock>('day_block', id, { areaId: 'area-maker' })]);
     const rec = await db.dayBlocks.get(id);
     expect(rec?.title).toBe('Report');
@@ -60,6 +65,38 @@ describe('seed and day creation', () => {
     const before = await db.outbox.count();
     await ensureDay('2026-09-29');
     expect(await db.outbox.count()).toBe(before + 10); // day + 9 blocks
+  });
+});
+
+describe('per-weekday templates (note #2)', () => {
+  it('copies one day onto another, replacing its blocks', async () => {
+    const mon = await db.templateBlocks.where('templateId').equals('mon').toArray();
+    await update<TemplateBlock>('template_block', mon[0].id, { title: 'Deep work' });
+    expect(await copyTemplate('mon', 'tue')).toBe(9);
+    const tue = (await db.templateBlocks.where('templateId').equals('tue').toArray()).filter(b => !b.deleted);
+    expect(tue).toHaveLength(9);
+    expect(tue.map(b => b.title)).toContain('Deep work');
+    expect(await db.templateBlocks.where('templateId').equals('mon').filter(b => !b.deleted).count()).toBe(9);
+  });
+
+  it('migrates an edited legacy Weekday/Weekend setup once, and only after a sync', async () => {
+    await db.templateBlocks.clear();
+    await db.meta.clear();
+    await db.templateBlocks.bulkPut([
+      { id: 'tb-weekday-1', templateId: 'weekday', start: 360, end: 540, title: 'Maker (edited)', areaId: 'area-maker', updatedAt: '2026-09-27T10:00:00.000Z' },
+      { id: 'tb-weekend-1', templateId: 'weekend', start: 420, end: 540, title: 'Breakfast', areaId: 'area-family', updatedAt: SEED_TS },
+    ]);
+    expect(await migrateToDayTemplates(false)).toBe(0);
+    expect(await migrateToDayTemplates(true)).toBe(7);
+    expect((await db.templateBlocks.get('tb-wed:tb-weekday-1'))?.title).toBe('Maker (edited)');
+    expect((await db.templateBlocks.get('tb-sun:tb-weekend-1'))?.title).toBe('Breakfast');
+    expect((await db.templateBlocks.get('tb-weekday-1'))?.deleted).toBe(true);
+    expect(await migrateToDayTemplates(true)).toBe(0);
+  });
+
+  it('does not migrate a fresh device that already has per-day templates', async () => {
+    expect(await migrateToDayTemplates(true)).toBe(0);
+    expect(await db.templateBlocks.where('templateId').equals('fri').count()).toBe(9);
   });
 });
 
@@ -82,7 +119,7 @@ describe('sync merge (last writer wins)', () => {
 
   it('applies remote tombstones', async () => {
     await ensureDay('2026-09-28');
-    const rec = (await db.dayBlocks.get('2026-09-28:tb-weekday-2'))!;
+    const rec = (await db.dayBlocks.get('2026-09-28:tb-mon:tb-weekday-2'))!;
     await applyRemote([{ entity: 'day_block', id: rec.id, data: { ...rec }, updatedAt: '2999-01-01T00:00:00.000Z', deleted: true, seq: 4 }]);
     expect((await db.dayBlocks.get(rec.id))?.deleted).toBe(true);
   });

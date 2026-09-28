@@ -15,7 +15,9 @@ export interface Area extends SyncFields {
   archived?: boolean;
 }
 
-export type TemplateId = 'weekday' | 'weekend';
+export type DayKey = 'mon' | 'tue' | 'wed' | 'thu' | 'fri' | 'sat' | 'sun';
+/** One template per weekday (note #2). 'weekday' / 'weekend' remain only on days created before that change. */
+export type TemplateId = DayKey | 'weekday' | 'weekend';
 
 export interface TemplateBlock extends SyncFields {
   templateId: TemplateId;

@@ -67,11 +67,14 @@ export const m = {
   },
   templates: {
     title: 'Templates',
-    weekday: 'Weekday',
-    weekend: 'Weekend',
+    short: { mon: 'Mon', tue: 'Tue', wed: 'Wed', thu: 'Thu', fri: 'Fri', sat: 'Sat', sun: 'Sun' },
+    names: { mon: 'Monday', tue: 'Tuesday', wed: 'Wednesday', thu: 'Thursday', fri: 'Friday', sat: 'Saturday', sun: 'Sunday', weekday: 'Weekday', weekend: 'Weekend' } as Record<string, string>,
+    dayHint: (day: string) => `Every new ${day} starts from these blocks.`,
     note: 'Changes apply to days created from now on. Days already opened keep their blocks.',
-    weekdayHint: 'Monday to Friday',
-    weekendHint: 'Saturday and Sunday',
+    copyFrom: 'Copy from…',
+    copyConfirm: (from: string, to: string) => `Replace ${to} with ${from}`,
+    copied: (n: number, from: string) => `Copied ${n} block${n === 1 ? '' : 's'} from ${from}.`,
+    today: 'today',
   },
   areas: {
     title: 'Life Areas',

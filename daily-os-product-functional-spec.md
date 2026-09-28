@@ -329,14 +329,15 @@ The app must not turn life into excessive bookkeeping.
 
 # 10. Day Templates
 
-Initial templates:
+One template per day of the week:
 
 ```text
-Weekday
-Weekend
+Monday · Tuesday · Wednesday · Thursday · Friday · Saturday · Sunday
 ```
 
-No additional template types are needed initially.
+Every Monday tends to look alike, but Tuesday is not Monday, so each weekday has its own template (decided in app note #2, 2026-09-28). Monday–Friday start from the Weekday default below and Saturday/Sunday from a Weekend default; any day can be copied onto another ("Copy from…").
+
+Date-specific exceptions (holidays, vacations) are not templates: they are handled while planning the day.
 
 Templates are defaults, not rules.
 

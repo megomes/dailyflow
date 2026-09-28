@@ -96,7 +96,7 @@ export default function TodayPage() {
 
   const date = dateFromIso(day);
   const dateLabel = date.toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric' });
-  const templateName = dayRec?.templateId === 'weekend' ? m.templates.weekend : m.templates.weekday;
+  const templateName = m.templates.names[dayRec?.templateId ?? ''] ?? '';
   const nextSlot = Math.ceil(minute / 30) * 30;
 
   return (

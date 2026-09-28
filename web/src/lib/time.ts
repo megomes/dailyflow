@@ -57,8 +57,10 @@ export function addDays(iso: string, n: number): string {
   return isoDate(d);
 }
 
-/** Weekday template for Monday–Friday, weekend template for Saturday and Sunday. */
-export function templateIdForDate(iso: string): 'weekday' | 'weekend' {
-  const dow = dateFromIso(iso).getDay();
-  return dow === 0 || dow === 6 ? 'weekend' : 'weekday';
+export const DAY_KEYS = ['mon', 'tue', 'wed', 'thu', 'fri', 'sat', 'sun'] as const;
+export type DayKeyT = (typeof DAY_KEYS)[number];
+
+/** Each day of the week has its own template. */
+export function templateIdForDate(iso: string): DayKeyT {
+  return (['sun', 'mon', 'tue', 'wed', 'thu', 'fri', 'sat'] as const)[dateFromIso(iso).getDay()];
 }

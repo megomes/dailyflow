@@ -21,6 +21,7 @@ const STAGES = [
       ['layers', 'Registro de eventos de produto em toda interação (sessão, dispositivo, tela, etapa)'],
       ['help', 'Check-in de validação dentro do app, com respostas salvas como eventos'],
       ['download', 'Tela Dados de validação: ver e exportar eventos (JSON / CSV)'],
+      ['msg', 'Notes: comentários sobre o app com número (#1, #2…), estados (aberta, em discussão, em andamento, feita, ignorada) e registro exato do que o Claude fez, ignorou e decidiu'],
     ],
     nav: ['hoje', 'config'], hero: 's1Today', wf: ['s1Today', 's1Mobile'],
     q: 'Ver o dia como blocos, com Agora e Próximo sempre visíveis, me ajuda a me orientar?',

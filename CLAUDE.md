@@ -23,6 +23,22 @@ A ferramenta de revisão (`review/`) e o artifact publicado (https://claude.ai/a
 - Código de acesso: `.secrets/access-code.txt` (fora do git). Trocar: `npm run hash-code -- "<novo>"` e atualizar `ACCESS_CODE_HASH` na Vercel.
 - Antes de commitar: `npm run lint`, `npm test`, `npm run build` em `web/`.
 
+## Notas do app (página Notes) — fila de trabalho do usuário
+
+O usuário escreve comentários sobre o app em **Notes** (`/notes`). Cada nota tem id sequencial (`#1`, `#2`…, nunca reutilizado). Quando ele pedir "faz os ids 2, 3, 4 e 5", é dessa fila que se trata. Os dados ficam no Neon **branch `main`** (produção; projeto `muddy-shape-19725660`, sem `branch_id`), tabelas `notes` e `note_log` (ver `web/db/schema.sql`). Use a ferramenta de SQL do Neon.
+
+- **Ler:** `select id, kind, status, body, resolution, created_at from notes where id in (2,3,4,5) and not deleted;` (histórico: `select * from note_log where note_id = 2 order by ts;`)
+- **Estados:** `open` (o usuário pode editar/excluir) → `discussing` → `in_progress` → `done` | `ignored`. O texto (`body`) é do usuário: nunca altere.
+- **Atualizar sempre via `note_claude`** (muda status, mescla a resolução e grava no histórico numa chamada só):
+  - começar a discutir: `select note_claude(3, 'discussing', 'Perguntei X; aguardando decisão');`
+  - começar: `select note_claude(3, 'in_progress', 'Começando: …');`
+  - progresso sem mudar status: `select note_claude(3, null, 'Feito o passo X');`
+  - concluir (depois do commit e do deploy): `select note_claude(3, 'done', 'Implementado e publicado', '{"summary":"…","done":["…"],"ignored":["…"],"decisions":["…"],"follow_ups":["…"],"commits":["<sha>"],"deployed":"<data · production>"}');`
+  - decidir não fazer: `select note_claude(3, 'ignored', 'Motivo…', '{"summary":"…","ignored":["…"],"decisions":["…"]}');`
+- A resolução é mesclada por chave (`||`): ao atualizar uma lista, envie a lista completa.
+- Seja exato: o que foi feito, o que ficou de fora e por quê, decisões tomadas, commits (sha curto) e quando foi publicado. É isso que o usuário lê no app.
+- Mudanças relevantes de escopo também vão para o documento vivo (diário / etapas).
+
 ## Design
 
 Toda UI (app, protótipos, ferramentas internas, artefatos HTML) segue `design/DESIGN_SYSTEM.md` e usa os tokens de `design/tokens.css`. Dark-first; o light mode é proposta v0.1 em validação.

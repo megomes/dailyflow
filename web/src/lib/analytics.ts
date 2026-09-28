@@ -8,6 +8,7 @@ import type { ProductEvent } from './types';
  * locally and uploaded by sync.ts. Kept separate from domain data on the server too.
  */
 let screen = 'boot';
+let previous = '';
 let sessionId = '';
 let lastActivity = 0;
 let sessionStart = 0;
@@ -27,7 +28,9 @@ export function deviceKind(): ProductEvent['device'] {
   return 'desktop';
 }
 
-export function setScreen(name: string) { screen = name; }
+export function setScreen(name: string) { if (name !== screen && screen !== 'boot') previous = screen; screen = name; }
+/** Screen visited before the current one (gives context to notes written about a screen). */
+export function previousScreen() { return previous; }
 export function currentScreen() { return screen; }
 
 function ensureSession(now: number) {

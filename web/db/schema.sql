@@ -40,3 +40,52 @@ create table if not exists devices (
   created_at   timestamptz not null default now(),
   last_seen_at timestamptz
 );
+
+-- Notes: comments about the app, written by the user, worked on and resolved by Claude.
+-- ids are sequential and never reused (deletes are soft).
+create table if not exists notes (
+  id          serial      primary key,
+  body        text        not null,
+  kind        text        not null default 'idea' check (kind in ('bug', 'idea', 'ux', 'question')),
+  status      text        not null default 'open' check (status in ('open', 'discussing', 'in_progress', 'done', 'ignored')),
+  stage       text,
+  app_version text,
+  screen      text,
+  device_id   text,
+  -- Written by Claude: { summary, done[], ignored[], decisions[], commits[], deployed, follow_ups[] }
+  resolution  jsonb       not null default '{}'::jsonb,
+  deleted     boolean     not null default false,
+  created_at  timestamptz not null default now(),
+  updated_at  timestamptz not null default now()
+);
+
+-- Exact tracking: every change to a note, by whom, with details (previous text on edits, status, resolution).
+create table if not exists note_log (
+  id      bigserial   primary key,
+  note_id int         not null references notes (id),
+  ts      timestamptz not null default now(),
+  actor   text        not null check (actor in ('user', 'claude')),
+  action  text        not null,
+  message text,
+  detail  jsonb       not null default '{}'::jsonb
+);
+create index if not exists note_log_note_idx on note_log (note_id, ts);
+
+-- Claude's entry point: optionally change status, merge into resolution and log it, atomically.
+-- select note_claude(4, 'done', 'Implemented and deployed', '{"summary":"…","done":["…"],"commits":["abc123"]}');
+create or replace function note_claude(p_id int, p_status text, p_message text, p_resolution jsonb default '{}'::jsonb)
+returns notes language plpgsql as $$
+declare n notes;
+begin
+  update notes
+     set status = coalesce(p_status, status),
+         resolution = resolution || coalesce(p_resolution, '{}'::jsonb),
+         updated_at = now()
+   where id = p_id and not deleted
+  returning * into n;
+  if not found then raise exception 'note % not found', p_id; end if;
+  insert into note_log (note_id, actor, action, message, detail)
+  values (p_id, 'claude', case when p_status is null then 'work' else 'status' end, p_message,
+          jsonb_strip_nulls(jsonb_build_object('status', p_status, 'resolution', nullif(p_resolution, '{}'::jsonb))));
+  return n;
+end $$;

@@ -2,7 +2,7 @@
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { useEffect, useRef, useSyncExternalStore, type ReactNode } from 'react';
-import { CalendarDays, Moon, Settings, Sun } from 'lucide-react';
+import { CalendarDays, MessageSquareText, Moon, Settings, Sun } from 'lucide-react';
 import { m } from '@/i18n/en';
 import { setScreen, track } from '@/lib/analytics';
 import { useSyncState } from '@/lib/hooks';
@@ -10,6 +10,7 @@ import { currentTheme, toggleTheme } from '@/lib/theme';
 
 const NAV = [
   { href: '/', label: m.nav.today, icon: CalendarDays, match: (p: string) => p === '/' },
+  { href: '/notes', label: m.nav.notes, icon: MessageSquareText, match: (p: string) => p.startsWith('/notes') },
   { href: '/settings/templates', label: m.nav.settings, icon: Settings, match: (p: string) => p.startsWith('/settings') },
 ];
 

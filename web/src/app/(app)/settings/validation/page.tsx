@@ -76,7 +76,7 @@ export default function ValidationPage() {
   return (
     <>
       <section className="section">
-        <div><h2>{m.validation.title}</h2><p className="hint" style={{ margin: '3px 0 0' }}>{m.validation.subtitle}</p></div>
+        <div><h2 className="dup-title">{m.validation.title}</h2><p className="hint" style={{ margin: '3px 0 0' }}>{m.validation.subtitle}</p></div>
       </section>
       <section className="section">
         <h2>{m.validation.checkin}</h2>

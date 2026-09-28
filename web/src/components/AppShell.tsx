@@ -11,7 +11,7 @@ import { currentTheme, toggleTheme } from '@/lib/theme';
 const NAV = [
   { href: '/', label: m.nav.today, icon: CalendarDays, match: (p: string) => p === '/' },
   { href: '/notes', label: m.nav.notes, icon: MessageSquareText, match: (p: string) => p.startsWith('/notes') },
-  { href: '/settings/templates', label: m.nav.settings, icon: Settings, match: (p: string) => p.startsWith('/settings') },
+  { href: '/settings', label: m.nav.settings, icon: Settings, match: (p: string) => p.startsWith('/settings') },
 ];
 
 function screenName(path: string) {
@@ -55,6 +55,8 @@ export function AppShell({ children }: { children: ReactNode }) {
     setScreen(name);
     track('screen_viewed', { screen: name, from: prev.current });
     prev.current = name;
+    // On phones the content area (not the window) scrolls: start each screen at the top.
+    document.querySelector('.main')?.scrollTo(0, 0);
   }, [path]);
 
   return (

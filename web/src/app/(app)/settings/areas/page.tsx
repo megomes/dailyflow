@@ -25,7 +25,7 @@ export default function AreasPage() {
   return (
     <>
       <section className="section">
-        <div className="row"><h2>{m.areas.title}</h2><span className="spacer" /><button type="button" className="btn sm" onClick={() => void add()}><Plus size={15} />{m.areas.add}</button></div>
+        <div className="row"><h2 className="dup-title">{m.areas.title}</h2><span className="spacer" /><button type="button" className="btn sm" onClick={() => void add()}><Plus size={15} />{m.areas.add}</button></div>
         <p className="hint" style={{ margin: 0 }}>{m.areas.note}</p>
         <div className="list">{active.map(a => <AreaRow key={a.id} area={a} />)}</div>
       </section>

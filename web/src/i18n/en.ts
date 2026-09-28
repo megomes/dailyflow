@@ -129,7 +129,15 @@ export const m = {
     installHint: 'Use your browser’s “Install” or “Add to Home Screen”.',
   },
   sync: { idle: 'Synced', syncing: 'Syncing…', offline: 'Offline', error: 'Sync error' },
-  settings: { title: 'Settings' },
+  settings: {
+    title: 'Settings',
+    hints: {
+      templates: 'The blocks each new day starts from',
+      areas: 'Names, colors and icons',
+      validation: 'Check-in, retro and collected data',
+      device: 'Theme, sync and sign out',
+    },
+  },
 };
 
 export const areaDisplay = (name: string) => name;

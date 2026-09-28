@@ -50,7 +50,7 @@ export default function TodayPage() {
     scrolled.current = true;
     requestAnimationFrame(() => {
       const el = document.querySelector('[data-now]');
-      if (el && window.innerWidth > 820) {
+      if (el && window.matchMedia('(min-width: 821px)').matches) {
         const top = el.getBoundingClientRect().top + window.scrollY - window.innerHeight * 0.3;
         window.scrollTo({ top: Math.max(0, top) });
       }

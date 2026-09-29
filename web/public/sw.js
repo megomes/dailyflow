@@ -1,5 +1,5 @@
 /* DailyFlow service worker: offline shell. Data lives in IndexedDB; this only keeps the app loadable. */
-const VERSION = 'df-v1';
+const VERSION = 'df-v2';
 const SHELL = ['/', '/settings/templates', '/settings/areas', '/settings/validation', '/settings/device', '/manifest.webmanifest', '/icon-192.png', '/icon-512.png'];
 
 self.addEventListener('install', event => {
@@ -21,12 +21,18 @@ self.addEventListener('fetch', event => {
   if (url.origin !== self.location.origin || url.pathname.startsWith('/api/')) return;
 
   // Pages: network first, cached copy when offline (never cache a redirect to /login).
+  // Keyed by path with Vary ignored: Next's HTML varies on RSC headers, so keying by the request
+  // kept the install-time copy alongside newer ones and the offline fallback served that old build.
   if (req.mode === 'navigate') {
     event.respondWith(
       fetch(req).then(res => {
-        if (res.ok && !res.redirected) caches.open(VERSION).then(c => c.put(req, res.clone()));
+        if (res.ok && !res.redirected) {
+          const copy = res.clone();
+          caches.open(VERSION).then(async c => { await c.delete(url.pathname, { ignoreVary: true }); await c.put(url.pathname, copy); });
+        }
         return res;
-      }).catch(async () => (await caches.match(req)) || (await caches.match('/')) || Response.error()),
+      }).catch(async () =>
+        (await caches.match(url.pathname, { ignoreVary: true })) || (await caches.match('/', { ignoreVary: true })) || Response.error()),
     );
     return;
   }

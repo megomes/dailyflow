@@ -32,6 +32,21 @@ describe('seed and day creation', () => {
     expect(await ensureDay('2026-09-28')).toBe(false);
   });
 
+  it('refills a day an old build created empty from the Weekday template', async () => {
+    await save('day', { id: '2026-09-29', templateId: 'weekday', createdAt: '2026-09-29T10:29:10Z', updatedAt: '' });
+    expect(await ensureDay('2026-09-29')).toBe(true);
+    expect((await db.days.get('2026-09-29'))?.templateId).toBe('tue');
+    expect(await db.dayBlocks.where('dayId').equals('2026-09-29').count()).toBe(9);
+    expect(await ensureDay('2026-09-29')).toBe(false);
+  });
+
+  it('leaves a legacy day alone once it has blocks, even deleted ones', async () => {
+    await save('day', { id: '2026-09-25', templateId: 'weekday', createdAt: '2026-09-25T10:00:00Z', updatedAt: '' });
+    await save('day_block', { id: 'x', dayId: '2026-09-25', start: 0, end: 30, title: 'x', areaId: 'area-work', deleted: true, updatedAt: '' });
+    expect(await ensureDay('2026-09-25')).toBe(false);
+    expect(await db.dayBlocks.where('dayId').equals('2026-09-25').count()).toBe(1);
+  });
+
   it('editing the day never touches the template', async () => {
     await ensureDay('2026-09-28');
     const block = (await db.dayBlocks.get('2026-09-28:tb-mon:tb-weekday-4'))!;

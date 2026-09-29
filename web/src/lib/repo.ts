@@ -121,15 +121,21 @@ export async function copyTemplate(from: DayKey, to: DayKey): Promise<number> {
 /**
  * Creates the day from its template the first time it is opened. Block ids are derived from
  * the date and the template block, so two devices creating the same day produce the same ids.
- * Returns true when the day was created now.
+ * Also repairs a day that a stale pre-per-weekday build created from the (now tombstoned)
+ * Weekday/Weekend template: legacy template id and no blocks at all, not even deleted ones,
+ * so it was never touched.
+ * Returns true when the day was created (or refilled) now.
  */
 export async function ensureDay(dayId: string): Promise<boolean> {
   const db = getDB();
   const existing = await db.days.get(dayId);
-  if (existing && !existing.deleted) return false;
+  if (existing && !existing.deleted) {
+    const legacy = existing.templateId === 'weekday' || existing.templateId === 'weekend';
+    if (!legacy || (await db.dayBlocks.where('dayId').equals(dayId).count()) > 0) return false;
+  }
   const templateId = templateIdForDate(dayId);
   const tBlocks = (await db.templateBlocks.where('templateId').equals(templateId).toArray()).filter(b => !b.deleted);
-  const day: Day = { id: dayId, templateId, createdAt: new Date().toISOString(), updatedAt: '' };
+  const day: Day = { id: dayId, templateId, createdAt: existing?.createdAt ?? new Date().toISOString(), updatedAt: '' };
   const blocks: DayBlock[] = tBlocks.map(b => ({
     id: `${dayId}:${b.id}`, dayId, start: b.start, end: b.end, title: b.title, areaId: b.areaId, fromTemplate: b.id, updatedAt: '',
   }));

@@ -20,7 +20,15 @@ data class Snapshot(
     val focusTitle: String?, val focusLeftSec: Int?,
     val timeline: List<Block>,
     val nextTasks: List<String>,
-)
+    /** When the server built it (ms), to move the logical minute forward on the watch. */
+    val generatedAt: Long = System.currentTimeMillis(),
+) {
+    /** Logical minute right now, from the server minute plus the time since it was generated. */
+    fun minuteAt(nowMs: Long): Float = minute + (nowMs - generatedAt) / 60000f
+    fun nowAt(m: Float): Block? = timeline.lastOrNull { it.start <= m && m < it.end }
+    fun nextAt(m: Float): Block? { val cur = nowAt(m); return timeline.firstOrNull { it.start > m && it != cur } }
+    fun upcomingAt(m: Float, n: Int): List<Block> { val cur = nowAt(m); return timeline.filter { it.start > m && it != cur }.take(n) }
+}
 
 /** Device credential from pairing (spec §78): no login on the watch. */
 class Credentials(context: Context) {
@@ -67,13 +75,18 @@ class Api(context: Context) {
         }
     }
 
-    suspend fun snapshot(): Snapshot? = withContext(Dispatchers.IO) {
+    suspend fun snapshot(): Snapshot? = snapshotRaw()?.let { parseJson(it) }
+
+    /** The raw JSON (the watch face caches it to draw without the network). */
+    suspend fun snapshotRaw(): String? = withContext(Dispatchers.IO) {
         if (!creds.paired) return@withContext null
         runCatching {
             val (status, text) = request("/api/snapshot?tz=" + URLEncoder.encode(tz, "UTF-8"))
-            if (status != 200) null else parse(JSONObject(text))
+            if (status != 200) null else text
         }.getOrNull()
     }
+
+    fun parseJson(text: String): Snapshot? = runCatching { parse(JSONObject(text)) }.getOrNull()
 
     /** Start the current block or stop the running activity (POST /api/quick). */
     suspend fun quick(action: String): String = withContext(Dispatchers.IO) {
@@ -102,6 +115,7 @@ class Api(context: Context) {
             focusTitle = focus?.optString("title"), focusLeftSec = focus?.let { if (it.isNull("leftSec")) null else it.optInt("leftSec") },
             timeline = (0 until (tl?.length() ?: 0)).mapNotNull { block(tl!!.optJSONObject(it)) },
             nextTasks = (0 until (nt?.length() ?: 0)).map { nt!!.optString(it) },
+            generatedAt = runCatching { java.time.Instant.parse(j.optString("generatedAt")).toEpochMilli() }.getOrDefault(System.currentTimeMillis()),
         )
     }
 

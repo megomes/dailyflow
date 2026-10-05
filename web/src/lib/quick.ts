@@ -8,7 +8,7 @@ import { logicalAt } from './zone';
  */
 export interface QuickOp { entity: 'time_record'; id: string; updatedAt: string; deleted: boolean; data: Record<string, unknown> }
 
-export function quickOps(action: 'start' | 'stop', rows: { blocks: DayBlock[]; records: TimeRecord[] }, at: Date, tz: string, cutoff: number, newId: () => string): { ops: QuickOp[]; message: string } {
+export function quickOps(action: 'start' | 'stop' | 'next', rows: { blocks: DayBlock[]; records: TimeRecord[] }, at: Date, tz: string, cutoff: number, newId: () => string): { ops: QuickOp[]; message: string } {
   const { day, min } = logicalAt(at, tz, cutoff);
   const ts = at.toISOString();
   const ops: QuickOp[] = [];
@@ -26,9 +26,12 @@ export function quickOps(action: 'start' | 'stop', rows: { blocks: DayBlock[]; r
     stop(running);
     return { ops, message: `Stopped ${running.title}` };
   }
-  const blocks = rows.blocks.filter(b => !b.deleted && b.dayId === day && b.start <= min && min < b.end).sort((a, b) => a.start - b.start);
-  const block = blocks[blocks.length - 1];
-  if (!block) return { ops, message: 'Nothing planned now' };
+  const live = rows.blocks.filter(b => !b.deleted && b.dayId === day).sort((a, b) => a.start - b.start);
+  const covering = live.filter(b => b.start <= min && min < b.end);
+  const current = covering[covering.length - 1];
+  // 'next': start the next block early (the plan is not moved; the real timeline shows it started now).
+  const block = action === 'next' ? live.find(b => b.start > min && b.id !== current?.id) : current;
+  if (!block) return { ops, message: action === 'next' ? 'Nothing next' : 'Nothing planned now' };
   if (running?.blockId === block.id) return { ops, message: `Already on ${block.title}` };
   if (running) stop(running);
   ops.push({ entity: 'time_record', id: newId(), updatedAt: new Date(at.getTime() + 1).toISOString(), deleted: false, data: {

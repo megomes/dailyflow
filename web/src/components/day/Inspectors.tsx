@@ -5,9 +5,10 @@ import { m } from '@/i18n/en';
 import { capacity } from '@/lib/actual';
 import { MIN_BLOCK_MIN } from '@/lib/config';
 import { AreaIcon } from '@/lib/icons';
-import { createTask, deleteRecord, PRESETS, startActivity, startFocus, stopActivity, updateRecord } from '@/lib/ops';
+import { deleteRecord, PRESETS, startActivity, startFocus, stopActivity, updateRecord } from '@/lib/ops';
 import { fmtDuration, fmtMin, parseHHMM } from '@/lib/time';
 import type { Area, DayBlock, Revision, Task, TimeRecord } from '@/lib/types';
+import { QuickAdd } from '../tasks/QuickAdd';
 import { TaskRow } from '../tasks/TaskRow';
 
 export interface TimesProps { start: number; end: number; onCommit: (start: number, end: number) => void; endEditable?: boolean }
@@ -85,7 +86,6 @@ interface BlockProps {
 }
 
 export function BlockInspector({ dayId, block, areas, areaMap, tasks, revisions, live, started, running, onClose, onPatch, onDelete }: BlockProps) {
-  const [newTask, setNewTask] = useState('');
   const mine = tasks.filter(t => t.blockId === block.id);
   const cap = capacity(block, tasks);
   const revs = revisions.filter(r => r.blockId === block.id);
@@ -119,14 +119,7 @@ export function BlockInspector({ dayId, block, areas, areaMap, tasks, revisions,
         <div className="task-list compact">
           {mine.map(t => <TaskRow key={t.id} task={t} areaMap={areaMap} dayId={dayId} compact />)}
         </div>
-        <form onSubmit={async e => {
-          e.preventDefault();
-          if (!newTask.trim()) return;
-          await createTask(newTask, { status: 'today', dayId, blockId: block.id, areaId: block.areaId }, 'block');
-          setNewTask('');
-        }}>
-          <input className="input" placeholder={m.tasks.addToBlock} value={newTask} onChange={e => setNewTask(e.target.value)} />
-        </form>
+        <QuickAdd mode="block" dayId={dayId} blockId={block.id} surface="block" placeholder={m.tasks.addToBlock} />
       </div>
       {started && revs.length > 0 && (
         <details className="revs">

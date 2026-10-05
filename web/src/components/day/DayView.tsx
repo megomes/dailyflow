@@ -226,8 +226,8 @@ export function DayView({ dayId, live, title, sub, sideTop, sideBottom, headExtr
   const templateName = m.templates.names[d.day?.templateId ?? ''] ?? '';
   const after = (
     <>
-          {started && <ChangesCard baseline={d.day?.baseline} blocks={d.blocks} records={d.records} until={until} areaMap={d.areaMap} />}
           <DayTasks dayId={dayId} tasks={d.tasks} areaMap={d.areaMap} showBacklog={live} />
+          {started && <ChangesCard baseline={d.day?.baseline} blocks={d.blocks} records={d.records} until={until} areaMap={d.areaMap} />}
           {!live && (d.records.length > 0 || d.status === 'closed') && <Summary d={d} until={until} />}
           {!live && d.revisions.length > 0 && (
             <section className="card stack">

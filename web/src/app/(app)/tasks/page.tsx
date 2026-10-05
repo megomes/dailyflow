@@ -1,15 +1,15 @@
 'use client';
 import { useLiveQuery } from 'dexie-react-hooks';
-import { useEffect, useMemo, useRef, useState } from 'react';
-import { Inbox } from 'lucide-react';
+import { useEffect, useMemo, useState } from 'react';
 import { prioRank, useAllSessions } from '@/components/day/useDay';
+import { QuickAdd } from '@/components/tasks/QuickAdd';
 import { TaskDetail } from '@/components/tasks/TaskDetail';
 import { TaskRow } from '@/components/tasks/TaskRow';
 import { m } from '@/i18n/en';
 import { track } from '@/lib/analytics';
 import { getDB } from '@/lib/db';
 import { useClock, useIsMobile } from '@/lib/hooks';
-import { createTask, deleteTask, scheduleTask, toggleTaskDone, trackedByTask, unscheduleTask, updateTask } from '@/lib/ops';
+import { deleteTask, scheduleTask, toggleTaskDone, trackedByTask, unscheduleTask, updateTask } from '@/lib/ops';
 import { activeAreas } from '@/lib/repo';
 import { facets, isFiltering, matches, type TaskFilter } from '@/lib/taskFilter';
 import { ESTIMATES } from '@/components/tasks/TaskDetail';
@@ -25,9 +25,6 @@ export default function TasksPage() {
   const [list, setList] = useState<List>('inbox');
   const [selId, setSelId] = useState<string | null>(null);
   const [open, setOpen] = useState<string | null>(null);
-  const [text, setText] = useState('');
-  const t0 = useRef<number | null>(null);
-  const captureRef = useRef<HTMLInputElement>(null);
 
   const areas = useMemo(() => activeAreas(areasRaw ?? []), [areasRaw]);
   const areaMap = useMemo(() => new Map((areasRaw ?? []).map(a => [a.id, a])), [areasRaw]);
@@ -60,7 +57,7 @@ export default function TasksPage() {
       const idx = items.findIndex(x => x.id === selId);
       if (e.key === 'j' || e.key === 'ArrowDown') { e.preventDefault(); setSelId(items[Math.min(items.length - 1, idx + 1)]?.id ?? null); return; }
       if (e.key === 'k' || e.key === 'ArrowUp') { e.preventDefault(); setSelId(items[Math.max(0, idx - 1)]?.id ?? null); return; }
-      if (e.key === 'c') { e.preventDefault(); captureRef.current?.focus(); return; }
+      if (e.key === 'c') { e.preventDefault(); document.querySelector<HTMLInputElement>('.capture .qa-input')?.focus(); return; }
       if (!sel) return;
       const next = () => setSelId(items[idx + 1]?.id ?? items[idx - 1]?.id ?? null);
       const n = Number(e.key);
@@ -88,17 +85,9 @@ export default function TasksPage() {
           <div className="sub"><span>{m.tasks.triageHint}</span></div>
         </div>
       </header>
-      <form className="capture" onSubmit={async e => {
-        e.preventDefault();
-        if (!text.trim()) return;
-        await createTask(text, {}, 'tasks', t0.current ?? undefined);
-        setText(''); t0.current = null;
-        if (list !== 'inbox') setList('inbox');
-      }}>
-        <Inbox size={16} className="muted" />
-        <input ref={captureRef} className="input" placeholder={m.tasks.capturePlaceholder} value={text}
-          onChange={e => { if (t0.current == null) t0.current = performance.now(); setText(e.target.value); }} />
-      </form>
+      <div className="capture">
+        <QuickAdd mode="inbox" surface="tasks" onAdded={t => { const l = t.status === 'today' ? 'today' : 'inbox'; if (list !== l && list !== 'all') setList(l); setSelId(t.id); }} />
+      </div>
       <div className="seg" role="tablist">
         {(['inbox', 'backlog', 'today', 'done', 'all'] as List[]).map(l => (
           <button key={l} type="button" aria-pressed={list === l} onClick={() => { setList(l); setSelId(null); }}>

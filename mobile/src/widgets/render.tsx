@@ -3,12 +3,13 @@ import { FlexWidget, TextWidget, type ColorProp } from 'react-native-android-wid
 import type { Snapshot } from '@shared/snapshot';
 import type { WidgetInfo } from 'react-native-android-widget';
 import { C } from '../theme';
+import { DayWidget } from './day';
 
 /**
  * Home-screen widgets (spec §81), drawn from the server snapshot. Informational first:
  * tapping opens the app; the Tasks widget cycles its list on tap.
  */
-type Render = (s: Snapshot | null, info: WidgetInfo, opts?: { list?: TaskList }) => React.JSX.Element;
+type Render = (s: Snapshot | null, info: WidgetInfo, opts?: { list?: TaskList; pending?: string[] }) => React.JSX.Element;
 export type TaskList = 'inProgress' | 'high' | 'today';
 
 const hex = (s: string) => s as ColorProp;
@@ -100,4 +101,6 @@ const Progress: Render = s => {
   );
 };
 
-export const WIDGETS: Record<string, Render> = { Now, Timeline, Tasks, NextTasks, Progress };
+const Day: Render = (s, info, opts) => <DayWidget s={s} info={info} pending={opts?.pending} />;
+
+export const WIDGETS: Record<string, Render> = { Day, Now, Timeline, Tasks, NextTasks, Progress };

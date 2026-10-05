@@ -25,6 +25,10 @@ export interface Snapshot {
   running: { title: string; area: string; color: string; sinceLabel: string; elapsedMin: number } | null;
   focus: { title: string; leftSec: number | null; elapsedSec: number; paused: boolean; endsAt: string | null } | null;
   tasks: { inProgress: string[]; high: string[]; today: string[]; next: string[] };
+  /** Today's open to-dos with ids (widget check-off): the current block's first, then high priority, then the rest. */
+  todos: { id: string; title: string; estimate: number | null; high: boolean; inNow: boolean; color: string }[];
+  /** Today's to-dos: done and still open. */
+  todayCount: { done: number; open: number };
   progress: { trackedMin: number; plannedMin: number; plannedSoFarMin: number };
 }
 
@@ -61,6 +65,9 @@ export function buildSnapshot(input: { blocks: DayBlock[]; records: TimeRecord[]
   const tracked = new Set(input.sessions.filter(s => !s.deleted && s.taskId).map(s => s.taskId!));
   const todayTasks = open.filter(t => t.status === 'today' && t.dayId === day);
   const inNow = nowB ? todayTasks.filter(t => t.blockId === nowB.id) : [];
+  const blockArea = new Map(blocks.map(b => [b.id, b.areaId]));
+  const todos = [...inNow, ...todayTasks.filter(t => !inNow.includes(t) && t.priority === 'high'), ...todayTasks.filter(t => !inNow.includes(t) && t.priority !== 'high')]
+    .slice(0, 8).map(t => ({ id: t.id, title: t.title, estimate: t.estimate ?? null, high: t.priority === 'high', inNow: inNow.includes(t), color: AREA_HEX[areaMap.get(t.areaId ?? (t.blockId ? blockArea.get(t.blockId) ?? '' : ''))?.color ?? 'gray'] }));
   const recs = input.records.filter(r => !r.deleted && r.dayId === day);
 
   return {
@@ -79,6 +86,8 @@ export function buildSnapshot(input: { blocks: DayBlock[]; records: TimeRecord[]
       today: todayTasks.map(t => t.title).slice(0, 12),
       next: [...inNow, ...todayTasks.filter(t => !inNow.includes(t))].map(t => t.title).slice(0, 5),
     },
+    todos,
+    todayCount: { done: tasks.filter(t => t.status === 'done' && t.dayId === day).length, open: todayTasks.length },
     progress: {
       trackedMin: Math.round(recs.reduce((s, r) => s + (Math.min(recEnd(r, minute), minute) - r.start), 0)),
       plannedMin: blocks.reduce((s, b) => s + b.end - b.start, 0),

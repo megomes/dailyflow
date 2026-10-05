@@ -24,7 +24,7 @@ export async function GET(req: Request) {
        (entity = 'day_block' and data->>'dayId' = $1)
        or entity = 'area'
        or (entity = 'time_record' and (data->>'dayId' = $1 or data->'end' = 'null'::jsonb))
-       or (entity = 'task' and data->>'status' not in ('done', 'archived'))
+       or (entity = 'task' and (data->>'status' not in ('done', 'archived') or data->>'dayId' = $1))
        or (entity = 'focus_session' and (data->>'state' in ('running', 'paused') or data->>'taskId' is not null))
      )`,
     [day],

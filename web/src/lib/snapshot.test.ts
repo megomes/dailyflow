@@ -33,3 +33,16 @@ describe('pairing codes', () => {
     expect(await codeHash('ABC')).toHaveLength(64);
   });
 });
+
+describe('snapshot to-dos', () => {
+  it('lists today to-dos with ids, current block first, and counts done', () => {
+    const t = (id: string, p: Partial<Task>) => ({ id, title: id, status: 'today', dayId: '2026-10-05', createdAt: '', sort: 0, updatedAt: '', ...p }) as Task;
+    const s = buildSnapshot({
+      blocks: [blk('a', 600, 660, 'w', 'Work')], records: [], sessions: [], areas,
+      tasks: [t('loose', {}), t('urgent', { priority: 'high' }), t('here', { blockId: 'a', estimate: 30 }), t('fin', { status: 'done' })],
+    }, new Date('2026-10-05T13:42:00Z'), 'America/Sao_Paulo', 4);
+    expect(s.todos.map(x => x.id)).toEqual(['here', 'urgent', 'loose']);
+    expect(s.todos[0]).toMatchObject({ inNow: true, estimate: 30, color: '#248CF2' });
+    expect(s.todayCount).toEqual({ done: 1, open: 3 });
+  });
+});

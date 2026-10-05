@@ -10,25 +10,136 @@
     "backgroundColor": "#141416",
     "android": {
       "package": "app.dailyflow",
-      "adaptiveIcon": { "foregroundImage": "./assets/icon.png", "backgroundColor": "#141416" },
-      "permissions": ["POST_NOTIFICATIONS", "CAMERA"]
+      "adaptiveIcon": {
+        "foregroundImage": "./assets/icon.png",
+        "backgroundColor": "#141416"
+      },
+      "permissions": [
+        "POST_NOTIFICATIONS",
+        "CAMERA"
+      ],
+      "blockedPermissions": [
+        "android.permission.RECORD_AUDIO"
+      ]
     },
     "plugins": [
       "expo-router",
       "expo-secure-store",
       "expo-background-task",
-      ["expo-camera", { "cameraPermission": "DailyFlow uses the camera only to scan the pairing QR code." }],
-      ["expo-notifications", { "color": "#248CF2" }],
-      ["react-native-android-widget", {
-        "widgets": [
-          { "name": "Now", "label": "DailyFlow · Now", "description": "Current block, time left and what is next", "minWidth": "180dp", "minHeight": "110dp", "targetCellWidth": 3, "targetCellHeight": 2, "resizeMode": "horizontal|vertical", "updatePeriodMillis": 1800000, "previewImage": "./assets/widget-now.png" },
-          { "name": "Timeline", "label": "DailyFlow · Timeline", "description": "Today's blocks", "minWidth": "180dp", "minHeight": "180dp", "targetCellWidth": 3, "targetCellHeight": 3, "resizeMode": "horizontal|vertical", "updatePeriodMillis": 1800000, "previewImage": "./assets/widget-timeline.png" },
-          { "name": "Tasks", "label": "DailyFlow · Tasks", "description": "In progress, high priority or today", "minWidth": "180dp", "minHeight": "110dp", "targetCellWidth": 3, "targetCellHeight": 2, "resizeMode": "horizontal|vertical", "updatePeriodMillis": 1800000, "previewImage": "./assets/widget-tasks.png" },
-          { "name": "NextTasks", "label": "DailyFlow · Next tasks", "description": "What to do in this block", "minWidth": "110dp", "minHeight": "110dp", "targetCellWidth": 2, "targetCellHeight": 2, "resizeMode": "horizontal|vertical", "updatePeriodMillis": 1800000, "previewImage": "./assets/widget-next.png" },
-          { "name": "Progress", "label": "DailyFlow · Day", "description": "Now and next, minimal", "minWidth": "110dp", "minHeight": "50dp", "targetCellWidth": 2, "targetCellHeight": 1, "resizeMode": "horizontal", "updatePeriodMillis": 1800000, "previewImage": "./assets/widget-progress.png" }
-        ]
-      }]
+      [
+        "expo-camera",
+        {
+          "cameraPermission": "DailyFlow uses the camera only to scan the pairing QR code."
+        }
+      ],
+      [
+        "expo-notifications",
+        {
+          "color": "#248CF2"
+        }
+      ],
+      [
+        "react-native-android-widget",
+        {
+          "widgets": [
+            {
+              "name": "Day",
+              "label": "DailyFlow · Day",
+              "description": "Now, next, the shape of the day and today's to-dos. Tap a circle to check one off.",
+              "minWidth": "250dp",
+              "minHeight": "250dp",
+              "targetCellWidth": 4,
+              "targetCellHeight": 4,
+              "maxResizeWidth": "600dp",
+              "maxResizeHeight": "600dp",
+              "resizeMode": "horizontal|vertical",
+              "updatePeriodMillis": 1800000,
+              "previewImage": "./assets/widget-day.png"
+            },
+            {
+              "name": "Now",
+              "label": "DailyFlow · Now",
+              "description": "Current block, time left and what is next",
+              "minWidth": "180dp",
+              "minHeight": "110dp",
+              "targetCellWidth": 3,
+              "targetCellHeight": 2,
+              "resizeMode": "horizontal|vertical",
+              "updatePeriodMillis": 1800000,
+              "previewImage": "./assets/widget-now.png"
+            },
+            {
+              "name": "Timeline",
+              "label": "DailyFlow · Timeline",
+              "description": "Today's blocks",
+              "minWidth": "180dp",
+              "minHeight": "180dp",
+              "targetCellWidth": 3,
+              "targetCellHeight": 3,
+              "resizeMode": "horizontal|vertical",
+              "updatePeriodMillis": 1800000,
+              "previewImage": "./assets/widget-timeline.png"
+            },
+            {
+              "name": "Tasks",
+              "label": "DailyFlow · Tasks",
+              "description": "In progress, high priority or today",
+              "minWidth": "180dp",
+              "minHeight": "110dp",
+              "targetCellWidth": 3,
+              "targetCellHeight": 2,
+              "resizeMode": "horizontal|vertical",
+              "updatePeriodMillis": 1800000,
+              "previewImage": "./assets/widget-tasks.png"
+            },
+            {
+              "name": "NextTasks",
+              "label": "DailyFlow · Next tasks",
+              "description": "What to do in this block",
+              "minWidth": "110dp",
+              "minHeight": "110dp",
+              "targetCellWidth": 2,
+              "targetCellHeight": 2,
+              "resizeMode": "horizontal|vertical",
+              "updatePeriodMillis": 1800000,
+              "previewImage": "./assets/widget-next.png"
+            },
+            {
+              "name": "Progress",
+              "label": "DailyFlow · Day",
+              "description": "Now and next, minimal",
+              "minWidth": "110dp",
+              "minHeight": "50dp",
+              "targetCellWidth": 2,
+              "targetCellHeight": 1,
+              "resizeMode": "horizontal",
+              "updatePeriodMillis": 1800000,
+              "previewImage": "./assets/widget-progress.png"
+            }
+          ]
+        }
+      ]
     ],
-    "experiments": { "typedRoutes": false }
+    "experiments": {
+      "typedRoutes": false
+    },
+    "extra": {
+      "router": {},
+      "eas": {
+        "projectId": "65d44795-dbe0-4398-bc8d-91c12b4f3d86"
+      }
+    },
+    "owner": "matheuservilha",
+    "updates": {
+      "url": "https://u.expo.dev/65d44795-dbe0-4398-bc8d-91c12b4f3d86",
+      "checkAutomatically": "ON_LOAD",
+      "fallbackToCacheTimeout": 0,
+      "requestHeaders": {
+        "expo-channel-name": "production"
+      }
+    },
+    "runtimeVersion": {
+      "policy": "appVersion"
+    }
   }
 }

@@ -1,4 +1,5 @@
 import type { PlanBlock, Task, TimelineBlock, TimeRecord } from './types';
+import { dateAtMinute } from './time';
 
 /**
  * Pure logic for Plan × Real (E2), replanning (E3), tasks capacity (E4) and the day summary (E7).
@@ -7,9 +8,29 @@ import type { PlanBlock, Task, TimelineBlock, TimeRecord } from './types';
 
 export interface Span { start: number; end: number }
 
+/**
+ * When a record really started (ms). startedAt is exact to the second, but an edited start (e.g. moved
+ * to 13:31) only changes start; when they disagree the edited minute wins, so timers follow the fix.
+ */
+export function startedMs(r: Pick<TimeRecord, 'dayId' | 'start' | 'startedAt'>): number {
+  const fromStart = dateAtMinute(r.dayId, r.start).getTime();
+  const exact = r.startedAt ? Date.parse(r.startedAt) : NaN;
+  return Number.isFinite(exact) && Math.abs(exact - fromStart) < 60_000 ? exact : fromStart;
+}
+
 export const recEnd = (r: Pick<TimeRecord, 'end'>, nowMin: number) => (r.end == null ? nowMin : r.end);
 
 /** Merges overlapping spans into a sorted, disjoint list. */
+/**
+ * Time actually covered vs. time spent on two things at once. Per-area totals count each activity
+ * fully (a meeting + guitar is 1h of each); the day total counts the clock once.
+ */
+export function coverage(spans: Span[]): { total: number; parallel: number } {
+  const sum = spans.reduce((s, x) => s + Math.max(0, x.end - x.start), 0);
+  const total = mergeSpans(spans).reduce((s, x) => s + x.end - x.start, 0);
+  return { total, parallel: sum - total };
+}
+
 export function mergeSpans(spans: Span[]): Span[] {
   const s = spans.filter(x => x.end > x.start).sort((a, b) => a.start - b.start);
   const out: Span[] = [];

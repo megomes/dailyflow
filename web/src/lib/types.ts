@@ -92,6 +92,9 @@ export interface TimeRecord extends SyncFields {
   taskId?: string;
   source: 'live' | 'switch' | 'manual' | 'plan' | 'focus' | 'close';
   createdAt: string;
+  /** Runs alongside the main activity (two things at once, e.g. a meeting + guitar). Starting
+   *  something else only replaces the main one; this keeps going until stopped. */
+  alongside?: boolean;
   /** Set when the record is changed after its day was closed (E7). */
   editedAfterClose?: string;
 }

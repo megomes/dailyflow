@@ -1,6 +1,6 @@
 'use client';
 import { m } from '@/i18n/en';
-import { areaTotals, recEnd } from '@/lib/actual';
+import { areaTotals, coverage, recEnd } from '@/lib/actual';
 import { AreaIcon } from '@/lib/icons';
 import { trackedByTask } from '@/lib/ops';
 import { fmtDuration } from '@/lib/time';
@@ -13,8 +13,10 @@ export function Summary({ d, until }: { d: DayData; until: number }) {
   const real = areaTotals(d.records.map(r => ({ start: r.start, end: recEnd(r, until), areaId: r.areaId })));
   const ids = [...new Set([...base.keys(), ...fin.keys(), ...real.keys()])].sort((a, b) => (real.get(b) ?? 0) - (real.get(a) ?? 0) || (fin.get(b) ?? 0) - (fin.get(a) ?? 0));
   const max = Math.max(1, ...ids.map(id => Math.max(fin.get(id) ?? 0, real.get(id) ?? 0, base.get(id) ?? 0)));
-  const tracked = [...real.values()].reduce((s, v) => s + v, 0);
-  const planned = [...fin.values()].reduce((s, v) => s + v, 0);
+  // The clock counted once: two things at once do not make the day longer.
+  const cov = coverage(d.records.map(r => ({ start: r.start, end: recEnd(r, until) })));
+  const tracked = cov.total;
+  const planned = coverage(d.blocks).total;
   const focusMin = [...trackedByTask(d.sessions).values()].reduce((s, v) => s + v.min, 0) + d.sessions.filter(s => !s.taskId).reduce((s, x) => s + (x.actualMin ?? 0), 0);
   const hasBase = !!d.day?.baseline;
   return (
@@ -25,6 +27,7 @@ export function Summary({ d, until }: { d: DayData; until: number }) {
         <div><b>{planned ? Math.round((tracked / planned) * 100) : 0}%</b><span>{m.close.coverage}</span></div>
         <div><b>{d.tasks.filter(t => t.status === 'done').length}/{d.tasks.length}</b><span>{m.close.tasksDone}</span></div>
         <div><b>{fmtDuration(focusMin)}</b><span>{m.close.focus}</span></div>
+        {cov.parallel >= 5 && <div><b>{fmtDuration(cov.parallel)}</b><span>{m.close.parallel}</span></div>}
       </div>
       <table className="sum-table">
         <thead><tr><th>{m.close.colArea}</th>{hasBase && <th>{m.close.colBaseline}</th>}<th>{m.close.colFinal}</th><th>{m.close.colReal}</th><th className="bars-col" /></tr></thead>

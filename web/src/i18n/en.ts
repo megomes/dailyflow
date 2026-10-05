@@ -218,6 +218,10 @@ export const m = {
     savedTemplate: (n: number, t: string) => `Saved ${n} blocks as the ${t} template.`,
   },
   activity: {
+    also: 'Also',
+    alsoDoing: 'Also doing…',
+    alsoHint: 'Run something else at the same time (it keeps going when you switch the main one)',
+    startToo: (t: string) => `Start ${t} too`,
     doing: 'Doing',
     since: (t: string) => `since ${t}`,
     start: 'Start',
@@ -388,6 +392,7 @@ export const m = {
     colArea: 'Area', colBaseline: 'Baseline', colFinal: 'Final', colReal: 'Real',
     tracked: 'Tracked',
     coverage: 'Of the planned day',
+    parallel: 'Two at once',
     tasksDone: 'Tasks done',
     focus: 'Focus',
     revisions: 'Plan changes',

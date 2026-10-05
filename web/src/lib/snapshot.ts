@@ -1,4 +1,4 @@
-import { recEnd } from './actual';
+import { coverage, recEnd } from './actual';
 import { logicalAt } from './zone';
 import type { Area, ColorKey, DayBlock, FocusSession, Task, TimeRecord } from './types';
 
@@ -23,6 +23,10 @@ export interface Snapshot {
   next: (SnapItem & { inMin: number }) | null;
   timeline: SnapItem[];
   running: { title: string; area: string; color: string; sinceLabel: string; elapsedMin: number } | null;
+  /** Activities running alongside the main one (two things at once). */
+  alsoRunning: { title: string; color: string; sinceLabel: string }[];
+  /** Every block on now (more than one when blocks overlap on purpose, e.g. a meeting + guitar). */
+  nowAll: SnapItem[];
   focus: { title: string; leftSec: number | null; elapsedSec: number; paused: boolean; endsAt: string | null } | null;
   tasks: { inProgress: string[]; high: string[]; today: string[]; next: string[] };
   /** Today's open to-dos with ids (widget check-off): the current block's first, then high priority, then the rest. */
@@ -47,7 +51,15 @@ export function buildSnapshot(input: { blocks: DayBlock[]; records: TimeRecord[]
   const nowB = covering[covering.length - 1] ?? null;
   const nextB = blocks.find(b => b.start > minute && b.id !== nowB?.id) ?? null;
 
-  const running = input.records.find(r => !r.deleted && r.end == null);
+  const openRecs = input.records.filter(r => !r.deleted && r.end == null);
+  const running = openRecs.find(r => !r.alongside) ?? openRecs[0];
+  const also = openRecs.filter(r => r !== running);
+  // Minutes since a record started; an edited start (only the minute changes) wins over a stale startedAt.
+  const elapsed = (r: TimeRecord) => {
+    const byMinute = minute - r.start;
+    const exact = r.startedAt ? (at.getTime() - Date.parse(r.startedAt)) / 60000 : NaN;
+    return Math.max(0, Math.round(Number.isFinite(exact) && Math.abs(exact - byMinute) < 1.5 ? exact : byMinute));
+  };
   const focus = input.sessions.filter(f => !f.deleted && (f.state === 'running' || f.state === 'paused')).sort((a, b) => b.startedAt.localeCompare(a.startedAt))[0];
   let focusOut: Snapshot['focus'] = null;
   if (focus) {
@@ -64,12 +76,14 @@ export function buildSnapshot(input: { blocks: DayBlock[]; records: TimeRecord[]
   const open = tasks.filter(t => t.status !== 'done' && t.status !== 'archived');
   const tracked = new Set(input.sessions.filter(s => !s.deleted && s.taskId).map(s => s.taskId!));
   const todayTasks = open.filter(t => t.status === 'today' && t.dayId === day);
-  const inNow = nowB ? todayTasks.filter(t => t.blockId === nowB.id) : [];
+  // To-dos of every block on now (parallel blocks included).
+  const coveringIds = new Set(covering.map(b => b.id));
+  const inNow = todayTasks.filter(t => !!t.blockId && coveringIds.has(t.blockId));
   const blockById = new Map(blocks.map(b => [b.id, b]));
   // Now first, then by the block they are planned in (upcoming), then loose, then blocks already over; high priority first inside each.
   const rank = (t: Task) => {
     const b = t.blockId ? blockById.get(t.blockId) : undefined;
-    if (b && b === nowB) return 0;
+    if (b && coveringIds.has(b.id)) return 0;
     if (b && b.start > minute) return 1 + b.start / 1e4;
     return b ? 3 : 2;
   };
@@ -77,7 +91,7 @@ export function buildSnapshot(input: { blocks: DayBlock[]; records: TimeRecord[]
     .slice(0, 16).map(t => {
       const b = t.blockId ? blockById.get(t.blockId) : undefined;
       return {
-        id: t.id, title: t.title, estimate: t.estimate ?? null, high: t.priority === 'high', inNow: !!b && b === nowB,
+        id: t.id, title: t.title, estimate: t.estimate ?? null, high: t.priority === 'high', inNow: !!b && coveringIds.has(b.id),
         color: AREA_HEX[areaMap.get(t.areaId ?? b?.areaId ?? '')?.color ?? 'gray'],
         blockId: b?.id ?? null, blockTitle: b ? b.title || areaMap.get(b.areaId)?.name || '' : null, blockStart: b ? hhmm(b.start) : null,
       };
@@ -91,8 +105,10 @@ export function buildSnapshot(input: { blocks: DayBlock[]; records: TimeRecord[]
     timeline: blocks.map(item),
     running: running ? (() => {
       const a = areaMap.get(running.areaId);
-      return { title: running.title || a?.name || '', area: a?.name ?? '', color: AREA_HEX[a?.color ?? 'gray'], sinceLabel: hhmm(running.start), elapsedMin: Math.max(0, Math.round(running.startedAt ? (at.getTime() - Date.parse(running.startedAt)) / 60000 : minute - running.start)) };
+      return { title: running.title || a?.name || '', area: a?.name ?? '', color: AREA_HEX[a?.color ?? 'gray'], sinceLabel: hhmm(running.start), elapsedMin: elapsed(running) };
     })() : null,
+    alsoRunning: also.map(r => ({ title: r.title || areaMap.get(r.areaId)?.name || '', color: AREA_HEX[areaMap.get(r.areaId)?.color ?? 'gray'], sinceLabel: hhmm(r.start) })),
+    nowAll: covering.map(item),
     focus: focusOut,
     tasks: {
       inProgress: open.filter(t => tracked.has(t.id)).map(t => t.title).slice(0, 8),
@@ -103,7 +119,7 @@ export function buildSnapshot(input: { blocks: DayBlock[]; records: TimeRecord[]
     todos,
     todayCount: { done: tasks.filter(t => t.status === 'done' && t.dayId === day).length, open: todayTasks.length },
     progress: {
-      trackedMin: Math.round(recs.reduce((s, r) => s + (Math.min(recEnd(r, minute), minute) - r.start), 0)),
+      trackedMin: Math.round(coverage(recs.map(r => ({ start: r.start, end: Math.min(recEnd(r, minute), minute) }))).total),
       plannedMin: blocks.reduce((s, b) => s + b.end - b.start, 0),
       plannedSoFarMin: Math.round(blocks.reduce((s, b) => s + Math.max(0, Math.min(b.end, minute) - b.start), 0)),
     },

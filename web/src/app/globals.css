@@ -745,3 +745,9 @@ html.vt-close::view-transition-new(root) { z-index: 1; }
   .day-page .today > .tl-wrap { min-height: 0; overflow-y: auto; overscroll-behavior: contain; scrollbar-width: thin; }
   .day-page .tl-cols { position: sticky; top: 0; z-index: 4; background: var(--bg-surface); }
 }
+
+/* Two things at once: activities running alongside the main one */
+.alongside { display: flex; flex-direction: column; gap: 4px; border-top: 1px solid var(--border-subtle); padding-top: 8px; }
+.alongside-row { display: flex; align-items: center; gap: 7px; font-size: 13px; min-height: 30px; }
+.alongside-row .al-title { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.alongside-row b { font-size: 13px; }

@@ -35,6 +35,8 @@ wear-watchface-editor = { group = "androidx.wear.watchface", name = "watchface-e
 
 wear-protolayout-expression = { group = "androidx.wear.protolayout", name = "protolayout-expression", version.ref = "protolayout" }
 
+profileinstaller = { group = "androidx.profileinstaller", name = "profileinstaller", version = "1.4.1" }
+
 [plugins]
 android-application = { id = "com.android.application", version.ref = "agp" }
 kotlin-android = { id = "org.jetbrains.kotlin.android", version.ref = "kotlin" }

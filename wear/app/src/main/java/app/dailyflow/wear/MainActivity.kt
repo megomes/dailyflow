@@ -52,11 +52,13 @@ class MainActivity : ComponentActivity() {
 @Composable
 private fun NowScreen(api: Api, onUnpair: () -> Unit) {
     val scope = rememberCoroutineScope()
-    var snap by remember { mutableStateOf<Snapshot?>(null) }
-    var message by remember { mutableStateOf<String?>(null) }
     val context = androidx.compose.ui.platform.LocalContext.current
+    // Opens with the last known day (instant), then refreshes in the background.
+    var snap by remember { mutableStateOf(app.dailyflow.wear.face.FaceData.run { load(context); snapshot }) }
+    var message by remember { mutableStateOf<String?>(null) }
     suspend fun refresh() {
-        snap = api.snapshot()
+        app.dailyflow.wear.face.FaceData.refresh(context.applicationContext)
+        snap = app.dailyflow.wear.face.FaceData.snapshot ?: snap
         TileService.getUpdater(context).requestUpdate(NowTileService::class.java)
     }
     LaunchedEffect(Unit) { while (true) { refresh(); delay(60_000) } }

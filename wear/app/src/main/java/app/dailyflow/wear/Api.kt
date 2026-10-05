@@ -123,6 +123,7 @@ class Api(context: Context) {
     }
 
     companion object {
+        fun paired(context: Context) = Credentials(context.applicationContext).paired
         fun color(hex: String?): Int = runCatching { android.graphics.Color.parseColor(hex) }.getOrDefault(0xFF248CF2.toInt())
     }
 }

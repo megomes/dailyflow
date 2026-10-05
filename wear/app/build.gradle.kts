@@ -14,6 +14,15 @@ android {
         versionCode = 1
         versionName = "0.1.0"
     }
+    buildTypes {
+        // Release is what goes on the watch: R8 + the libraries' startup profiles (debug Compose is very slow).
+        release {
+            isMinifyEnabled = true
+            isShrinkResources = true
+            proguardFiles(getDefaultProguardFile("proguard-android-optimize.txt"))
+            signingConfig = signingConfigs.getByName("debug")
+        }
+    }
     buildFeatures { compose = true }
     compileOptions {
         sourceCompatibility = JavaVersion.VERSION_17
@@ -35,6 +44,7 @@ dependencies {
     implementation(libs.wear.complications)
     implementation(libs.wear.watchface.data)
     implementation(libs.wear.protolayout.expression)
+    implementation(libs.profileinstaller)
     implementation(libs.concurrent.futures)
     implementation(libs.coroutines.android)
     implementation(libs.coroutines.guava)

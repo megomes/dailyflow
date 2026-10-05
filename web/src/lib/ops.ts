@@ -69,9 +69,10 @@ export async function runningRecord(): Promise<TimeRecord | undefined> {
 }
 
 /** One activity at a time (US-SYS-002): starting one stops the previous at the same minute. */
-export async function startActivity(dayId: string, a: { areaId: string; title: string; blockId?: string; taskId?: string; source: TimeRecord['source'] }) {
+export async function startActivity(dayId: string, a: { areaId: string; title: string; blockId?: string; taskId?: string; source: TimeRecord['source'] }, from?: Date) {
   await ensureStarted(dayId);
-  const now = new Date();
+  // `from` backdates the start (e.g. “since 09:00”): the previous activity ends there.
+  const now = from && from.getTime() < Date.now() ? from : new Date();
   const running = await runningRecord();
   if (running) await stopActivity(running.id, now);
   const start = Math.round(minuteOfDay(dayId, now));

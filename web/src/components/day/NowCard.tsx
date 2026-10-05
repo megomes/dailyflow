@@ -5,7 +5,8 @@ import { m } from '@/i18n/en';
 import { nowNext } from '@/lib/dayLogic';
 import { AreaIcon } from '@/lib/icons';
 import { endBreak, endFocus, extendFocus, focusElapsedSec, pauseFocus, PRESETS, resumeFocus, startActivity, startFocus, stopActivity, toggleTaskDone, type Preset } from '@/lib/ops';
-import { fmtClock, fmtDuration, fmtMin } from '@/lib/time';
+import { dateAtMinute, fmtClock, fmtDuration, fmtMin } from '@/lib/time';
+import { track } from '@/lib/analytics';
 import type { Area, DayBlock, FocusSession, Task, TimeRecord } from '@/lib/types';
 import { getMeta, setMeta } from '@/lib/db';
 import { QuickSwitch } from './QuickSwitch';
@@ -57,6 +58,12 @@ export function NowCard({ dayId, minute, blocks, tasks, areas, areaMap, running,
     await startFocus(dayId, { preset: p, taskId: task?.id ?? running?.taskId, blockId: focusBlockId, areaId, title });
   }
 
+  /** Hand off to the block the plan says is on now; `backdate` ends the current activity at the block start. */
+  async function switchTo(b: DayBlock, backdate: boolean) {
+    await startActivity(dayId, { areaId: b.areaId, title: b.title, blockId: b.id, source: 'live' }, backdate ? dateAtMinute(dayId, b.start) : undefined);
+    track('block_handoff', { backdated: backdate, late_min: Math.round(minute - b.start) });
+  }
+
   const na = areaMap.get((running ?? now)?.areaId ?? '');
   const xa = next ? areaMap.get(next.areaId) : undefined;
   const onBreak = focus && focus.state === 'done' && focus.breakStartedAt && !focus.breakEndedAt;
@@ -76,6 +83,15 @@ export function NowCard({ dayId, minute, blocks, tasks, areas, areaMap, running,
               <span>{m.activity.since(fmtMin(running.start))}</span>
               <b className="elapsed">{fmtClock((tick - Date.parse(running.startedAt ?? new Date().toISOString())) / 1000)}</b>
             </div>
+            {now && now.id !== running.blockId && now.start > running.start && (
+              <div className="handoff" data-color={areaMap.get(now.areaId)?.color ?? 'gray'}>
+                <span><span className="dot" />{m.activity.planSays(now.title, fmtMin(now.start))}</span>
+                <span className="row">
+                  <button type="button" className="btn sm" onClick={() => void switchTo(now, false)}>{m.activity.switchNow}</button>
+                  <button type="button" className="btn sm ghost" onClick={() => void switchTo(now, true)}>{m.activity.since(fmtMin(now.start))}</button>
+                </span>
+              </div>
+            )}
           </>
         ) : (
           <>

@@ -226,6 +226,8 @@ export const m = {
     stillDoing: (t: string, d: string) => `Still doing ${t}? Running for ${d}.`,
     stoppedAt: 'Stopped at',
     stillGoing: 'Still going',
+    planSays: (t: string, at: string) => `Plan: ${t} since ${at}`,
+    switchNow: 'Switch now',
     stopAtEnd: (t: string) => `Stopped at ${t}`,
   },
   record: {

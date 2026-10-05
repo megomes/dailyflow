@@ -486,7 +486,7 @@ html.vt-close::view-transition-new(root) { z-index: 1; }
 .col-count { font-size: 11.5px; font-weight: 500; color: var(--text-muted); background: var(--bg-surface-active); border-radius: 5px; padding: 0 6px; line-height: 18px; }
 .col-load { margin-left: auto; font-size: 11.5px; font-weight: 500; color: var(--text-muted); }
 .col-load.over { color: var(--c-orange); }
-.col-body { flex: 1; min-height: 0; overflow-y: auto; display: flex; flex-direction: column; gap: 6px; padding: 2px 8px 10px; overscroll-behavior: contain; }
+.col-body { flex: 1; min-height: 0; overflow-y: auto; display: flex; flex-direction: column; gap: 6px; padding: 2px 8px 10px; overscroll-behavior-y: contain; overscroll-behavior-x: auto; touch-action: pan-x pan-y; }
 .col-empty { margin: 4px 4px 0; font-size: 12.5px; color: var(--text-muted); }
 .col-drop { flex: none; display: grid; place-items: center; min-height: 54px; border: 1px dashed var(--border-strong); border-radius: 8px; color: var(--text-muted); font-size: 12px; }
 .board-col.over .col-drop { border-color: var(--focus); color: var(--text-primary); }
@@ -571,7 +571,7 @@ html.vt-close::view-transition-new(root) { z-index: 1; }
   .board-nav button span { font-size: 11.5px; color: var(--text-muted); }
   .board-nav button[aria-pressed='true'] { background: var(--bg-surface-active); border-color: var(--border-strong); color: var(--text-primary); }
   .board-nav button.on { border-color: var(--focus); color: var(--text-primary); }
-  .board { display: flex; gap: 10px; margin: 10px -16px 0; padding: 0 16px 12px; overflow-x: auto; overflow-y: hidden; scroll-snap-type: x proximity; scroll-padding: 0 16px; scrollbar-width: none; overscroll-behavior-x: contain; }
+  .board { display: flex; gap: 10px; margin: 10px -16px 0; padding: 0 16px 12px; overflow-x: auto; overflow-y: hidden; scroll-snap-type: x proximity; scroll-padding: 0 16px; scrollbar-width: none; overscroll-behavior-x: contain; touch-action: pan-x pan-y; }
   .board::-webkit-scrollbar { display: none; }
   .board-col { flex: 0 0 86%; scroll-snap-align: start; }
   .col-body { overscroll-behavior-y: contain; }

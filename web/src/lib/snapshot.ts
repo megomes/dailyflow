@@ -26,7 +26,7 @@ export interface Snapshot {
   focus: { title: string; leftSec: number | null; elapsedSec: number; paused: boolean; endsAt: string | null } | null;
   tasks: { inProgress: string[]; high: string[]; today: string[]; next: string[] };
   /** Today's open to-dos with ids (widget check-off): the current block's first, then high priority, then the rest. */
-  todos: { id: string; title: string; estimate: number | null; high: boolean; inNow: boolean; color: string }[];
+  todos: { id: string; title: string; estimate: number | null; high: boolean; inNow: boolean; color: string; blockId: string | null; blockTitle: string | null; blockStart: string | null }[];
   /** Today's to-dos: done and still open. */
   todayCount: { done: number; open: number };
   progress: { trackedMin: number; plannedMin: number; plannedSoFarMin: number };
@@ -65,9 +65,23 @@ export function buildSnapshot(input: { blocks: DayBlock[]; records: TimeRecord[]
   const tracked = new Set(input.sessions.filter(s => !s.deleted && s.taskId).map(s => s.taskId!));
   const todayTasks = open.filter(t => t.status === 'today' && t.dayId === day);
   const inNow = nowB ? todayTasks.filter(t => t.blockId === nowB.id) : [];
-  const blockArea = new Map(blocks.map(b => [b.id, b.areaId]));
-  const todos = [...inNow, ...todayTasks.filter(t => !inNow.includes(t) && t.priority === 'high'), ...todayTasks.filter(t => !inNow.includes(t) && t.priority !== 'high')]
-    .slice(0, 8).map(t => ({ id: t.id, title: t.title, estimate: t.estimate ?? null, high: t.priority === 'high', inNow: inNow.includes(t), color: AREA_HEX[areaMap.get(t.areaId ?? (t.blockId ? blockArea.get(t.blockId) ?? '' : ''))?.color ?? 'gray'] }));
+  const blockById = new Map(blocks.map(b => [b.id, b]));
+  // Now first, then by the block they are planned in (upcoming), then loose, then blocks already over; high priority first inside each.
+  const rank = (t: Task) => {
+    const b = t.blockId ? blockById.get(t.blockId) : undefined;
+    if (b && b === nowB) return 0;
+    if (b && b.start > minute) return 1 + b.start / 1e4;
+    return b ? 3 : 2;
+  };
+  const todos = [...todayTasks].sort((a, b) => rank(a) - rank(b) || Number(b.priority === 'high') - Number(a.priority === 'high') || a.sort - b.sort)
+    .slice(0, 16).map(t => {
+      const b = t.blockId ? blockById.get(t.blockId) : undefined;
+      return {
+        id: t.id, title: t.title, estimate: t.estimate ?? null, high: t.priority === 'high', inNow: !!b && b === nowB,
+        color: AREA_HEX[areaMap.get(t.areaId ?? b?.areaId ?? '')?.color ?? 'gray'],
+        blockId: b?.id ?? null, blockTitle: b ? b.title || areaMap.get(b.areaId)?.name || '' : null, blockStart: b ? hhmm(b.start) : null,
+      };
+    });
   const recs = input.records.filter(r => !r.deleted && r.dayId === day);
 
   return {

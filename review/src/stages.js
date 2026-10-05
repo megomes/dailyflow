@@ -403,6 +403,8 @@ const STAGES = [
       ['lock', 'Tela de bloqueio e Always-On Display', ['CAP-L2', 'US-WIDGET-004']],
       ['watch', 'Wear OS: complicação, tile, app', ['CAP-L3']],
       ['sunrise', 'Gamificação estilo floresta', ['CAP-L4']],
+      ['panels', 'Widget Dia (4x4): agora (foco, em andamento, não iniciado com ▶, livre, dia encerrado), faixa do dia, próximo e to-dos de hoje que dá para marcar no próprio widget', ['CAP-L1', 'US-WIDGET-001', 'US-WIDGET-003']],
+      ['refresh', 'Atualizações OTA (EAS Update, canal production): mudanças de JS chegam no app sem reinstalar', []],
     ],
     not: [],
     grow: ['Android e widgets', 'Relógio', 'Floresta'],

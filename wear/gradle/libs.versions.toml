@@ -1,7 +1,7 @@
 # Versions known stable at writing time; Android Studio's upgrade assistant can bump them.
 [versions]
-agp = "8.13.0"
-kotlin = "2.2.21"
+agp = "8.12.0"
+kotlin = "2.2.10"
 composeBom = "2025.09.01"
 activityCompose = "1.11.0"
 wearCompose = "1.5.2"
@@ -11,6 +11,7 @@ complications = "1.2.1"
 concurrentFutures = "1.3.0"
 coroutines = "1.10.2"
 coreSplash = "1.0.1"
+watchface = "1.2.1"
 
 [libraries]
 compose-bom = { group = "androidx.compose", name = "compose-bom", version.ref = "composeBom" }
@@ -26,6 +27,11 @@ wear-complications = { group = "androidx.wear.watchface", name = "watchface-comp
 concurrent-futures = { group = "androidx.concurrent", name = "concurrent-futures-ktx", version.ref = "concurrentFutures" }
 coroutines-android = { group = "org.jetbrains.kotlinx", name = "kotlinx-coroutines-android", version.ref = "coroutines" }
 coroutines-guava = { group = "org.jetbrains.kotlinx", name = "kotlinx-coroutines-guava", version.ref = "coroutines" }
+
+wear-watchface = { group = "androidx.wear.watchface", name = "watchface", version.ref = "watchface" }
+wear-watchface-data = { group = "androidx.wear.watchface", name = "watchface-complications-data", version.ref = "watchface" }
+wear-watchface-style = { group = "androidx.wear.watchface", name = "watchface-style", version.ref = "watchface" }
+wear-watchface-editor = { group = "androidx.wear.watchface", name = "watchface-editor", version.ref = "watchface" }
 
 [plugins]
 android-application = { id = "com.android.application", version.ref = "agp" }

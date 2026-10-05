@@ -32,3 +32,14 @@ describe('checking off from a widget', () => {
     expect(doneOps({ ...t, status: 'done' }, at, () => 'n').ops).toHaveLength(0);
   });
 });
+
+describe('starting the next block early', () => {
+  it('stops what runs and starts the next block now', () => {
+    const two = [...blocks, { id: 'm', dayId: '2026-10-05', start: 660, end: 720, title: 'Music', areaId: 'area-music', updatedAt: '' }] as DayBlock[];
+    const running = { id: 'r', dayId: '2026-10-05', start: 600, end: null, areaId: 'area-work', title: 'Work', blockId: 'w', source: 'live', createdAt: '', updatedAt: '' } as TimeRecord;
+    const { ops, message } = quickOps('next', { blocks: two, records: [running] }, at, 'America/Sao_Paulo', 4, () => 'n');
+    expect(message).toBe('Started Music');
+    expect(ops[0]).toMatchObject({ id: 'r', data: { end: 620 } });
+    expect(ops[1]).toMatchObject({ id: 'n', data: { start: 620, blockId: 'm', title: 'Music' } });
+  });
+});

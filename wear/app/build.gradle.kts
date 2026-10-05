@@ -10,7 +10,7 @@ android {
     defaultConfig {
         applicationId = "app.dailyflow"   // same id as the phone app: Wear pairs them in the Play/sideload flow
         minSdk = 30                        // Wear OS 3+
-        targetSdk = 34
+        targetSdk = 35
         versionCode = 1
         versionName = "0.1.0"
     }
@@ -33,6 +33,10 @@ dependencies {
     implementation(libs.wear.protolayout)
     implementation(libs.wear.protolayout.material)
     implementation(libs.wear.complications)
+    implementation(libs.wear.watchface)
+    implementation(libs.wear.watchface.data)
+    implementation(libs.wear.watchface.style)
+    implementation(libs.wear.watchface.editor)
     implementation(libs.concurrent.futures)
     implementation(libs.coroutines.android)
     implementation(libs.coroutines.guava)

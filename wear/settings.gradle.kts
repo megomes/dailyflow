@@ -7,3 +7,4 @@ dependencyResolutionManagement {
 }
 rootProject.name = "DailyFlowWear"
 include(":app")
+include(":watchface")

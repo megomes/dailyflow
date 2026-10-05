@@ -39,7 +39,13 @@ class MainActivity : ComponentActivity() {
         app.dailyflow.wear.notify.Transitions.ensureChannel(this)
         // adb shell am start -n app.dailyflow/.wear.MainActivity --ez preview_transition true
         if (intent.getBooleanExtra("preview_transition", false)) { app.dailyflow.wear.face.FaceData.load(this); app.dailyflow.wear.notify.Transitions.preview(this); finish(); return }
-        if (checkSelfPermission(android.Manifest.permission.POST_NOTIFICATIONS) != android.content.pm.PackageManager.PERMISSION_GRANTED) requestPermissions(arrayOf(android.Manifest.permission.POST_NOTIFICATIONS), 1)
+        app.dailyflow.wear.move.Move.ensureChannel(this)
+        app.dailyflow.wear.move.Move.schedule(this)
+        val missing = listOf(android.Manifest.permission.POST_NOTIFICATIONS, android.Manifest.permission.ACTIVITY_RECOGNITION)
+            .filter { checkSelfPermission(it) != android.content.pm.PackageManager.PERMISSION_GRANTED }
+        if (missing.isNotEmpty()) requestPermissions(missing.toTypedArray(), 1)
+        // adb shell am start -n app.dailyflow/.wear.MainActivity --ez preview_move true
+        if (intent.getBooleanExtra("preview_move", false)) { app.dailyflow.wear.move.Move.nudge(this, "Maker", 52, 38); finish(); return }
         setContent {
             MaterialTheme {
                 var paired by remember { mutableStateOf(api.creds.paired) }
@@ -94,6 +100,14 @@ private fun NowScreen(api: Api, onUnpair: () -> Unit) {
             }
             message?.let { m -> item { Text(m, color = Muted, fontSize = 11.sp) } }
             s?.next?.let { n -> item { Label("NEXT") }; item { Text("${n.title} · ${n.startLabel}", color = Text1, fontSize = 14.sp, textAlign = TextAlign.Center) } }
+            // Move breaks today (note #19), per block.
+            app.dailyflow.wear.move.Move.today(context).let { mv ->
+                if (mv.breaks > 0) {
+                    item { Label("MOVES TODAY") }
+                    item { Text("${mv.breaks} break${if (mv.breaks > 1) "s" else ""} · ${mv.steps} steps", color = Color(0xFF73E3AA), fontSize = 14.sp, textAlign = TextAlign.Center) }
+                    item { Text(mv.byBlock.entries.joinToString(" · ") { "${it.key} ${it.value}" }, color = Muted, fontSize = 12.sp, textAlign = TextAlign.Center) }
+                }
+            }
             if (s != null && s.nextTasks.isNotEmpty()) {
                 item { Label("TASKS") }
                 s.nextTasks.forEach { t -> item { Text("○ $t", color = Text2, fontSize = 13.sp, maxLines = 1, overflow = TextOverflow.Ellipsis) } }

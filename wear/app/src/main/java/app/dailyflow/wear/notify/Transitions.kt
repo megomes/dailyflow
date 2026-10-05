@@ -163,6 +163,14 @@ object Transitions {
         if (running != null) n.addAction(R.drawable.ic_stop, "Stop", pending(context, TransitionReceiver.STOP))
         n.addAction(R.drawable.ic_now, "+10 min", pending(context, TransitionReceiver.SNOOZE))
         NotificationManagerCompat.from(context).notify(ID, n.build())
+        context.getSharedPreferences("dailyflow", Context.MODE_PRIVATE).edit().putString("nudge.block", c.starts?.title).apply()
+    }
+
+    /** The block-change nudge goes away once that block is started anywhere (phone, web, here). */
+    fun dismissIfStarted(context: Context, s: Snapshot) {
+        val prefs = context.getSharedPreferences("dailyflow", Context.MODE_PRIVATE)
+        val block = prefs.getString("nudge.block", null) ?: return
+        if (s.runningTitle == block) { NotificationManagerCompat.from(context).cancel(ID); prefs.edit().remove("nudge.block").apply() }
     }
 
     /** After an action from the notification: say it worked, then get out of the way. */

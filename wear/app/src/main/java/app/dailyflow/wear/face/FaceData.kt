@@ -44,6 +44,7 @@ object FaceData {
         snapshot = parsed
         // Every fresh day re-arms the block-change alarm.
         app.dailyflow.wear.notify.Transitions.schedule(context.applicationContext)
+        app.dailyflow.wear.notify.Transitions.dismissIfStarted(context.applicationContext, parsed)
         changed
     }
 }

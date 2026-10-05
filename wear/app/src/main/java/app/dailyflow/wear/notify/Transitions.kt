@@ -113,6 +113,8 @@ object Transitions {
         val s = FaceData.snapshot ?: return
         val m = s.minuteAt(System.currentTimeMillis())
         val next = s.timeline.flatMap { listOf(it.start, it.end) }.filter { it > m }.minOrNull() ?: return
+        // A brand-new post (not an update of an unseen one), so it pops up and buzzes like the real one.
+        NotificationManagerCompat.from(context).cancel(ID)
         show(context, s, reminder = false, atMinute = next + 0.05f)
     }
 

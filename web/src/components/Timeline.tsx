@@ -1,6 +1,6 @@
 'use client';
 import { useMemo, useRef, useState, type DragEvent, type PointerEvent as RPointerEvent } from 'react';
-import { Lock } from 'lucide-react';
+import { CalendarDays, Lock } from 'lucide-react';
 import { MIN_BLOCK_MIN, SNAP_MIN, TIMELINE_END_MIN, TIMELINE_START_MIN } from '@/lib/config';
 import { layoutLanes, visibleRange } from '@/lib/dayLogic';
 import { AreaIcon } from '@/lib/icons';
@@ -11,7 +11,9 @@ export type ChangeKind = 'move' | 'resize-start' | 'resize-end';
 
 export interface TLItem extends TimelineBlock {
   /** plan = block, real = time record, ghost = baseline/reference (read-only), running = live record. */
-  variant?: 'plan' | 'real' | 'ghost' | 'running';
+  variant?: 'plan' | 'real' | 'ghost' | 'running' | 'event';
+  /** Color key when the item has no area (calendar events). */
+  color?: string;
   fixed?: boolean;
   /** Small badge in the corner (e.g. “−40m”, “3 tasks”). */
   badge?: string;
@@ -70,7 +72,7 @@ export function Timeline({ columns, areas, nowMin = null, selectedId, onSelect, 
   for (let h = lo; h <= hi; h += 30) hours.push(h);
 
   function begin(e: RPointerEvent, b: TLItem, col: TLColumn, kind: ChangeKind) {
-    if (e.button !== 0 || !col.editable || b.variant === 'ghost') return;
+    if (e.button !== 0 || !col.editable || b.variant === 'ghost' || b.variant === 'event') return;
     const selected = b.id === selectedId;
     if (e.pointerType !== 'mouse' && !selected) return; // touch: first tap selects, then drag
     if (b.variant === 'running' && kind === 'resize-end') return;
@@ -183,6 +185,7 @@ export function Timeline({ columns, areas, nowMin = null, selectedId, onSelect, 
           const dragging = drag?.id === b.id && drag.moved;
           const past = nowMin != null && b.end <= nowMin && b.variant !== 'real' && b.variant !== 'running';
           const current = nowMin != null && b.start <= nowMin && nowMin < b.end && (b.variant ?? 'plan') === 'plan';
+          const evt = b.variant === 'event';
           const compact = h < 38;
           const dim = highlightArea != null && col.id === 'plan' && b.areaId !== highlightArea;
           const lit = highlightArea != null && col.id === 'plan' && b.areaId === highlightArea;
@@ -194,7 +197,7 @@ export function Timeline({ columns, areas, nowMin = null, selectedId, onSelect, 
             <div
               key={`${col.id}-${b.id}`}
               className={cls}
-              data-color={area?.color ?? 'gray'}
+              data-color={b.color ?? area?.color ?? 'gray'}
               style={{ top, height: h, left, width }}
               onPointerDown={e => begin(e, b, col, 'move')}
               onClick={e => { e.stopPropagation(); if (suppressClick.current) { suppressClick.current = false; return; } if (b.variant !== 'ghost') onSelect(b.id, col.id); }}
@@ -206,14 +209,14 @@ export function Timeline({ columns, areas, nowMin = null, selectedId, onSelect, 
               aria-label={`${b.title}, ${fmtMin(b.start)} to ${fmtMin(b.end)}`}
               onKeyDown={e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); onSelect(b.id, col.id); } }}
             >
-              {sel && col.editable && <div className="blk-handle top" onPointerDown={e => begin(e, b, col, 'resize-start')} />}
+              {sel && col.editable && !evt && <div className="blk-handle top" onPointerDown={e => begin(e, b, col, 'resize-start')} />}
               <div className="blk-title">
-                {area && <AreaIcon name={area.icon} size={13} />}<span>{b.title || area?.name || '—'}</span>
+                {b.variant === 'event' ? <CalendarDays size={12} /> : area && <AreaIcon name={area.icon} size={13} />}<span>{b.title || area?.name || '—'}</span>
                 {b.fixed && <Lock size={11} className="blk-lock" aria-label="Fixed" />}
               </div>
               <div className="blk-time">{fmtMin(b.start)}–{b.variant === 'running' ? 'now' : fmtMin(b.end)}</div>
               {b.badge && <span className={`blk-badge ${b.badgeTone ?? 'muted'}`}>{b.badge}</span>}
-              {sel && col.editable && b.variant !== 'running' && <div className="blk-handle bottom" onPointerDown={e => begin(e, b, col, 'resize-end')} />}
+              {sel && col.editable && !evt && b.variant !== 'running' && <div className="blk-handle bottom" onPointerDown={e => begin(e, b, col, 'resize-end')} />}
             </div>
           );
         }))}

@@ -1,3 +1,5 @@
+import { after } from 'next/server';
+import { maybeSyncCalendars } from '@/lib/calendar/server';
 import { DAY_CUTOFF_HOUR } from '@/lib/config';
 import { requireDevice, sql, unauthorized } from '@/lib/server';
 import { buildSnapshot } from '@/lib/snapshot';
@@ -9,6 +11,8 @@ import { logicalAt } from '@/lib/zone';
  * notification and Wear OS (EH). Read-only, small, cache-free. Bearer or cookie auth.
  */
 export async function GET(req: Request) {
+  // Calendars stay fresh as long as any device talks to us (no cron on the Hobby plan).
+  after(() => maybeSyncCalendars());
   if (!(await requireDevice())) return unauthorized();
   const url = new URL(req.url);
   const tz = url.searchParams.get('tz') || 'America/Sao_Paulo';

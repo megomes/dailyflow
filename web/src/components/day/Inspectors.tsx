@@ -95,6 +95,9 @@ export function BlockInspector({ dayId, block, areas, areaMap, tasks, revisions,
       <div className="head"><span className="label">{m.inspector.title}</span>
         <button type="button" className="btn icon sm ghost" onClick={onClose} aria-label={m.inspector.close}><X size={15} /></button>
       </div>
+      {block.calendar && (
+        <p className="hint cal-from">{m.calendars.fromCalendar(block.calendar.email ?? (block.calendar.provider === 'microsoft' ? 'Microsoft 365' : 'Google'))}{block.calendar.location ? ` · ${block.calendar.location}` : ''}</p>
+      )}
       <NameField value={block.title} onCommit={t => onPatch({ title: t }, 'rename')} />
       <TimeFields start={block.start} end={block.end} onCommit={(s, e) => onPatch({ start: s, end: e }, s !== block.start && e - s === block.end - block.start ? 'move' : 'resize')} />
       <div className="row wrap">

@@ -1,5 +1,5 @@
 import { track } from './analytics';
-import { getDB, getMeta, setMeta, tableFor } from './db';
+import { ENTITY_TABLE, getDB, getMeta, setMeta, tableFor } from './db';
 import { onLocalWrite } from './repo';
 import type { Entity, SyncFields } from './types';
 
@@ -21,6 +21,8 @@ export async function applyRemote(changes: RemoteChange[]): Promise<number> {
   const db = getDB();
   let applied = 0;
   for (const c of changes) {
+    // A newer build may sync entities this one does not know yet: skip them instead of failing the sync.
+    if (!(c.entity in ENTITY_TABLE)) continue;
     const table = tableFor(db, c.entity);
     const local = await table.get(c.id);
     if (local && local.updatedAt >= c.updatedAt) continue;

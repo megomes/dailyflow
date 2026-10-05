@@ -27,10 +27,39 @@ export interface TemplateBlock extends SyncFields {
   areaId: string;
 }
 
+export type DayStatus = 'unplanned' | 'active' | 'closed';
+
+/** A frozen copy of a plan block (Baseline snapshot, revision before/after). */
+export interface PlanBlock {
+  id: string;
+  start: number;
+  end: number;
+  title: string;
+  areaId: string;
+  fixed?: boolean;
+}
+
+export interface Reflection {
+  /** 1–5 */
+  energy?: number;
+  wentWell?: string;
+  change?: string;
+}
+
 export interface Day extends SyncFields {
   /** Same as the logical date, YYYY-MM-DD. */
   templateId: TemplateId;
   createdAt: string;
+  /** Missing on days created before E2: treated as 'unplanned' (or 'active' once anything is tracked). */
+  status?: DayStatus;
+  startedAt?: string;
+  /** How the day was started: one click, guided planning, or late start from now. */
+  startMode?: 'quick' | 'guided' | 'late' | 'implicit';
+  /** The plan accepted at Start day. Never changed afterwards (spec §6.1). */
+  baseline?: PlanBlock[];
+  closedAt?: string;
+  reopenedAt?: string;
+  reflection?: Reflection;
 }
 
 export interface DayBlock extends SyncFields {
@@ -41,6 +70,92 @@ export interface DayBlock extends SyncFields {
   areaId: string;
   /** Template block this block was copied from, if any. */
   fromTemplate?: string;
+  /** Fixed blocks keep their time when the rest of the day is replanned (E3). */
+  fixed?: boolean;
+}
+
+/** What actually happened (spec §25). Minutes are relative to the logical day's date, like blocks. */
+export interface TimeRecord extends SyncFields {
+  dayId: string;
+  start: number;
+  /** null while the activity is running. */
+  end: number | null;
+  /** ISO start, so a running activity's elapsed time is exact on every device. */
+  startedAt?: string;
+  areaId: string;
+  title: string;
+  blockId?: string;
+  taskId?: string;
+  source: 'live' | 'switch' | 'manual' | 'plan' | 'focus' | 'close';
+  createdAt: string;
+  /** Set when the record is changed after its day was closed (E7). */
+  editedAfterClose?: string;
+}
+
+export type TaskStatus = 'inbox' | 'backlog' | 'today' | 'done' | 'archived';
+export type Priority = 'high' | 'med' | 'low';
+
+/** Tasks exist apart from blocks (spec §13); scheduling links them to a day and, optionally, a block. */
+export interface Task extends SyncFields {
+  title: string;
+  status: TaskStatus;
+  areaId?: string;
+  priority?: Priority;
+  /** Estimate in minutes. */
+  estimate?: number;
+  /** YYYY-MM-DD */
+  due?: string;
+  notes?: string;
+  dayId?: string;
+  blockId?: string;
+  createdAt: string;
+  doneAt?: string;
+  sort: number;
+  /** Days the task was scheduled on and not finished (for “continue from previous days”). */
+  carried?: string[];
+}
+
+/** One change to the plan after Start day (spec §7). */
+export interface Revision extends SyncFields {
+  dayId: string;
+  ts: string;
+  kind: 'move' | 'resize' | 'add' | 'remove' | 'rename' | 'area' | 'fixed' | 'replan' | 'late_start';
+  blockId?: string;
+  title: string;
+  before?: PlanBlock | null;
+  after?: PlanBlock | null;
+  reason?: string;
+  /** Number of blocks a bulk change (replan) touched. */
+  count?: number;
+}
+
+export interface FocusSession extends SyncFields {
+  dayId: string;
+  taskId?: string;
+  blockId?: string;
+  areaId: string;
+  title: string;
+  preset: string;
+  /** Planned focus minutes; 0 = stopwatch (open-ended). */
+  focusMin: number;
+  breakMin: number;
+  startedAt: string;
+  endedAt?: string;
+  pausedAt?: string;
+  pausedMs: number;
+  state: 'running' | 'paused' | 'done' | 'interrupted';
+  /** Minutes of focus actually done, set when the session ends. */
+  actualMin?: number;
+  breakStartedAt?: string;
+  breakEndedAt?: string;
+}
+
+/** Synced preferences (single record, id 'prefs'). */
+export interface Prefs extends SyncFields {
+  dayCutoffHour?: number;
+  notifyFocus?: boolean;
+  notifyBlocks?: boolean;
+  focusPreset?: string;
 }
 
 /** One answered (or skipped) daily check-in, keyed by the day it is about. */
@@ -50,7 +165,7 @@ export interface Checkin extends SyncFields {
   answers: Record<string, string>;
 }
 
-export type Entity = 'area' | 'template_block' | 'day' | 'day_block' | 'checkin';
+export type Entity = 'area' | 'template_block' | 'day' | 'day_block' | 'checkin' | 'time_record' | 'task' | 'revision' | 'focus_session' | 'pref';
 
 export interface OutboxItem {
   seq?: number;

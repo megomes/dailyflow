@@ -1,0 +1,217 @@
+import type { PlanBlock, Task, TimelineBlock, TimeRecord } from './types';
+
+/**
+ * Pure logic for Plan × Real (E2), replanning (E3), tasks capacity (E4) and the day summary (E7).
+ * Minutes are relative to the logical day's date (01:30 after midnight = 1530), like blocks.
+ */
+
+export interface Span { start: number; end: number }
+
+export const recEnd = (r: Pick<TimeRecord, 'end'>, nowMin: number) => (r.end == null ? nowMin : r.end);
+
+/** Merges overlapping spans into a sorted, disjoint list. */
+export function mergeSpans(spans: Span[]): Span[] {
+  const s = spans.filter(x => x.end > x.start).sort((a, b) => a.start - b.start);
+  const out: Span[] = [];
+  for (const x of s) {
+    const last = out[out.length - 1];
+    if (last && x.start <= last.end) last.end = Math.max(last.end, x.end);
+    else out.push({ start: x.start, end: x.end });
+  }
+  return out;
+}
+
+/** Parts of [from, to) not covered by any span, at least `min` minutes long. */
+export function uncovered(spans: Span[], from: number, to: number, min = 1): Span[] {
+  const out: Span[] = [];
+  let cur = from;
+  for (const s of mergeSpans(spans)) {
+    if (s.end <= cur) continue;
+    if (s.start >= to) break;
+    if (s.start > cur) out.push({ start: cur, end: Math.min(s.start, to) });
+    cur = Math.max(cur, s.end);
+    if (cur >= to) break;
+  }
+  if (cur < to) out.push({ start: cur, end: to });
+  return out.filter(g => g.end - g.start >= min);
+}
+
+const overlap = (a: Span, b: Span) => Math.max(0, Math.min(a.end, b.end) - Math.max(a.start, b.start));
+
+export function recordSpans(records: TimeRecord[], nowMin: number): Span[] {
+  return records.map(r => ({ start: r.start, end: recEnd(r, nowMin) }));
+}
+
+/** Gaps in the actual timeline between the start and end of the planned/tracked day, up to `until`. */
+export function dayGaps(plan: TimelineBlock[], records: TimeRecord[], until: number, min = 10): Span[] {
+  const all = [...plan.map(b => b.start), ...records.map(r => r.start)];
+  if (!all.length) return [];
+  const from = Math.min(...all);
+  const lastPlan = plan.length ? Math.max(...plan.map(b => b.end)) : from;
+  const lastRec = records.length ? Math.max(...records.map(r => recEnd(r, until))) : from;
+  const to = Math.min(until, Math.max(lastPlan, lastRec));
+  return uncovered(recordSpans(records, until), from, to, min);
+}
+
+export interface RecordDraft { start: number; end: number; areaId: string; title: string; blockId?: string }
+
+/**
+ * “Accept plan as real”: for each plan block, the parts of its window (up to `until`)
+ * that no record covers become records with the block's area and title.
+ */
+export function planAsReal(plan: TimelineBlock[], records: TimeRecord[], until: number, within?: Span): RecordDraft[] {
+  const covered = recordSpans(records, until);
+  const out: RecordDraft[] = [];
+  const sorted = [...plan].sort((a, b) => a.start - b.start);
+  for (const b of sorted) {
+    const lo = Math.max(b.start, within?.start ?? -Infinity);
+    const hi = Math.min(b.end, until, within?.end ?? Infinity);
+    if (hi <= lo) continue;
+    for (const g of uncovered([...covered, ...out], lo, hi, 1)) {
+      out.push({ start: g.start, end: g.end, areaId: b.areaId, title: b.title, blockId: b.id });
+    }
+  }
+  return out;
+}
+
+/** Minutes per area. A running item (end null) counts up to `nowMin`. */
+export function areaTotals(items: { start: number; end: number | null; areaId: string }[], nowMin = 0): Map<string, number> {
+  const m = new Map<string, number>();
+  for (const it of items) {
+    const d = (it.end == null ? nowMin : it.end) - it.start;
+    if (d > 0) m.set(it.areaId, (m.get(it.areaId) ?? 0) + d);
+  }
+  return m;
+}
+
+/** Real minutes inside a block's window, total and in the block's own area. */
+export function blockActual(b: TimelineBlock, records: TimeRecord[], nowMin: number) {
+  let any = 0, same = 0;
+  for (const r of records) {
+    const o = overlap(b, { start: r.start, end: recEnd(r, nowMin) });
+    any += o;
+    if (r.areaId === b.areaId || r.blockId === b.id) same += o;
+  }
+  return { any, same };
+}
+
+export type ChangeLine =
+  | { kind: 'area'; areaId: string; planned: number; actual: number; delta: number }
+  | { kind: 'moved'; title: string; areaId: string; from: number; to: number; delta: number }
+  | { kind: 'added'; title: string; areaId: string; start: number; minutes: number }
+  | { kind: 'removed'; title: string; areaId: string; start: number; minutes: number }
+  | { kind: 'resized'; title: string; areaId: string; from: number; to: number; delta: number };
+
+/** Plan changes from Baseline to the current plan, in plain terms. Matched by block id. */
+export function planChanges(baseline: PlanBlock[], current: TimelineBlock[]): ChangeLine[] {
+  const out: ChangeLine[] = [];
+  const cur = new Map(current.map(b => [b.id, b]));
+  const base = new Map(baseline.map(b => [b.id, b]));
+  for (const b of baseline) {
+    const c = cur.get(b.id);
+    if (!c) { out.push({ kind: 'removed', title: b.title, areaId: b.areaId, start: b.start, minutes: b.end - b.start }); continue; }
+    if (c.start !== b.start) out.push({ kind: 'moved', title: c.title, areaId: c.areaId, from: b.start, to: c.start, delta: Math.abs(c.start - b.start) });
+    const l0 = b.end - b.start, l1 = c.end - c.start;
+    if (l0 !== l1) out.push({ kind: 'resized', title: c.title, areaId: c.areaId, from: l0, to: l1, delta: Math.abs(l1 - l0) });
+  }
+  for (const c of current) if (!base.has(c.id)) out.push({ kind: 'added', title: c.title, areaId: c.areaId, start: c.start, minutes: c.end - c.start });
+  return out;
+}
+
+/**
+ * “What changed today”: per-area plan vs real plus plan changes, biggest first.
+ * Plan and real are compared only over time that has a record: untracked time is not
+ * “skipped”, it is just not recorded yet (see dayGaps). Only time before `until` counts.
+ */
+export function whatChanged(baseline: PlanBlock[] | undefined, current: TimelineBlock[], records: TimeRecord[], until: number, minDelta = 10): ChangeLine[] {
+  const covered = mergeSpans(records.map(r => ({ start: r.start, end: Math.min(recEnd(r, until), until) })));
+  const planned = new Map<string, number>();
+  for (const b of current) {
+    const o = covered.reduce((s, c) => s + overlap(b, c), 0);
+    if (o > 0) planned.set(b.areaId, (planned.get(b.areaId) ?? 0) + o);
+  }
+  const actual = areaTotals(records.filter(r => r.start < until).map(r => ({ start: r.start, end: Math.min(recEnd(r, until), until), areaId: r.areaId })), until);
+  const lines: ChangeLine[] = [];
+  for (const id of new Set([...planned.keys(), ...actual.keys()])) {
+    const p = Math.round(planned.get(id) ?? 0), a = Math.round(actual.get(id) ?? 0);
+    if (Math.abs(a - p) >= minDelta) lines.push({ kind: 'area', areaId: id, planned: p, actual: a, delta: a - p });
+  }
+  const changes = baseline ? planChanges(baseline, current).filter(c => ('delta' in c ? c.delta : c.minutes) >= 5) : [];
+  const size = (c: ChangeLine) => Math.abs('delta' in c ? c.delta : c.minutes);
+  return [...lines, ...changes].sort((a, b) => size(b) - size(a));
+}
+
+/** Real minutes recorded (any area) inside a window. */
+export function coveredIn(span: Span, records: TimeRecord[], nowMin: number): number {
+  return mergeSpans(recordSpans(records, nowMin)).reduce((s, c) => s + overlap(span, c), 0);
+}
+
+export interface Conflict { a: TimelineBlock; b: TimelineBlock; minutes: number }
+
+/** Pairs of plan blocks that overlap (E3). */
+export function overlaps(blocks: TimelineBlock[]): Conflict[] {
+  const s = [...blocks].sort((x, y) => x.start - y.start);
+  const out: Conflict[] = [];
+  for (let i = 0; i < s.length; i++) {
+    for (let j = i + 1; j < s.length && s[j].start < s[i].end; j++) {
+      const o = overlap(s[i], s[j]);
+      if (o > 0) out.push({ a: s[i], b: s[j], minutes: o });
+    }
+  }
+  return out;
+}
+
+export interface ReplanResult {
+  moves: { id: string; start: number; end: number }[];
+  /** Flexible blocks that no longer fit before the end of the day. */
+  dropped: string[];
+}
+
+/**
+ * Replan remaining day (E5, Q-19), deterministic: flexible blocks that have not happened yet are
+ * laid out from now, in their original order and keeping their length; fixed blocks stay put and
+ * flexible ones flow around them. Blocks already under way (current, with real time) are kept.
+ */
+export function replanRemaining(blocks: (TimelineBlock & { fixed?: boolean })[], records: TimeRecord[], nowMin: number, dayEnd: number): ReplanResult {
+  const sorted = [...blocks].sort((a, b) => a.start - b.start);
+  const busy: Span[] = [];
+  const pending: TimelineBlock[] = [];
+  for (const b of sorted) {
+    const happened = blockActual(b, records, nowMin).same > 0;
+    if (b.fixed) { if (b.end > nowMin) busy.push(b); continue; }
+    if (b.end <= nowMin) { if (!happened && nowMin - b.end <= 180) pending.push(b); continue; }
+    if (b.start <= nowMin && happened) { busy.push(b); continue; }
+    pending.push(b);
+  }
+  const moves: ReplanResult['moves'] = [];
+  const dropped: string[] = [];
+  let cursor = Math.ceil(nowMin / 5) * 5;
+  for (const b of pending) {
+    const len = b.end - b.start;
+    let start = Math.max(cursor, b.start);
+    for (let guard = 0; guard < 100; guard++) {
+      const hit = busy.find(f => start < f.end && start + len > f.start);
+      if (!hit) break;
+      start = hit.end;
+    }
+    if (start + len > dayEnd) { dropped.push(b.id); continue; }
+    if (start !== b.start) moves.push({ id: b.id, start, end: start + len });
+    busy.push({ start, end: start + len });
+    cursor = start + len;
+  }
+  return { moves, dropped };
+}
+
+/** Estimated load of a block's tasks vs its length (E4, advisory only). */
+export function capacity(block: TimelineBlock, tasks: Task[]) {
+  const open = tasks.filter(t => t.blockId === block.id && t.status !== 'done' && !t.deleted);
+  const estimated = open.reduce((s, t) => s + (t.estimate ?? 0), 0);
+  const available = block.end - block.start;
+  return { estimated, available, over: estimated > available, count: open.length };
+}
+
+/** Day "shape" for history: real minutes per area, sorted by size. */
+export function dayShape(records: TimeRecord[], nowMin = Infinity) {
+  const t = areaTotals(records.map(r => ({ start: r.start, end: r.end ?? (Number.isFinite(nowMin) ? nowMin : r.start), areaId: r.areaId })));
+  return [...t.entries()].sort((a, b) => b[1] - a[1]);
+}

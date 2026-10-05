@@ -1,5 +1,10 @@
 import { DAY_CUTOFF_HOUR } from './config';
 
+/** Hour the logical day turns over. Configurable in Settings (synced pref); read everywhere through here. */
+let cutoff = DAY_CUTOFF_HOUR;
+export function setCutoffHour(h: number) { if (Number.isInteger(h) && h >= 0 && h <= 8) cutoff = h; }
+export function cutoffHour() { return cutoff; }
+
 export const pad2 = (n: number) => String(n).padStart(2, '0');
 
 /** Minutes since midnight → "HH:MM". Values ≥ 24h wrap (used for blocks past midnight). */
@@ -34,16 +39,16 @@ export function isoDate(d: Date): string {
 }
 
 /** The logical day a moment belongs to: before the cutoff hour it is still the previous day. */
-export function logicalDay(now: Date = new Date(), cutoffHour = DAY_CUTOFF_HOUR): string {
+export function logicalDay(now: Date = new Date(), hour = cutoff): string {
   const d = new Date(now);
-  if (d.getHours() < cutoffHour) d.setDate(d.getDate() - 1);
+  if (d.getHours() < hour) d.setDate(d.getDate() - 1);
   return isoDate(d);
 }
 
 /** Minutes since the start of the logical day's calendar date (01:30 after midnight → 25:30 = 1530). */
-export function minutesInLogicalDay(now: Date = new Date(), cutoffHour = DAY_CUTOFF_HOUR): number {
+export function minutesInLogicalDay(now: Date = new Date(), hour = cutoff): number {
   const m = now.getHours() * 60 + now.getMinutes() + now.getSeconds() / 60;
-  return now.getHours() < cutoffHour ? m + 1440 : m;
+  return now.getHours() < hour ? m + 1440 : m;
 }
 
 export function dateFromIso(iso: string): Date {
@@ -63,4 +68,23 @@ export type DayKeyT = (typeof DAY_KEYS)[number];
 /** Each day of the week has its own template. */
 export function templateIdForDate(iso: string): DayKeyT {
   return (['sun', 'mon', 'tue', 'wed', 'thu', 'fri', 'sat'] as const)[dateFromIso(iso).getDay()];
+}
+
+/** Absolute Date of a minute inside a logical day (minutes may exceed 1440). */
+export function dateAtMinute(dayIso: string, min: number): Date {
+  const d = dateFromIso(dayIso);
+  d.setMinutes(Math.round(min));
+  return d;
+}
+
+/** Minute inside a given logical day for an absolute moment (can be negative or past 1440). */
+export function minuteOfDay(dayIso: string, at: Date): number {
+  return (at.getTime() - dateFromIso(dayIso).getTime()) / 60000;
+}
+
+/** Elapsed "1:02:03" or "12:03" for timers. */
+export function fmtClock(totalSec: number): string {
+  const s = Math.max(0, Math.floor(totalSec));
+  const h = Math.floor(s / 3600), mm = Math.floor((s % 3600) / 60), ss = s % 60;
+  return h ? `${h}:${pad2(mm)}:${pad2(ss)}` : `${pad2(mm)}:${pad2(ss)}`;
 }

@@ -1,6 +1,6 @@
 /* DailyFlow service worker: offline shell. Data lives in IndexedDB; this only keeps the app loadable. */
-const VERSION = 'df-v2';
-const SHELL = ['/', '/settings/templates', '/settings/areas', '/settings/validation', '/settings/device', '/manifest.webmanifest', '/icon-192.png', '/icon-512.png'];
+const VERSION = 'df-v3';
+const SHELL = ['/', '/tasks', '/history', '/day', '/close', '/plan', '/notes', '/settings/preferences', '/settings/templates', '/settings/areas', '/settings/validation', '/settings/device', '/manifest.webmanifest', '/icon-192.png', '/icon-512.png'];
 
 self.addEventListener('install', event => {
   event.waitUntil(

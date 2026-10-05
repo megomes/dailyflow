@@ -1,5 +1,5 @@
 import Dexie, { type Table } from 'dexie';
-import type { Area, Checkin, Day, DayBlock, Entity, OutboxItem, ProductEvent, SyncFields, TemplateBlock } from './types';
+import type { Area, Checkin, Day, DayBlock, Entity, FocusSession, OutboxItem, Prefs, ProductEvent, Revision, SyncFields, Task, TemplateBlock, TimeRecord } from './types';
 
 /** Local-first store. The UI reads and writes only here; sync.ts reconciles with the server. */
 export class DailyFlowDB extends Dexie {
@@ -8,6 +8,11 @@ export class DailyFlowDB extends Dexie {
   days!: Table<Day, string>;
   dayBlocks!: Table<DayBlock, string>;
   checkins!: Table<Checkin, string>;
+  timeRecords!: Table<TimeRecord, string>;
+  tasks!: Table<Task, string>;
+  revisions!: Table<Revision, string>;
+  focusSessions!: Table<FocusSession, string>;
+  prefs!: Table<Prefs, string>;
   outbox!: Table<OutboxItem, number>;
   events!: Table<ProductEvent, string>;
   meta!: Table<{ key: string; value: unknown }, string>;
@@ -24,6 +29,14 @@ export class DailyFlowDB extends Dexie {
       events: 'id, ts, synced',
       meta: 'key',
     });
+    // E2–E8: actual time, tasks, plan revisions, focus sessions, synced preferences.
+    this.version(2).stores({
+      timeRecords: 'id, dayId, taskId',
+      tasks: 'id, status, dayId',
+      revisions: 'id, dayId',
+      focusSessions: 'id, dayId, taskId, state',
+      prefs: 'id',
+    });
   }
 }
 
@@ -35,13 +48,20 @@ export function getDB(): DailyFlowDB {
 /** Tests swap the database. */
 export function setDB(db: DailyFlowDB) { instance = db; }
 
-export const ENTITY_TABLE: Record<Entity, 'areas' | 'templateBlocks' | 'days' | 'dayBlocks' | 'checkins'> = {
+type SyncTable = 'areas' | 'templateBlocks' | 'days' | 'dayBlocks' | 'checkins' | 'timeRecords' | 'tasks' | 'revisions' | 'focusSessions' | 'prefs';
+export const ENTITY_TABLE: Record<Entity, SyncTable> = {
   area: 'areas',
   template_block: 'templateBlocks',
   day: 'days',
   day_block: 'dayBlocks',
   checkin: 'checkins',
+  time_record: 'timeRecords',
+  task: 'tasks',
+  revision: 'revisions',
+  focus_session: 'focusSessions',
+  pref: 'prefs',
 };
+export const ENTITIES = Object.keys(ENTITY_TABLE) as Entity[];
 
 export function tableFor(db: DailyFlowDB, entity: Entity): Table<SyncFields, string> {
   return db[ENTITY_TABLE[entity]] as unknown as Table<SyncFields, string>;

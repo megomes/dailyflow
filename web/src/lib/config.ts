@@ -1,5 +1,5 @@
 /** Development stage currently in validation. Every product event is tagged with it. */
-export const STAGE = 'E1';
+export const STAGE = 'E2-E8';
 
 /** Hour at which the logical day turns over (a record at 01:00 still belongs to yesterday). */
 export const DAY_CUTOFF_HOUR = 4;

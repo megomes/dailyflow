@@ -86,13 +86,13 @@ export function PlanEditor({ blocks, areas, nowMin = null, side, sideAfter, note
         {sideAfter}
       </div>
       <Timeline
-        blocks={blocks}
+        columns={[{ id: 'plan', items: blocks, editable: true }]}
         areas={areaMap}
         nowMin={nowMin}
         selectedId={selectedId}
-        onSelect={setSelectedId}
-        onCreate={(s, e) => void create(s, e, 'timeline')}
-        onChange={(id, start, end, kind) => { const b = blocks.find(x => x.id === id); if (b) onUpdate(id, { start, end }, kind, b); }}
+        onSelect={id => setSelectedId(id)}
+        onCreate={(_c, s, e) => void create(s, e, 'timeline')}
+        onChange={(_c, id, start, end, kind) => { const b = blocks.find(x => x.id === id); if (b) onUpdate(id, { start, end }, kind, b); }}
         pxPerMin={pxPerMin ?? (isMobile ? 1 : 1.15)}
       />
       {isMobile && inspector && (

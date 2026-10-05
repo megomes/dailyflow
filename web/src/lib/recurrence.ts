@@ -73,3 +73,9 @@ export function describe(rule: Recurrence): string {
   const unit = { daily: 'day', weekly: 'week', monthly: 'month' }[rule.freq];
   return n === 1 ? `Every ${unit}` : `Every ${n} ${unit}s`;
 }
+
+/** A recurring to-do stays out of sight until [lead] days before it is due, like a snoozed one (note #11). */
+export function revealOn(due: string, lead = 1, today: string): string | undefined {
+  const day = addDays(due, -Math.max(0, lead));
+  return day > today ? day : undefined;
+}

@@ -133,7 +133,7 @@ function PlanInner() {
             nowMin={isToday ? minute : null}
             selectedId={sel}
             onSelect={id => setSel(id)}
-            onCreate={async (_c, s, e) => { const { id } = await addBlock(dayId, { start: s, end: e, title: m.inspector.newBlock, areaId: 'area-personal' }); setSel(id); }}
+            onCreate={async (_c, s, e) => { const { id } = await addBlock(dayId, { start: s, end: e, title: d.areaMap.get('area-personal')?.name ?? m.inspector.newBlock, areaId: 'area-personal' }); setSel(id); }}
             onChange={(_c, id, s, e, k) => void patchBlock(id, { start: s, end: e }, k === 'move' ? 'move' : 'resize')}
             onDropTask={async (taskId, _c, minute, blockId) => {
               if (blockId) { await scheduleTask(taskId, dayId, blockId, 'planning'); return; }

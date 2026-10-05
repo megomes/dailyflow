@@ -196,6 +196,8 @@ export interface Prefs extends SyncFields {
   customPresets?: { id: string; label: string; focus: number; brk: number }[];
   /** Timeline zoom: 'compact' | 'normal' | 'roomy' (E12). */
   density?: 'compact' | 'normal' | 'roomy';
+  /** Recurring to-dos show up this many days before they are due (default 1: the day before). */
+  recurLeadDays?: number;
 }
 
 /** One answered (or skipped) daily check-in, keyed by the day it is about. */

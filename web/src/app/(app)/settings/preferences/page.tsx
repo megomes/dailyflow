@@ -74,6 +74,11 @@ export default function PreferencesPage() {
         <div className="seg">{(['compact', 'normal', 'roomy'] as const).map(dn => <button key={dn} type="button" aria-pressed={(prefs?.density ?? 'normal') === dn} onClick={() => void savePrefs({ density: dn })}>{m.prefs.densities[dn]}</button>)}</div>
       </section>
       <section className="section">
+        <h2>{m.prefs.recurLead}</h2>
+        <p className="hint" style={{ margin: 0 }}>{m.prefs.recurLeadHint}</p>
+        <div className="seg">{[0, 1, 2, 3, 7].map(n => <button key={n} type="button" aria-pressed={(prefs?.recurLeadDays ?? 1) === n} onClick={() => void savePrefs({ recurLeadDays: n })}>{m.prefs.recurLeadOpt(n)}</button>)}</div>
+      </section>
+      <section className="section">
         <h2>{m.prefs.data}</h2>
         <p className="hint" style={{ margin: 0 }}>{m.prefs.dataHint}</p>
         <div className="row wrap">

@@ -7,6 +7,7 @@ import { WIDGETS, type TaskList } from './render';
 
 const ORDER: TaskList[] = ['today', 'inProgress', 'high'];
 const listKey = (id: number) => `df.widget.list.${id}`;
+export const laterKey = (id: number) => `df.widget.later.${id}`;
 const SNAP = 'df.widget.snap';
 const tz = () => Intl.DateTimeFormat().resolvedOptions().timeZone || 'America/Sao_Paulo';
 
@@ -28,8 +29,16 @@ export async function widgetTaskHandler(props: WidgetTaskHandlerProps) {
   const render = WIDGETS[widgetInfo.widgetName];
   if (!render) return;
   let list = ((await AsyncStorage.getItem(listKey(widgetInfo.widgetId))) as TaskList | null) ?? 'today';
+  let laterOpen = (await AsyncStorage.getItem(laterKey(widgetInfo.widgetId))) === '1';
 
   if (widgetAction === 'WIDGET_CLICK') {
+    if (clickAction === 'TOGGLE_LATER') {
+      laterOpen = !laterOpen;
+      await AsyncStorage.setItem(laterKey(widgetInfo.widgetId), laterOpen ? '1' : '0');
+      // Redraw right away from the cached day; no need to wait for the network.
+      props.renderWidget(render(await cached(), widgetInfo, { list, laterOpen }));
+      return;
+    }
     if (clickAction === 'CYCLE_LIST') {
       list = ORDER[(ORDER.indexOf(list) + 1) % ORDER.length];
       await AsyncStorage.setItem(listKey(widgetInfo.widgetId), list);
@@ -38,12 +47,12 @@ export async function widgetTaskHandler(props: WidgetTaskHandlerProps) {
     if (cred && clickAction === 'TODO_DONE' && typeof clickActionData?.id === 'string') {
       const id = clickActionData.id;
       // Optimistic: the circle disappears and the count goes up right away.
-      props.renderWidget(render(await cached(), widgetInfo, { list, pending: [id] }));
+      props.renderWidget(render(await cached(), widgetInfo, { list, pending: [id], laterOpen }));
       await api(cred, '/api/quick', { method: 'POST', body: JSON.stringify({ action: 'done', taskId: id, tz: tz() }) }).catch(() => null);
     }
     if (cred && (clickAction === 'QUICK_START' || clickAction === 'QUICK_STOP')) {
       await api(cred, '/api/quick', { method: 'POST', body: JSON.stringify({ action: clickAction === 'QUICK_START' ? 'start' : 'stop', tz: tz() }) }).catch(() => null);
     }
   }
-  props.renderWidget(render(await freshSnapshot(), widgetInfo, { list }));
+  props.renderWidget(render(await freshSnapshot(), widgetInfo, { list, laterOpen }));
 }

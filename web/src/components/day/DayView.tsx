@@ -127,10 +127,12 @@ export function DayView({ dayId, live, title, sub, sideTop, sideBottom, headExtr
 
   async function onCreate(col: string, start: number, end: number) {
     if (col === 'plan') {
-      const { id, revId } = await addBlock(dayId, { start, end, title: m.inspector.newBlock, areaId: DEFAULT_AREA });
+      // Named after its area until renamed (note #21).
+      const title = d.areaMap.get(DEFAULT_AREA)?.name ?? m.inspector.newBlock;
+      const { id, revId } = await addBlock(dayId, { start, end, title, areaId: DEFAULT_AREA });
       track('block_created', { area: DEFAULT_AREA, duration_min: end - start, from_template: false, surface: 'timeline' });
       setSel({ id, col: 'plan' });
-      afterRevision(revId, `${m.day.revKinds.add}: ${m.inspector.newBlock}`);
+      afterRevision(revId, `${m.day.revKinds.add}: ${title}`);
     } else if (col === 'real') {
       const plan = d.blocks.find(b => b.start <= start && start < b.end);
       const rec = await addRecord(dayId, { start, end, areaId: plan?.areaId ?? DEFAULT_AREA, title: plan?.title ?? '', blockId: plan?.id }, 'manual');

@@ -30,7 +30,10 @@ export async function refreshSurfaces(local?: Snapshot | null) {
   for (const [name, render] of Object.entries(WIDGETS)) {
     await requestWidgetUpdate({
       widgetName: name,
-      renderWidget: async info => render(snap, info, { list: ((await AsyncStorage.getItem(`df.widget.list.${info.widgetId}`)) as TaskList | null) ?? 'today' }),
+      renderWidget: async info => render(snap, info, {
+        list: ((await AsyncStorage.getItem(`df.widget.list.${info.widgetId}`)) as TaskList | null) ?? 'today',
+        laterOpen: (await AsyncStorage.getItem(`df.widget.later.${info.widgetId}`)) === '1',
+      }),
     });
   }
 }

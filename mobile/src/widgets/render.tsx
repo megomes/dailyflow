@@ -9,7 +9,7 @@ import { DayWidget } from './day';
  * Home-screen widgets (spec §81), drawn from the server snapshot. Informational first:
  * tapping opens the app; the Tasks widget cycles its list on tap.
  */
-type Render = (s: Snapshot | null, info: WidgetInfo, opts?: { list?: TaskList; pending?: string[] }) => React.JSX.Element;
+type Render = (s: Snapshot | null, info: WidgetInfo, opts?: { list?: TaskList; pending?: string[]; laterOpen?: boolean }) => React.JSX.Element;
 export type TaskList = 'inProgress' | 'high' | 'today';
 
 const hex = (s: string) => s as ColorProp;
@@ -101,6 +101,6 @@ const Progress: Render = s => {
   );
 };
 
-const Day: Render = (s, info, opts) => <DayWidget s={s} info={info} pending={opts?.pending} />;
+const Day: Render = (s, info, opts) => <DayWidget s={s} info={info} pending={opts?.pending} laterOpen={opts?.laterOpen} />;
 
 export const WIDGETS: Record<string, Render> = { Day, Now, Timeline, Tasks, NextTasks, Progress };

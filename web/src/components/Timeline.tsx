@@ -179,7 +179,7 @@ export function Timeline({ columns, areas, nowMin = null, selectedId, onSelect, 
           const area = areas.get(b.areaId);
           const top = y(b.start) + 1;
           const h = Math.max((b.end - b.start) * pxPerMin - 2, 14);
-          const sel = b.id === selectedId;
+          const sel = b.id === selectedId && b.variant !== 'ghost';
           const dragging = drag?.id === b.id && drag.moved;
           const past = nowMin != null && b.end <= nowMin && b.variant !== 'real' && b.variant !== 'running';
           const current = nowMin != null && b.start <= nowMin && nowMin < b.end && (b.variant ?? 'plan') === 'plan';

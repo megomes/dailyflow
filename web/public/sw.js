@@ -59,3 +59,14 @@ self.addEventListener('fetch', event => {
     }),
   );
 });
+
+// Notifications (focus end, next block): clicking one brings the app forward.
+self.addEventListener('notificationclick', event => {
+  event.notification.close();
+  event.waitUntil(
+    self.clients.matchAll({ type: 'window', includeUncontrolled: true }).then(list => {
+      const open = list.find(c => 'focus' in c);
+      return open ? open.focus() : self.clients.openWindow('/');
+    }),
+  );
+});

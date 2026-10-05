@@ -1,5 +1,7 @@
 'use client';
+import Link from 'next/link';
 import { useLiveQuery } from 'dexie-react-hooks';
+import { CalendarPlus } from 'lucide-react';
 import { useEffect } from 'react';
 import { QuestionSet } from '@/components/Checkin';
 import { YesterdayCard } from '@/components/day/Cards';
@@ -47,6 +49,8 @@ export default function TodayPage() {
   const yRecords = (yRecs ?? []).filter(r => !r.deleted);
   const showYesterday = yesterday && !yesterday.deleted && yesterday.status !== 'closed' && (yesterday.status === 'active' || yRecords.length > 0);
 
+  const today = useLiveQuery(() => getDB().days.get(day), [day]);
+  const showTomorrow = minute >= 18 * 60 || today?.status === 'closed';
   const dateLabel = dateFromIso(day).toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric' });
 
   return (
@@ -56,6 +60,7 @@ export default function TodayPage() {
       live
       title={m.today.title}
       sub={<span>{dateLabel}</span>}
+      headExtra={showTomorrow ? <Link href={`/plan?d=${addDays(day, 1)}`} className="btn sm"><CalendarPlus size={14} /><span className="desk-only">{m.planning.tomorrow}</span></Link> : null}
       sideTop={showYesterday ? <YesterdayCard dayId={yId} blocks={liveBlocks(yBlocks ?? [])} records={yRecords} /> : null}
       sideBottom={checkinFor && (
         <QuestionSet

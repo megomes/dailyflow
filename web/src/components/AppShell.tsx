@@ -7,6 +7,7 @@ import { m } from '@/i18n/en';
 import { setScreen, track } from '@/lib/analytics';
 import { useSyncState } from '@/lib/hooks';
 import { currentTheme, toggleTheme } from '@/lib/theme';
+import { LiveAgents } from './LiveAgents';
 import { Palette } from './Palette';
 
 const NAV = [
@@ -79,6 +80,7 @@ export function AppShell({ children }: { children: ReactNode }) {
       </aside>
       <main className="main">{children}</main>
       <Palette />
+      <LiveAgents />
       <nav className="tabbar" aria-label="Main">
         {NAV.map(n => (
           <Link key={n.href} href={n.href} aria-current={n.match(path) ? 'page' : undefined}>

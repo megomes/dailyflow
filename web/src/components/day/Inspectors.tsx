@@ -22,7 +22,10 @@ export function TimeFields({ start, end, onCommit, endEditable = true }: TimesPr
     let a = parseHHMM(sv), b = parseHHMM(ev);
     if (a == null || b == null) { setS(fmtMin(start)); setE(fmtMin(end)); return; }
     if (start >= 1440) a += 1440;
+    // Only the start changed: keep the length (moving, not stretching).
+    if (ev === fmtMin(end) && sv !== fmtMin(start)) b = a + (end - start);
     while (b <= a) b += 1440;
+    if (b - a > 20 * 60) { setS(fmtMin(start)); setE(fmtMin(end)); return; }
     if (b - a < MIN_BLOCK_MIN && endEditable) b = a + MIN_BLOCK_MIN;
     if (a !== start || (endEditable && b !== end)) onCommit(a, endEditable ? b : end);
   }

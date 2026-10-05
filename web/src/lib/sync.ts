@@ -2,6 +2,7 @@ import { track } from './analytics';
 import { ENTITY_TABLE, getDB, getMeta, setMeta, tableFor } from './db';
 import { onLocalWrite } from './repo';
 import type { Entity, SyncFields } from './types';
+import { postNative } from './native';
 
 /**
  * Offline-first sync (spec §75): the outbox is pushed, then everything newer than our
@@ -84,6 +85,7 @@ async function run(reason: string) {
     await pushEvents();
     const pending = await db.outbox.count();
     set({ status: 'idle', lastSyncedAt: new Date().toISOString(), pending });
+    if (ops.length || applied) postNative({ type: 'changed' });
     if (ops.length || applied) track(ops.length ? 'sync_queue_flushed' : 'sync_completed', { reason, pushed: ops.length, pulled: applied, ms: Math.round(performance.now() - started) });
   } catch (err) {
     set({ status: navigator.onLine ? 'error' : 'offline', pending: await db.outbox.count() });

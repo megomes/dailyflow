@@ -2,6 +2,7 @@ import { deviceId, deviceKind, previousScreen } from './analytics';
 import { STAGE } from './config';
 import { getDB } from './db';
 import { getSyncState } from './sync';
+import './native';
 
 /**
  * Snapshot of the environment a note (or event) was written in, for debugging:
@@ -9,7 +10,7 @@ import { getSyncState } from './sync';
  * Every field is best-effort; unsupported APIs are simply omitted.
  */
 export interface ClientContext {
-  device: { kind: string; os: string; browser: string; surface: 'pwa' | 'browser'; layout: 'mobile' | 'desktop'; touchPoints: number; pointer: 'coarse' | 'fine'; memoryGb?: number; cores?: number };
+  device: { kind: string; os: string; browser: string; surface: 'pwa' | 'browser' | 'android-app'; layout: 'mobile' | 'desktop'; touchPoints: number; pointer: 'coarse' | 'fine'; memoryGb?: number; cores?: number };
   screen: { viewport: string; screen: string; dpr: number; orientation?: string; theme: string; reducedMotion: boolean };
   network: { online: boolean; type?: string; downlinkMbps?: number; rttMs?: number; saveData?: boolean };
   locale: { language: string; timezone: string; localTime: string };
@@ -52,7 +53,7 @@ export async function collectContext(): Promise<ClientContext> {
       kind: deviceKind(),
       os: os(ua),
       browser: browser(ua),
-      surface: mm('(display-mode: standalone)') || (navigator as Navigator & { standalone?: boolean }).standalone ? 'pwa' : 'browser',
+      surface: window.ReactNativeWebView ? 'android-app' : mm('(display-mode: standalone)') || (navigator as Navigator & { standalone?: boolean }).standalone ? 'pwa' : 'browser',
       layout: mm('(max-width: 820px)') ? 'mobile' : 'desktop',
       touchPoints: navigator.maxTouchPoints ?? 0,
       pointer: mm('(pointer: coarse)') ? 'coarse' : 'fine',
@@ -100,7 +101,7 @@ export function summarizeContext(c: Partial<ClientContext> | null | undefined): 
   if (!c?.device) return '';
   const kind = { mobile: 'Phone', tablet: 'Tablet', desktop: 'Desktop' }[c.device.kind] ?? c.device.kind;
   return [
-    kind, c.device.os, c.device.browser, c.device.surface === 'pwa' ? 'Installed app' : 'Browser',
+    kind, c.device.os, c.device.browser, c.device.surface === 'android-app' ? 'Android app' : c.device.surface === 'pwa' ? 'Installed app' : 'Browser',
     c.device.layout === 'mobile' && c.device.kind === 'desktop' ? 'mobile layout' : null,
     c.screen?.viewport, c.network ? (c.network.online ? c.network.type ?? 'online' : 'offline') : null, c.screen?.theme,
   ].filter(Boolean).join(' · ');

@@ -1,36 +1,28 @@
 import { CameraView, useCameraPermissions } from 'expo-camera';
-import { useLocalSearchParams, useRouter } from 'expo-router';
 import { useEffect, useState } from 'react';
 import { ScrollView, Text, TextInput, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { DEFAULT_HOST, pair, parsePairUrl } from '../src/auth';
-import { syncNow } from '../src/store';
-import { Btn, Card, Label, s } from '../src/ui';
-import { C } from '../src/theme';
+import { DEFAULT_HOST, pair, parsePairUrl, type Credential } from './auth';
+import { C } from './theme';
+import { Btn, Card, Label, s } from './ui';
 
 /** Pair once (spec §78): scan the QR from Settings › Device on the web, or type the code. */
-export default function Pair() {
-  const params = useLocalSearchParams<{ code?: string; host?: string }>();
-  const router = useRouter();
+export function Pair({ link, onPaired }: { link: { host: string; code: string } | null; onPaired: (c: Credential) => void }) {
   const [perm, requestPerm] = useCameraPermissions();
   const [scan, setScan] = useState(false);
-  const [host, setHost] = useState(params.host ?? DEFAULT_HOST);
-  const [code, setCode] = useState(params.code ?? '');
+  const [host, setHost] = useState(link?.host ?? DEFAULT_HOST);
+  const [code, setCode] = useState(link?.code ?? '');
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   async function go(h = host, c = code) {
     setBusy(true); setError(null);
-    try {
-      await pair(h, c);
-      await syncNow('paired');
-      router.replace('/');
-    } catch (e) { setError(String((e as Error).message)); }
+    try { onPaired(await pair(h, c)); } catch (e) { setError(String((e as Error).message)); }
     setBusy(false);
   }
 
   // Opened from a dailyflow://pair link: pair right away.
-  useEffect(() => { if (params.code) void go(params.host ?? DEFAULT_HOST, params.code); }, []); // eslint-disable-line react-hooks/exhaustive-deps
+  useEffect(() => { if (link) void go(link.host, link.code); }, [link]); // eslint-disable-line react-hooks/exhaustive-deps
 
   return (
     <SafeAreaView style={s.screen}>

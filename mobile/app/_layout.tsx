@@ -5,6 +5,7 @@ import { AppState } from 'react-native';
 import { getCredential } from '../src/auth';
 import { refreshSurfaces } from '../src/background';
 import { setupNotifications } from '../src/notify';
+import { applyOta } from '../src/ota';
 import { applyPrefs, ensureDay, today } from '../src/ops';
 import { localSnapshot } from '../src/snapshot';
 import { load, subscribe, syncNow } from '../src/store';
@@ -21,6 +22,7 @@ export default function Root() {
 
   useEffect(() => {
     (async () => {
+      void applyOta();
       await load();
       const cred = await getCredential();
       setPaired(!!cred);
@@ -32,7 +34,7 @@ export default function Root() {
         ensureDay(today());
       }
     })();
-    const sub = AppState.addEventListener('change', st => { if (st === 'active') void syncNow('foreground').then(() => ensureDay(today())); });
+    const sub = AppState.addEventListener('change', st => { if (st === 'active') { void applyOta(); void syncNow('foreground').then(() => ensureDay(today())); } });
     const iv = setInterval(() => void syncNow('interval'), 60_000);
     // Any local change redraws the surfaces from the local store (debounced).
     const unsub = subscribe(() => {

@@ -8,7 +8,8 @@ import { endBreak, endFocus, extendFocus, focusElapsedSec, pauseFocus, PRESETS, 
 import { dateAtMinute, fmtClock, fmtDuration, fmtMin } from '@/lib/time';
 import { track } from '@/lib/analytics';
 import type { Area, DayBlock, FocusSession, Task, TimeRecord } from '@/lib/types';
-import { getMeta, setMeta } from '@/lib/db';
+import { useLiveQuery } from 'dexie-react-hooks';
+import { getDB, getMeta, setMeta } from '@/lib/db';
 import { QuickSwitch } from './QuickSwitch';
 
 /** Ticks every second while mounted (timers). */
@@ -43,7 +44,9 @@ export function NowCard({ dayId, minute, blocks, tasks, areas, areaMap, running,
   const tick = useSecond(!!running || !!focus);
 
   useEffect(() => { void getMeta<string>('focusPreset', '25/5').then(setPresetId); }, []);
-  const preset = PRESETS.find(p => p.id === presetId) ?? PRESETS[0];
+  const prefs = useLiveQuery(() => getDB().prefs.get('prefs'), []);
+  const presets = [...PRESETS, ...(prefs?.customPresets ?? [])];
+  const preset = presets.find(p => p.id === (prefs?.focusPreset ?? presetId)) ?? PRESETS[0];
 
   const runningBlock = running?.blockId ? blocks.find(b => b.id === running.blockId) : undefined;
   const focusBlockId = focus?.blockId ?? running?.blockId ?? now?.id;
@@ -121,7 +124,7 @@ export function NowCard({ dayId, minute, blocks, tasks, areas, areaMap, running,
         )}
         {choosing && !focus && (
           <div className="presets">
-            {PRESETS.map(p => (
+            {presets.map(p => (
               <button key={p.id} type="button" className="chip" aria-pressed={p.id === preset.id} onClick={() => void focusOn(p)}>{p.label}</button>
             ))}
             <form className="free" onSubmit={e => { e.preventDefault(); const n = Number(free); if (n >= 1 && n <= 240) void focusOn({ id: 'free', label: `${n}`, focus: n, brk: 0 }); }}>

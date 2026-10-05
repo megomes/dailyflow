@@ -1,6 +1,6 @@
 'use client';
 import type { DragEvent } from 'react';
-import { CalendarClock, CornerUpLeft, GripVertical, Timer } from 'lucide-react';
+import { CalendarClock, CornerUpLeft, GripVertical, Repeat, Timer } from 'lucide-react';
 import { m } from '@/i18n/en';
 import { PRESETS, scheduleTask, startFocus, toggleTaskDone, unscheduleTask } from '@/lib/ops';
 import { fmtDuration } from '@/lib/time';
@@ -42,6 +42,11 @@ export function TaskRow({ task: t, areaMap, dayId, compact, selected, tracked, o
         <span>{t.title}</span>
       </button>
       <span className="task-meta">
+        {t.subtasks?.length ? <span className="muted tabular">{t.subtasks.filter(x => x.done).length}/{t.subtasks.length}</span> : null}
+        {t.recurrence && <Repeat size={12} className="muted" aria-label="Repeats" />}
+        {t.project && !compact && <span className="pill" data-color="gray">{t.project}</span>}
+        {!compact && t.tags?.slice(0, 2).map(x => <span key={x} className="muted">#{x}</span>)}
+        {t.status === 'today' && t.dayId && dayId && t.dayId > dayId && <span className="pill" data-color="blue">{m.tasks.onDay(fmtDue(t.dayId))}</span>}
         {area && !compact && <span className="pill" data-color={area.color}>{area.name}</span>}
         {(t.carried?.length ?? 0) > 0 && !done && <span className="pill" data-color="orange">{m.tasks.carried(t.carried!.length)}</span>}
         {t.due && <span className={`muted tabular${overdue ? ' overdue' : ''}`}>{overdue ? m.tasks.overdue : m.tasks.due(fmtDue(t.due))}</span>}

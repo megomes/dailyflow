@@ -115,6 +115,23 @@ export interface Task extends SyncFields {
   sort: number;
   /** Days the task was scheduled on and not finished (for “continue from previous days”). */
   carried?: string[];
+  // E12 — optional fields, all empty by default so the core stays light.
+  category?: 'work' | 'personal';
+  project?: string;
+  tags?: string[];
+  subtasks?: Subtask[];
+  recurrence?: Recurrence;
+  /** Recurring series this task was generated from (first task's id). */
+  seriesId?: string;
+}
+
+export interface Subtask { id: string; title: string; done: boolean }
+
+/** Repeats when completed: the next copy is created with the next due date. */
+export interface Recurrence {
+  freq: 'daily' | 'weekdays' | 'weekly' | 'monthly';
+  /** Every N days/weeks/months (default 1). */
+  interval?: number;
 }
 
 /** One change to the plan after Start day (spec §7). */
@@ -160,6 +177,10 @@ export interface Prefs extends SyncFields {
   focusPreset?: string;
   /** Weekly goal in minutes per area id (E11). */
   goals?: Record<string, number>;
+  /** User focus presets (E12), shown after the built-in ones. */
+  customPresets?: { id: string; label: string; focus: number; brk: number }[];
+  /** Timeline zoom: 'compact' | 'normal' | 'roomy' (E12). */
+  density?: 'compact' | 'normal' | 'roomy';
 }
 
 /** One answered (or skipped) daily check-in, keyed by the day it is about. */

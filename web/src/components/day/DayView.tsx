@@ -1,7 +1,8 @@
 'use client';
 import Link from 'next/link';
 import { useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
-import { Moon, Plus, RefreshCw, RotateCcw } from 'lucide-react';
+import { useLiveQuery } from 'dexie-react-hooks';
+import { LayoutTemplate, Moon, Plus, RefreshCw, RotateCcw } from 'lucide-react';
 import { SyncBadge } from '@/components/AppShell';
 import { m } from '@/i18n/en';
 import { blockActual, coveredIn, overlaps } from '@/lib/actual';
@@ -14,7 +15,7 @@ import { fmtDuration, fmtMin } from '@/lib/time';
 import type { DayBlock, Revision } from '@/lib/types';
 import { Timeline, type ChangeKind, type TLColumn, type TLItem } from '../Timeline';
 import { useDraggedTask } from '../tasks/dragState';
-import { ChangesCard, ConflictsCard, GapsCard, ReasonPrompt, ReplanModal, StartDayCard } from './Cards';
+import { ChangesCard, ConflictsCard, GapsCard, ReasonPrompt, ReplanModal, SaveTemplateModal, StartDayCard } from './Cards';
 import { DayTasks } from './DayTasks';
 import { BlockInspector, RecordInspector } from './Inspectors';
 import { NowCard } from './NowCard';
@@ -51,6 +52,9 @@ export function DayView({ dayId, live, title, sub, sideTop, sideBottom, headExtr
   const [reason, setReason] = useState<{ revId: string; label: string } | null>(null);
   const [mismatch, setMismatch] = useState<{ taskId: string; title: string; target?: DayBlock; blockId: string; taskArea: string; blockArea: string } | null>(null);
   const [replan, setReplan] = useState(false);
+  const [saveTpl, setSaveTpl] = useState(false);
+  const prefs = useLiveQuery(() => getDB().prefs.get('prefs'), []);
+  const density = prefs?.density === 'compact' ? 0.75 : prefs?.density === 'roomy' ? 1.6 : 1;
   const scrolled = useRef(false);
 
   const started = d.status !== 'unplanned';
@@ -264,6 +268,9 @@ export function DayView({ dayId, live, title, sub, sideTop, sideBottom, headExtr
             <button type="button" className="btn sm" onClick={() => setReplan(true)} title={m.day.replan}><RefreshCw size={14} /><span className="desk-only">{m.day.replan}</span></button>
           )}
           {d.status === 'active' && <Link href={`/close?d=${dayId}`} className="btn sm"><Moon size={14} />{m.day.close}</Link>}
+          {view === 'plan' && d.blocks.length > 0 && (
+            <button type="button" className="btn sm ghost" onClick={() => setSaveTpl(true)} title={m.day.saveTemplate}><LayoutTemplate size={14} /><span className="desk-only">{m.day.saveTemplate}</span></button>
+          )}
           {d.status === 'closed' && <button type="button" className="btn sm" onClick={() => void reopenDay(dayId)}><RotateCcw size={14} />{m.day.reopen}</button>}
           <button type="button" className="btn sm" onClick={() => { const base = nowMin != null ? Math.ceil(nowMin / 30) * 30 : 9 * 60; void onCreate('plan', base, base + NEW_BLOCK_MIN); }}>
             <Plus size={15} />{m.today.addBlock}
@@ -305,7 +312,7 @@ export function DayView({ dayId, live, title, sub, sideTop, sideBottom, headExtr
           onChange={(c, id, s, e, k) => void onChange(c, id, s, e, k)}
           onDropTask={(t, c, mi, b) => void onDropTask(t, c, mi, b)}
           highlightArea={dragged?.areaId ?? null}
-          pxPerMin={isMobile ? 1 : 1.15}
+          pxPerMin={(isMobile ? 1 : 1.15) * density}
         />
         {isMobile && <div className="today-after">{after}</div>}
       </div>
@@ -315,6 +322,7 @@ export function DayView({ dayId, live, title, sub, sideTop, sideBottom, headExtr
           <div className="sheet" role="dialog" aria-label={m.inspector.title}>{inspector}</div>
         </>
       )}
+      {saveTpl && <SaveTemplateModal dayId={dayId} count={d.blocks.length} onClose={() => setSaveTpl(false)} />}
       {replan && <ReplanModal dayId={dayId} blocks={d.blocks} records={d.records} minute={clockMin} onClose={() => setReplan(false)} />}
     </div>
   );

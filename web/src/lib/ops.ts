@@ -3,7 +3,8 @@ import { track } from './analytics';
 import { getDB } from './db';
 import { liveBlocks, nowIso, remove, save, saveMany, uid, update } from './repo';
 import { minuteOfDay } from './time';
-import type { Day, DayBlock, FocusSession, PlanBlock, Priority, Reflection, Revision, Task, TimeRecord } from './types';
+import { nextDate } from './recurrence';
+import type { Day, DayBlock, DayKey, FocusSession, PlanBlock, Priority, Reflection, Revision, Task, TemplateBlock, TimeRecord } from './types';
 
 /**
  * Domain operations for E2–E8. Pages call these; each one writes through repo (local first,
@@ -261,8 +262,39 @@ export async function toggleTaskDone(id: string) {
     return;
   }
   await update<Task>('task', id, { status: 'done', doneAt: new Date().toISOString() });
+  if (t.recurrence) await createNextOccurrence(t);
   const days = Math.round((Date.now() - Date.parse(t.createdAt)) / 864e5);
   track('task_completed', { had_estimate: !!t.estimate, in_block: !!t.blockId, days_open: days, carried: (t.carried ?? []).length });
+}
+
+/** Recurring task completed: the next copy goes to the Backlog with the next due date (E12). */
+async function createNextOccurrence(t: Task) {
+  const base = t.due ?? new Date().toISOString().slice(0, 10);
+  const next: Task = {
+    id: uid(), title: t.title, status: 'backlog', createdAt: new Date().toISOString(), sort: Date.now(), updatedAt: '',
+    areaId: t.areaId, priority: t.priority, estimate: t.estimate, notes: t.notes, category: t.category, project: t.project, tags: t.tags,
+    subtasks: t.subtasks?.map(x => ({ ...x, done: false })), recurrence: t.recurrence, seriesId: t.seriesId ?? t.id, due: nextDate(t.recurrence!, base),
+  };
+  await save('task', next);
+  track('recurrence_next_created', { freq: t.recurrence!.freq });
+}
+
+/** Schedule for any day (today or later): the task appears in that day's plan (E12, Q-17). */
+export async function scheduleTaskOn(id: string, dayId: string) {
+  await update<Task>('task', id, { status: 'today', dayId, blockId: undefined });
+  track('task_scheduled', { target: 'future_day', surface: 'detail' });
+}
+
+/** Replaces a weekday template with this day's blocks (E12, Q-23). */
+export async function saveDayAsTemplate(dayId: string, templateId: DayKey) {
+  const db = getDB();
+  const [blocks, current] = await Promise.all([dayBlocks(dayId), db.templateBlocks.where('templateId').equals(templateId).toArray()]);
+  await saveMany<TemplateBlock>('template_block', current.filter(b => !b.deleted).map(b => ({ ...b, deleted: true })));
+  await saveMany<TemplateBlock>('template_block', blocks.map(b => ({
+    id: uid(), templateId, start: b.start, end: b.end, title: b.title, areaId: b.areaId, ...(b.fixed ? { fixed: true } : {}), updatedAt: '',
+  })));
+  track('template_edited', { template: templateId, change: 'saved_from_day', blocks: blocks.length });
+  return blocks.length;
 }
 
 export async function deleteTask(id: string) {

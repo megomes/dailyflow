@@ -5,9 +5,9 @@ import { AlertTriangle, ListChecks, Moon, Play, RefreshCw, Sunrise, X } from 'lu
 import { m } from '@/i18n/en';
 import { dayGaps, recEnd, replanRemaining, whatChanged, type ChangeLine, type Conflict, type Span } from '@/lib/actual';
 import { track } from '@/lib/analytics';
-import { acceptPlanAsReal, addRecord, applyReplan, closeDay, deleteBlock, lateStart, patchBlock, setRevisionReason, startDay } from '@/lib/ops';
-import { fmtDuration, fmtMin } from '@/lib/time';
-import type { Area, DayBlock, PlanBlock, TimeRecord } from '@/lib/types';
+import { acceptPlanAsReal, addRecord, applyReplan, saveDayAsTemplate, closeDay, deleteBlock, lateStart, patchBlock, setRevisionReason, startDay } from '@/lib/ops';
+import { DAY_KEYS, fmtDuration, fmtMin, templateIdForDate } from '@/lib/time';
+import type { Area, DayBlock, DayKey, PlanBlock, TimeRecord } from '@/lib/types';
 import { Modal } from '../Modal';
 import { QuickSwitch } from './QuickSwitch';
 
@@ -193,5 +193,23 @@ export function GapsCard({ dayId, blocks, records, areas, until }: { dayId: stri
           onPick={(areaId, title) => { void addRecord(dayId, { start: picking.start, end: picking.end, areaId, title }, 'manual'); track('gap_filled', { method: 'area', gap_min: picking.end - picking.start }); setPicking(null); }} />
       )}
     </section>
+  );
+}
+
+/** Save the day as a weekday template (E12, Q-23). */
+export function SaveTemplateModal({ dayId, count, onClose }: { dayId: string; count: number; onClose: () => void }) {
+  const [tid, setTid] = useState<DayKey>(templateIdForDate(dayId));
+  const [done, setDone] = useState<number | null>(null);
+  return (
+    <Modal onClose={onClose} label={m.day.saveTemplate}>
+      <div className="head"><b>{m.day.saveTemplate}</b><button type="button" className="btn icon sm ghost" onClick={onClose} aria-label="Close"><X size={15} /></button></div>
+      {done != null ? <p>{m.day.savedTemplate(done, m.templates.names[tid])}</p> : (
+        <>
+          <p className="hint" style={{ margin: 0 }}>{m.day.saveTemplateHint(count)}</p>
+          <div className="seg">{DAY_KEYS.map(k => <button key={k} type="button" aria-pressed={tid === k} onClick={() => setTid(k)}>{m.templates.short[k]}</button>)}</div>
+          <div className="row"><button type="button" className="btn primary sm" onClick={async () => setDone(await saveDayAsTemplate(dayId, tid))}>{m.templates.copyConfirm('this day', m.templates.names[tid])}</button></div>
+        </>
+      )}
+    </Modal>
   );
 }

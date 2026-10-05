@@ -11,9 +11,10 @@ import { getDB } from '@/lib/db';
 import { useClock, useIsMobile } from '@/lib/hooks';
 import { createTask, deleteTask, scheduleTask, toggleTaskDone, trackedByTask, unscheduleTask, updateTask } from '@/lib/ops';
 import { activeAreas } from '@/lib/repo';
+import { facets, isFiltering, matches, type TaskFilter } from '@/lib/taskFilter';
 import { ESTIMATES } from '@/components/tasks/TaskDetail';
 
-type List = 'inbox' | 'backlog' | 'today' | 'done';
+type List = 'inbox' | 'backlog' | 'today' | 'done' | 'all';
 
 export default function TasksPage() {
   const { day } = useClock();
@@ -31,15 +32,19 @@ export default function TasksPage() {
   const areas = useMemo(() => activeAreas(areasRaw ?? []), [areasRaw]);
   const areaMap = useMemo(() => new Map((areasRaw ?? []).map(a => [a.id, a])), [areasRaw]);
   const tracked = useMemo(() => trackedByTask(sessions), [sessions]);
-  const all = useMemo(() => (rows ?? []).filter(t => !t.deleted), [rows]);
+  const [filter, setFilter] = useState<TaskFilter>({});
+  const unfiltered = useMemo(() => (rows ?? []).filter(t => !t.deleted), [rows]);
+  const all = useMemo(() => unfiltered.filter(t => matches(t, filter, day)), [unfiltered, filter, day]);
+  const fac = useMemo(() => facets(unfiltered), [unfiltered]);
   const lists = useMemo(() => ({
     inbox: all.filter(t => t.status === 'inbox').sort((a, b) => b.sort - a.sort),
-    backlog: all.filter(t => t.status === 'backlog').sort((a, b) => prioRank(a) - prioRank(b) || (a.due ?? '9').localeCompare(b.due ?? '9') || a.sort - b.sort),
+    backlog: all.filter(t => t.status === 'backlog' || (t.status === 'today' && !!t.dayId && t.dayId > day)).sort((a, b) => prioRank(a) - prioRank(b) || (a.due ?? '9').localeCompare(b.due ?? '9') || a.sort - b.sort),
     today: all.filter(t => t.status === 'today' && t.dayId === day).sort((a, b) => a.sort - b.sort),
     done: all.filter(t => t.status === 'done').sort((a, b) => (b.doneAt ?? '').localeCompare(a.doneAt ?? '')).slice(0, 100),
+    all: all.filter(t => t.status !== 'archived').sort((a, b) => prioRank(a) - prioRank(b) || b.sort - a.sort),
   }), [all, day]);
   // Tasks scheduled on an earlier day that was never closed still show under Today.
-  const staleToday = all.filter(t => t.status === 'today' && t.dayId !== day);
+  const staleToday = all.filter(t => t.status === 'today' && (!t.dayId || t.dayId < day));
   const items = list === 'today' ? [...lists.today, ...staleToday] : lists[list];
   const sel = items.find(t => t.id === selId) ?? null;
   const detail = all.find(t => t.id === open) ?? null;
@@ -95,11 +100,34 @@ export default function TasksPage() {
           onChange={e => { if (t0.current == null) t0.current = performance.now(); setText(e.target.value); }} />
       </form>
       <div className="seg" role="tablist">
-        {(['inbox', 'backlog', 'today', 'done'] as List[]).map(l => (
+        {(['inbox', 'backlog', 'today', 'done', 'all'] as List[]).map(l => (
           <button key={l} type="button" aria-pressed={list === l} onClick={() => { setList(l); setSelId(null); }}>
-            {m.tasks.lists[l]}{l !== 'done' && (l === 'today' ? lists.today.length + staleToday.length : lists[l].length) ? ` · ${l === 'today' ? lists.today.length + staleToday.length : lists[l].length}` : ''}
+            {m.tasks.lists[l]}{l !== 'done' && l !== 'all' && (l === 'today' ? lists.today.length + staleToday.length : lists[l].length) ? ` · ${l === 'today' ? lists.today.length + staleToday.length : lists[l].length}` : ''}
           </button>
         ))}
+      </div>
+      <div className="filters">
+        <input className="input search" placeholder={m.tasks.search} value={filter.q ?? ''} onChange={e => setFilter({ ...filter, q: e.target.value || undefined })} />
+        <select className="input" value={filter.areaId ?? ''} onChange={e => setFilter({ ...filter, areaId: e.target.value || undefined })}>
+          <option value="">{m.tasks.anyArea}</option>{areas.map(a => <option key={a.id} value={a.id}>{a.name}</option>)}
+        </select>
+        <select className="input" value={filter.priority ?? ''} onChange={e => setFilter({ ...filter, priority: e.target.value || undefined })}>
+          <option value="">{m.tasks.anyPriority}</option>{(['high', 'med', 'low'] as const).map(p => <option key={p} value={p}>{m.tasks.priorities[p]}</option>)}
+        </select>
+        {fac.projects.length > 0 && (
+          <select className="input" value={filter.project ?? ''} onChange={e => setFilter({ ...filter, project: e.target.value || undefined })}>
+            <option value="">{m.tasks.anyProject}</option>{fac.projects.map(p => <option key={p} value={p}>{p}</option>)}
+          </select>
+        )}
+        {fac.tags.length > 0 && (
+          <select className="input" value={filter.tag ?? ''} onChange={e => setFilter({ ...filter, tag: e.target.value || undefined })}>
+            <option value="">{m.tasks.anyTag}</option>{fac.tags.map(t => <option key={t} value={t}>#{t}</option>)}
+          </select>
+        )}
+        <select className="input" value={filter.due ?? ''} onChange={e => setFilter({ ...filter, due: (e.target.value || undefined) as TaskFilter['due'] })}>
+          <option value="">{m.tasks.anyDue}</option>{Object.entries(m.tasks.dueFilters).map(([k, v]) => <option key={k} value={k}>{v}</option>)}
+        </select>
+        {isFiltering(filter) && <button type="button" className="btn sm ghost" onClick={() => setFilter({})}>{m.tasks.clear}</button>}
       </div>
       <div className={`tasks-layout${detail && !isMobile ? ' with-detail' : ''}`}>
         <div className="card task-list big">

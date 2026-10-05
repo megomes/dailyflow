@@ -113,11 +113,6 @@ private fun loading(type: ComplicationType): ComplicationData = NoDataComplicati
     },
 )
 
-/** Instant of a logical-day minute (block minutes count from the logical day's midnight). */
-private fun Snapshot.instantOf(min: Float): Instant =
-    runCatching { LocalDate.parse(day).atStartOfDay(ZoneId.systemDefault()).toInstant().plusSeconds((min * 60).toLong()) }
-        .getOrElse { Instant.ofEpochMilli(generatedAt + ((min - minute) * 60_000).toLong()) }
-
 /** The rest of the day as intervals (split at every block start and end), each with its data; the current one is the default. */
 private fun Snapshot.timeline(m: Float, current: ComplicationData, at: (Float) -> ComplicationData): ComplicationDataTimeline {
     val points = timeline.flatMap { listOf(it.start.toFloat(), it.end.toFloat()) }.filter { it > m }.distinct().sorted()

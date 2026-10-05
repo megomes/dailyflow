@@ -10,6 +10,9 @@ import java.net.URLEncoder
 import java.util.TimeZone
 
 /** The bits of /api/snapshot the watch shows (same JSON as the phone widgets). */
+/** A to-do planned for today; [blockStart] ("14:30") ties it to its block. */
+data class Todo(val title: String, val high: Boolean, val estimate: Int?, val blockStart: String?, val blockTitle: String?)
+
 data class Block(val title: String, val color: Int, val startLabel: String, val endLabel: String, val start: Int, val end: Int)
 data class Snapshot(
     val clock: String,
@@ -20,6 +23,7 @@ data class Snapshot(
     val focusTitle: String?, val focusLeftSec: Int?,
     val timeline: List<Block>,
     val nextTasks: List<String>,
+    val todos: List<Todo> = emptyList(),
     /** When the server built it (ms), to move the logical minute forward on the watch. */
     val generatedAt: Long = System.currentTimeMillis(),
     /** Logical day (YYYY-MM-DD); block minutes are relative to its midnight. */
@@ -29,6 +33,10 @@ data class Snapshot(
     fun minuteAt(nowMs: Long): Float = minute + (nowMs - generatedAt) / 60000f
     fun nowAt(m: Float): Block? = timeline.lastOrNull { it.start <= m && m < it.end }
     fun nextAt(m: Float): Block? { val cur = nowAt(m); return timeline.firstOrNull { it.start > m && it != cur } }
+    /** Instant of a logical-day minute (block minutes count from the logical day's midnight). */
+    fun instantOf(min: Float): java.time.Instant =
+        runCatching { java.time.LocalDate.parse(day).atStartOfDay(java.time.ZoneId.systemDefault()).toInstant().plusSeconds((min * 60).toLong()) }
+            .getOrElse { java.time.Instant.ofEpochMilli(generatedAt + ((min - minute) * 60_000).toLong()) }
     fun upcomingAt(m: Float, n: Int): List<Block> { val cur = nowAt(m); return timeline.filter { it.start > m && it != cur }.take(n) }
 }
 
@@ -118,6 +126,9 @@ class Api(context: Context) {
             timeline = (0 until (tl?.length() ?: 0)).mapNotNull { block(tl!!.optJSONObject(it)) },
             nextTasks = (0 until (nt?.length() ?: 0)).map { nt!!.optString(it) },
             day = j.optString("day"),
+            todos = j.optJSONArray("todos")?.let { a -> (0 until a.length()).map { i -> a.getJSONObject(i).let { t ->
+                Todo(t.optString("title"), t.optBoolean("high"), if (t.isNull("estimate")) null else t.optInt("estimate"), if (t.isNull("blockStart")) null else t.optString("blockStart"), if (t.isNull("blockTitle")) null else t.optString("blockTitle"))
+            } } } ?: emptyList(),
             generatedAt = runCatching { java.time.Instant.parse(j.optString("generatedAt")).toEpochMilli() }.getOrDefault(System.currentTimeMillis()),
         )
     }

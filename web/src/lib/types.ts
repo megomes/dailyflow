@@ -25,6 +25,8 @@ export interface TemplateBlock extends SyncFields {
   end: number;
   title: string;
   areaId: string;
+  /** Copied to the day: fixed blocks keep their time when replanning. */
+  fixed?: boolean;
 }
 
 export type DayStatus = 'unplanned' | 'active' | 'closed';
@@ -194,4 +196,5 @@ export interface TimelineBlock {
   end: number;
   title: string;
   areaId: string;
+  fixed?: boolean;
 }

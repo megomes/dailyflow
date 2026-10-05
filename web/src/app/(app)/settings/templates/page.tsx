@@ -35,7 +35,7 @@ export default function TemplatesPage() {
   function onUpdate(id: string, patch: BlockPatch, kind: EditKind, before: TimelineBlock) {
     if (!rows?.some(r => r.id === id)) return;
     void update<TemplateBlock>('template_block', id, patch);
-    edited(kind === 'move' ? 'moved' : kind === 'rename' ? 'renamed' : kind === 'area' ? 'area_changed' : 'resized', {
+    edited(kind === 'move' ? 'moved' : kind === 'rename' ? 'renamed' : kind === 'area' ? 'area_changed' : kind === 'fixed' ? 'fixed_toggled' : 'resized', {
       block: id, delta_min: kind === 'move' ? (patch.start ?? before.start) - before.start : undefined,
     });
   }

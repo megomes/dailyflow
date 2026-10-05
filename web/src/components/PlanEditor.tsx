@@ -1,6 +1,6 @@
 'use client';
 import { useEffect, useMemo, useState, type ReactNode } from 'react';
-import { Trash2, X } from 'lucide-react';
+import { Lock, Trash2, Unlock, X } from 'lucide-react';
 import { m } from '@/i18n/en';
 import { MIN_BLOCK_MIN, SNAP_MIN } from '@/lib/config';
 import { useIsMobile } from '@/lib/hooks';
@@ -9,8 +9,8 @@ import { clamp, fmtDuration, fmtMin, parseHHMM } from '@/lib/time';
 import type { Area, TimelineBlock } from '@/lib/types';
 import { Timeline, type ChangeKind } from './Timeline';
 
-export type BlockPatch = Partial<Pick<TimelineBlock, 'start' | 'end' | 'title' | 'areaId'>>;
-export type EditKind = ChangeKind | 'rename' | 'area' | 'time';
+export type BlockPatch = Partial<Pick<TimelineBlock, 'start' | 'end' | 'title' | 'areaId' | 'fixed'>>;
+export type EditKind = ChangeKind | 'rename' | 'area' | 'time' | 'fixed';
 
 interface Props {
   blocks: TimelineBlock[];
@@ -152,7 +152,13 @@ function Inspector({ block, areas, note, onClose, onUpdate, onDelete }: {
           <input className="input tabular" type="time" step={300} value={end} onChange={e => setEnd(e.target.value)} onBlur={() => commitTimes()} />
         </label>
       </div>
-      <div className="hint tabular">{fmtDuration(block.end - block.start)}</div>
+      <div className="row">
+        <span className="hint tabular">{fmtDuration(block.end - block.start)}</span>
+        <span className="spacer" />
+        <button type="button" className="btn sm ghost" aria-pressed={!!block.fixed} onClick={() => onUpdate({ fixed: !block.fixed }, 'fixed')}>
+          {block.fixed ? <Lock size={13} /> : <Unlock size={13} />}{block.fixed ? 'Fixed' : 'Flexible'}
+        </button>
+      </div>
       <div className="field"><span>{m.inspector.area}</span>
         <div className="areas-pick">
           {pickable.map(a => (

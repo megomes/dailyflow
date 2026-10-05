@@ -138,6 +138,7 @@ export async function ensureDay(dayId: string): Promise<boolean> {
   const day: Day = { id: dayId, templateId, createdAt: existing?.createdAt ?? new Date().toISOString(), updatedAt: '' };
   const blocks: DayBlock[] = tBlocks.map(b => ({
     id: `${dayId}:${b.id}`, dayId, start: b.start, end: b.end, title: b.title, areaId: b.areaId, fromTemplate: b.id, updatedAt: '',
+    ...(b.fixed ? { fixed: true } : {}),
   }));
   await save('day', day);
   await saveMany('day_block', blocks);

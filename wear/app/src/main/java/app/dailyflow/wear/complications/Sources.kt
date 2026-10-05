@@ -30,6 +30,7 @@ import androidx.wear.watchface.complications.datasource.SuspendingComplicationDa
 import androidx.wear.watchface.complications.datasource.SuspendingTimelineComplicationDataSourceService
 import androidx.wear.watchface.complications.datasource.TimeInterval
 import androidx.wear.watchface.complications.datasource.TimelineEntry
+import app.dailyflow.wear.Api
 import app.dailyflow.wear.Block
 import app.dailyflow.wear.MainActivity
 import app.dailyflow.wear.R
@@ -40,6 +41,11 @@ import java.time.Instant
 import java.time.LocalDate
 import java.time.ZoneId
 import java.util.concurrent.TimeUnit
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.withTimeoutOrNull
 
 /**
  * DailyFlow complications: plug the day into any watch face (Customize › a slot › DailyFlow).
@@ -65,11 +71,35 @@ private fun confirm(context: Context, action: String): PendingIntent =
     PendingIntent.getActivity(context, action.hashCode(), Intent(context, ConfirmActivity::class.java).putExtra(ConfirmActivity.ACTION, action)
         .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK), PendingIntent.FLAG_IMMUTABLE or PendingIntent.FLAG_UPDATE_CURRENT)
 
+private val background = CoroutineScope(SupervisorJob() + Dispatchers.IO)
+
+/**
+ * Cache first: answer right away with the last snapshot and refresh in the background (the
+ * complications are redrawn only if something changed). Only the very first time do we wait a little.
+ */
 private suspend fun snapshot(context: Context): Snapshot? {
-    FaceData.load(context)
-    FaceData.refresh(context.applicationContext, maxAgeMs = 60_000)
+    val app = context.applicationContext
+    FaceData.load(app)
+    val cached = FaceData.snapshot
+    if (cached != null) {
+        if (FaceData.ageMs > 60_000) background.launch { if (FaceData.refresh(app, 60_000)) Sources.refreshAll(app) }
+        return cached
+    }
+    if (withTimeoutOrNull(3_000) { FaceData.refresh(app) } == null) background.launch { if (FaceData.refresh(app)) Sources.refreshAll(app) }
     return FaceData.snapshot
 }
+
+/** Before the first data arrives: the watch face draws this as its loading placeholder. */
+private fun loading(type: ComplicationType): ComplicationData = NoDataComplicationData(
+    when (type) {
+        ComplicationType.RANGED_VALUE -> RangedValueComplicationData.Builder(RangedValueComplicationData.PLACEHOLDER, 0f, 100f, ComplicationText.EMPTY)
+            .setMonochromaticImage(MonochromaticImage.PLACEHOLDER).build()
+        ComplicationType.LONG_TEXT -> LongTextComplicationData.Builder(ComplicationText.PLACEHOLDER, ComplicationText.EMPTY).setTitle(ComplicationText.PLACEHOLDER).build()
+        ComplicationType.MONOCHROMATIC_IMAGE -> MonochromaticImageComplicationData.Builder(MonochromaticImage.PLACEHOLDER, ComplicationText.EMPTY).build()
+        ComplicationType.SMALL_IMAGE -> SmallImageComplicationData.Builder(SmallImage.PLACEHOLDER, ComplicationText.EMPTY).build()
+        else -> ShortTextComplicationData.Builder(ComplicationText.PLACEHOLDER, ComplicationText.EMPTY).setTitle(ComplicationText.PLACEHOLDER).build()
+    },
+)
 
 /** Instant of a logical-day minute (block minutes count from the logical day's midnight). */
 private fun Snapshot.instantOf(min: Float): Instant =
@@ -89,7 +119,7 @@ private fun Snapshot.timeline(m: Float, current: ComplicationData, at: (Float) -
 /** NOW — SHORT_TEXT “42m / Work”, RANGED_VALUE ring + the same, LONG_TEXT “Work · until 11:00”. */
 class NowSource : SuspendingTimelineComplicationDataSourceService() {
     private fun data(s: Snapshot?, m: Float, type: ComplicationType, live: Boolean): ComplicationData {
-        if (s == null) return simple(type, "Pair", "DailyFlow")
+        if (s == null) return if (Api.paired(this)) loading(type) else simple(type, "Pair", "DailyFlow")
         val now = s.nowAt(m)
         val next = s.nextAt(m)
         val running = if (live) s.runningTitle else null
@@ -102,18 +132,19 @@ class NowSource : SuspendingTimelineComplicationDataSourceService() {
         return when (type) {
             ComplicationType.RANGED_VALUE -> {
                 // Free time: an empty ring, the countdown to the next block.
-                if (now == null) return RangedValueComplicationData.Builder(0f, 0f, 1f, desc).setText(count).setTitle(text(name)).setTapAction(open(this)).build()
+                if (now == null) return RangedValueComplicationData.Builder(0f, 0f, 1f, desc).setMonochromaticImage(icon(this, R.drawable.ic_now)).setTapAction(open(this)).build()
                 val start = s.instantOf(now.start.toFloat())
                 val total = (endsAt.epochSecond - start.epochSecond).coerceAtLeast(60).toFloat()
                 val elapsedNow = ((System.currentTimeMillis() / 1000 - start.epochSecond).toFloat()).coerceIn(0f, total)
                 // Seconds into the block, computed by the watch every frame: the ring moves without updates.
                 val remaining = DynamicInstant.platformTimeWithSecondsPrecision().durationUntil(DynamicInstant.withSecondsPrecision(endsAt)).toIntSeconds().asFloat()
+                // No text: on arcs it gets cut ("Make…"); the ring and the Now glyph say enough, the name lives in the inner slot.
                 RangedValueComplicationData.Builder(DynamicFloat.constant(total).minus(remaining), elapsedNow, 0f, total, desc)
-                    .setText(count).setTitle(text(name)).setMonochromaticImage(icon(this, R.drawable.ic_dailyflow)).setTapAction(open(this)).build()
+                    .setMonochromaticImage(icon(this, R.drawable.ic_now)).setTapAction(open(this)).build()
             }
             ComplicationType.LONG_TEXT -> LongTextComplicationData.Builder(text("$name · until ${if (now != null) now.endLabel else until.startLabel}"), desc)
-                .setTitle(text(if (now != null) "NOW" else "FREE")).setMonochromaticImage(icon(this, R.drawable.ic_dailyflow)).setTapAction(open(this)).build()
-            else -> ShortTextComplicationData.Builder(count, desc).setTitle(text(name)).setMonochromaticImage(icon(this, R.drawable.ic_dailyflow)).setTapAction(open(this)).build()
+                .setTitle(text(if (now != null) "NOW" else "FREE")).setMonochromaticImage(icon(this, R.drawable.ic_now)).setTapAction(open(this)).build()
+            else -> ShortTextComplicationData.Builder(count, desc).setTitle(text(name)).setMonochromaticImage(icon(this, R.drawable.ic_now)).setTapAction(open(this)).build()
         }
     }
 
@@ -131,7 +162,7 @@ class NowSource : SuspendingTimelineComplicationDataSourceService() {
     }
 
     override fun getPreviewData(type: ComplicationType): ComplicationData = when (type) {
-        ComplicationType.RANGED_VALUE -> RangedValueComplicationData.Builder(18f, 0f, 60f, text("Work")).setText(text("42m")).setTitle(text("Work")).build()
+        ComplicationType.RANGED_VALUE -> RangedValueComplicationData.Builder(18f, 0f, 60f, text("Work")).setMonochromaticImage(icon(this, R.drawable.ic_now)).build()
         ComplicationType.LONG_TEXT -> LongTextComplicationData.Builder(text("Work · until 11:00"), text("Now")).setTitle(text("NOW")).build()
         else -> ShortTextComplicationData.Builder(text("42m"), text("Work")).setTitle(text("Work")).build()
     }
@@ -140,6 +171,7 @@ class NowSource : SuspendingTimelineComplicationDataSourceService() {
 /** NEXT — SHORT_TEXT “11:00 / Guitar”, LONG_TEXT “Guitar or Piano” titled “NEXT · 11:00”. */
 class NextSource : SuspendingTimelineComplicationDataSourceService() {
     private fun data(s: Snapshot?, m: Float, type: ComplicationType): ComplicationData {
+        if (s == null && Api.paired(this)) return loading(type)
         val next = s?.nextAt(m)
         val name = when { s == null -> "Pair"; next == null -> "Done"; else -> next.title }
         val time = next?.startLabel ?: "—"
@@ -164,7 +196,8 @@ class NextSource : SuspendingTimelineComplicationDataSourceService() {
 /** Start / stop: ▶ starts the block on now, ■ stops what is running. */
 class ControlSource : SuspendingComplicationDataSourceService() {
     override suspend fun onComplicationRequest(request: ComplicationRequest): ComplicationData {
-        val running = snapshot(this)?.runningTitle != null
+        val snap = snapshot(this) ?: return if (Api.paired(this)) loading(request.complicationType) else button(this, request.complicationType, R.drawable.ic_play, "Pair", null)
+        val running = snap.runningTitle != null
         return button(this, request.complicationType, if (running) R.drawable.ic_stop else R.drawable.ic_play, if (running) "Stop" else "Start", confirm(this, if (running) "stop" else "start"))
     }
     override fun getPreviewData(type: ComplicationType): ComplicationData = button(this, type, R.drawable.ic_play, "Start", null)

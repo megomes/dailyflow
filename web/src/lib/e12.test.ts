@@ -72,3 +72,12 @@ describe('richer recurrence (note #11)', () => {
     expect(describe(inv)).toBe('Monthly on the 1st (or next business day)');
   });
 });
+
+describe('recurring to-dos wait until the day before (note #11)', () => {
+  it('reveals a copy lead days before it is due', async () => {
+    const { revealOn } = await import('./recurrence');
+    expect(revealOn('2026-11-02', 1, '2026-10-05')).toBe('2026-11-01');
+    expect(revealOn('2026-10-06', 1, '2026-10-05')).toBeUndefined(); // already the day before: visible now
+    expect(revealOn('2026-10-12', 0, '2026-10-05')).toBe('2026-10-12');
+  });
+});

@@ -351,6 +351,7 @@ export const m = {
       addedLate: (t: string) => `+${t}`,
       addedLateTitle: 'Added after the day started',
       dockHint: 'Drop on a column',
+      moveTo: 'Move to…',
       empty: { inbox: 'Inbox zero.', backlog: 'Nothing waiting.', today: 'Nothing on today.', done: 'Nothing done yet.' } as Record<string, string>,
     },
     fit: {
@@ -530,6 +531,9 @@ export const m = {
     expires: (mm: number, ss: number) => `Valid for ${mm}:${String(ss).padStart(2, '0')}. Scan it in the app, or type the code on the watch.`,
   },
   prefs: {
+    recurLead: 'Recurring to-dos',
+    recurLeadHint: 'When the next copy of a recurring to-do shows up in Inbox/Backlog. Until then it waits out of sight, like Later.',
+    recurLeadOpt: (n: number) => (n === 0 ? 'On the day' : n === 1 ? 'Day before' : n === 7 ? 'A week before' : `${n} days before`),
     title: 'Preferences',
     hint: 'Day turnover, focus, display, notifications, export',
     cutoff: 'Day turns over at',

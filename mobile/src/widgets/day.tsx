@@ -127,7 +127,7 @@ export function fitRows(H: number, hasRibbon: boolean, agenda: number, now: numb
   return { agendaRows, nowRows, laterRows, hidden: now + later - nowRows - laterRows };
 }
 
-export function DayWidget({ s, info, pending }: { s: Snapshot | null; info: WidgetInfo; pending?: string[] }) {
+export function DayWidget({ s, info, pending, laterOpen = false }: { s: Snapshot | null; info: WidgetInfo; pending?: string[]; laterOpen?: boolean }) {
   const W = Math.max(220, info.width);
   const H = Math.max(220, info.height);
   if (!s) {
@@ -151,7 +151,9 @@ export function DayWidget({ s, info, pending }: { s: Snapshot | null; info: Widg
   const agenda = [...s.timeline.filter(isNowB), ...s.timeline.filter(b => b.start > s.minute)];
   const perBlock = new Map<string, number>();
   for (const t of todos) if (t.blockStart) perBlock.set(`${t.blockStart}|${t.blockTitle}`, (perBlock.get(`${t.blockStart}|${t.blockTitle}`) ?? 0) + 1);
-  const fit = fitRows(H, s.timeline.length > 0, agenda.length, nowTodos.length, later.length);
+  // The rest of today stays collapsed (one line) until tapped open: the widget is a summary.
+  const fit = fitRows(H, s.timeline.length > 0, agenda.length, nowTodos.length, laterOpen ? later.length : 1);
+  const laterRows = laterOpen ? fit.laterRows : 0;
   const heroClick = hz.mode === 'empty' ? { clickAction: 'OPEN_URI', clickActionData: { uri: 'dailyflow:///' } } : { clickAction: 'OPEN_APP' };
 
   return (
@@ -217,8 +219,15 @@ export function DayWidget({ s, info, pending }: { s: Snapshot | null; info: Widg
             {t.estimate != null && <TextWidget text={dur(t.estimate)} style={{ fontSize: 12, color: hex(C.muted), marginLeft: 8 }} />}
           </FlexWidget>
         ))}
-        {fit.laterRows > 0 && nowTodos.length > 0 && <SectionLabel text="LATER TODAY" />}
-        {later.slice(0, fit.laterRows).map(t => (
+        {later.length > 0 && (
+          <FlexWidget clickAction="TOGGLE_LATER" style={{ width: 'match_parent', height: LATER_ROW + 2, flexDirection: 'row', alignItems: 'center', marginTop: 2 }}>
+            <FlexWidget style={{ flex: 1 }}>
+              <TextWidget text={`${nowTodos.length ? 'LATER TODAY' : 'TODAY'} · ${later.length}`} style={{ fontSize: 10.5, fontWeight: '700', letterSpacing: 0.1, color: hex(C.muted) }} />
+            </FlexWidget>
+            <TextWidget text={laterOpen ? '▾ hide' : '▸ show'} style={{ fontSize: 11.5, fontWeight: '600', color: hex(C.text2), paddingHorizontal: 4 }} />
+          </FlexWidget>
+        )}
+        {later.slice(0, laterRows).map(t => (
           <FlexWidget key={t.id} style={{ width: 'match_parent', height: LATER_ROW, flexDirection: 'row', alignItems: 'center' }}>
             <SvgWidget svg={smallCheckSvg(t.color, t.high)} clickAction="TODO_DONE" clickActionData={{ id: t.id }} style={{ width: 26, height: 22 }} />
             <FlexWidget clickAction="OPEN_APP" style={{ flex: 1, marginLeft: 4 }}>
@@ -227,7 +236,7 @@ export function DayWidget({ s, info, pending }: { s: Snapshot | null; info: Widg
             <TextWidget text={t.blockStart ?? 'any time'} style={{ fontSize: 11, color: hex(C.muted), marginLeft: 8 }} />
           </FlexWidget>
         ))}
-        {fit.hidden > 0 && <TextWidget text={`+${fit.hidden} more`} clickAction="OPEN_URI" clickActionData={{ uri: 'dailyflow:///tasks' }} style={{ fontSize: 11.5, color: hex(C.muted), marginTop: 2, marginLeft: 30 }} />}
+        {(laterOpen ? fit.hidden : nowTodos.length - fit.nowRows) > 0 && <TextWidget text={`+${laterOpen ? fit.hidden : nowTodos.length - fit.nowRows} more`} clickAction="OPEN_URI" clickActionData={{ uri: 'dailyflow:///tasks' }} style={{ fontSize: 11.5, color: hex(C.muted), marginTop: 2, marginLeft: 30 }} />}
       </FlexWidget>
     </FlexWidget>
   );

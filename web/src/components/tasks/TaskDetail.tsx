@@ -6,7 +6,7 @@ import { m } from '@/i18n/en';
 import { getDB } from '@/lib/db';
 import { track } from '@/lib/analytics';
 import { deleteFocus, deleteTask, editFocusMinutes, PRIORITIES, scheduleTask, scheduleTaskOn, unscheduleTask, updateTask } from '@/lib/ops';
-import { describe, firstDate } from '@/lib/recurrence';
+import { describe, firstDate, revealOn } from '@/lib/recurrence';
 import { uid } from '@/lib/repo';
 import { facets } from '@/lib/taskFilter';
 import { liveBlocks } from '@/lib/repo';
@@ -71,6 +71,7 @@ export function TaskForm({ task, areas, day, onPatch, create = false, autoFocusT
   const subs = task.subtasks ?? [];
   const hasMore = !!(task.project || task.tags?.length || subs.length || task.recurrence || task.notes || task.category || (task.dayId && task.dayId > day));
   const all = useLiveQuery(() => getDB().tasks.toArray(), []) ?? [];
+  const lead = useLiveQuery(() => getDB().prefs.get('prefs'), [])?.recurLeadDays ?? 1;
   const fac = facets(all);
   function addTag() {
     const v = tag.trim().replace(/^#/, '').toLowerCase();
@@ -147,7 +148,10 @@ export function TaskForm({ task, areas, day, onPatch, create = false, autoFocusT
         <RepeatPicker rule={task.recurrence} day={day} onChange={r => {
           // A rule anchored to a weekday / day of the month sets the due date to its first occurrence.
           const anchored = r && (r.weekday != null || r.monthDay != null);
-          onPatch({ recurrence: r, ...(r && (anchored || !task.due) ? { due: firstDate(r, day) } : {}) }, ['recurrence']);
+          const due = r && (anchored || !task.due) ? firstDate(r, day) : task.due;
+          // Out of sight until the day before it is due (Preferences › recurring lead), like Later.
+          const until = r && due && (task.status === 'inbox' || task.status === 'backlog') ? revealOn(due, lead, day) : undefined;
+          onPatch({ recurrence: r, ...(due !== task.due ? { due } : {}), deferUntil: until }, ['recurrence']);
           if (r) track('recurrence_created', { rule: `${r.freq}:${r.interval ?? 1}`, weekday: r.weekday, month_day: r.monthDay, business_day: !!r.businessDay });
         }} />
       </div>

@@ -1,4 +1,4 @@
-import { nextDate } from './recurrence';
+import { nextDate, revealOn } from './recurrence';
 import type { DayBlock, Task, TimeRecord } from './types';
 import { logicalAt } from './zone';
 
@@ -41,7 +41,7 @@ export function quickOps(action: 'start' | 'stop' | 'next', rows: { blocks: DayB
 }
 
 /** Check off a to-do from a widget: done now; a recurring one also gets its next copy in the Backlog (same rule as the app). */
-export function doneOps(task: Task & { updatedAt: string }, at: Date, newId: () => string): { ops: { entity: 'task'; id: string; updatedAt: string; deleted: boolean; data: Record<string, unknown> }[]; message: string } {
+export function doneOps(task: Task & { updatedAt: string }, at: Date, newId: () => string, lead = 1): { ops: { entity: 'task'; id: string; updatedAt: string; deleted: boolean; data: Record<string, unknown> }[]; message: string } {
   if (task.status === 'done') return { ops: [], message: 'Already done' };
   const ts = at.toISOString();
   const { id, updatedAt: _u, deleted: _d, ...rest } = task;
@@ -51,7 +51,9 @@ export function doneOps(task: Task & { updatedAt: string }, at: Date, newId: () 
       title: task.title, status: 'backlog', createdAt: ts, sort: at.getTime(), areaId: task.areaId, priority: task.priority, estimate: task.estimate, notes: task.notes,
       category: task.category, project: task.project, tags: task.tags, subtasks: task.subtasks?.map(x => ({ ...x, done: false })), recurrence: task.recurrence,
       seriesId: task.seriesId ?? task.id, due: nextDate(task.recurrence, task.due ?? ts.slice(0, 10)),
-    };
+    } as Record<string, unknown>;
+    const until = revealOn(next.due as string, lead, ts.slice(0, 10));
+    if (until) next.deferUntil = until;
     ops.push({ entity: 'task', id: newId(), updatedAt: new Date(at.getTime() + 1).toISOString(), deleted: false, data: JSON.parse(JSON.stringify(next)) });
   }
   return { ops, message: `Done: ${task.title}` };

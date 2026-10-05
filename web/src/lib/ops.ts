@@ -3,7 +3,7 @@ import { track } from './analytics';
 import { getDB } from './db';
 import { liveBlocks, nowIso, remove, save, saveMany, uid, update } from './repo';
 import { dateAtMinute, minuteOfDay } from './time';
-import { nextDate } from './recurrence';
+import { nextDate, revealOn } from './recurrence';
 import type { Column } from './taskBoard';
 import type { Day, DayBlock, DayKey, FocusSession, PlanBlock, Priority, Reflection, Revision, Task, TemplateBlock, TimeRecord } from './types';
 
@@ -223,6 +223,11 @@ export async function keepOverlap(dayId: string, key: string) {
 export async function patchBlock(id: string, patch: Partial<DayBlock>, kind: Revision['kind']) {
   const before = await getDB().dayBlocks.get(id);
   if (!before) return null;
+  // A block named after its area (never renamed) follows the area when it changes (note #21).
+  if (patch.areaId && patch.areaId !== before.areaId && patch.title === undefined) {
+    const [from, to] = await Promise.all([getDB().areas.get(before.areaId), getDB().areas.get(patch.areaId)]);
+    if (to && (!before.title || before.title === 'New block' || before.title === from?.name)) patch = { ...patch, title: to.name };
+  }
   const after = await update<DayBlock>('day_block', id, patch);
   if (!after) return null;
   return recordRevision(before.dayId, kind, snapshot(before), snapshot(after));
@@ -347,6 +352,10 @@ async function createNextOccurrence(t: Task) {
     areaId: t.areaId, priority: t.priority, estimate: t.estimate, notes: t.notes, category: t.category, project: t.project, tags: t.tags,
     subtasks: t.subtasks?.map(x => ({ ...x, done: false })), recurrence: t.recurrence, seriesId: t.seriesId ?? t.id, due: nextDate(t.recurrence!, base),
   };
+  // Out of sight until the day before it is due (Preferences › recurring lead).
+  const lead = (await getDB().prefs.get('prefs'))?.recurLeadDays ?? 1;
+  const until = revealOn(next.due!, lead, new Date().toISOString().slice(0, 10));
+  if (until) next.deferUntil = until;
   await save('task', next);
   track('recurrence_next_created', { freq: t.recurrence!.freq });
 }

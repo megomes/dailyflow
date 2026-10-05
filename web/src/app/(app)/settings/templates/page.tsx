@@ -26,7 +26,7 @@ export default function TemplatesPage() {
   const edited = (change: string, extra: Record<string, unknown> = {}) => track('template_edited', { template: tid, change, ...extra });
 
   async function onCreate(start: number, end: number, surface: string) {
-    const b: TemplateBlock = { id: uid(), templateId: tid, start, end, title: m.inspector.newBlock, areaId: 'area-personal', updatedAt: '' };
+    const b: TemplateBlock = { id: uid(), templateId: tid, start, end, title: (await getDB().areas.get('area-personal'))?.name ?? m.inspector.newBlock, areaId: 'area-personal', updatedAt: '' };
     await save('template_block', b);
     edited('created', { surface, duration_min: end - start });
     return b.id;
@@ -34,7 +34,15 @@ export default function TemplatesPage() {
 
   function onUpdate(id: string, patch: BlockPatch, kind: EditKind, before: TimelineBlock) {
     if (!rows?.some(r => r.id === id)) return;
-    void update<TemplateBlock>('template_block', id, patch);
+    void (async () => {
+      // Named after its area until renamed (note #21): the name follows the area.
+      let p = patch;
+      if (patch.areaId && patch.areaId !== before.areaId && patch.title === undefined) {
+        const [from, to] = await Promise.all([getDB().areas.get(before.areaId), getDB().areas.get(patch.areaId)]);
+        if (to && (!before.title || before.title === 'New block' || before.title === from?.name)) p = { ...patch, title: to.name };
+      }
+      await update<TemplateBlock>('template_block', id, p);
+    })();
     edited(kind === 'move' ? 'moved' : kind === 'rename' ? 'renamed' : kind === 'area' ? 'area_changed' : kind === 'fixed' ? 'fixed_toggled' : 'resized', {
       block: id, delta_min: kind === 'move' ? (patch.start ?? before.start) - before.start : undefined,
     });

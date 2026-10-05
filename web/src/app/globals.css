@@ -571,9 +571,9 @@ html.vt-close::view-transition-new(root) { z-index: 1; }
   .board-nav button span { font-size: 11.5px; color: var(--text-muted); }
   .board-nav button[aria-pressed='true'] { background: var(--bg-surface-active); border-color: var(--border-strong); color: var(--text-primary); }
   .board-nav button.on { border-color: var(--focus); color: var(--text-primary); }
-  .board { display: flex; gap: 10px; margin: 10px -16px 0; padding: 0 16px 12px; overflow-x: auto; overflow-y: hidden; scroll-snap-type: x mandatory; scroll-padding: 0 16px; scrollbar-width: none; overscroll-behavior-x: contain; }
+  .board { display: flex; gap: 10px; margin: 10px -16px 0; padding: 0 16px 12px; overflow-x: auto; overflow-y: hidden; scroll-snap-type: x proximity; scroll-padding: 0 16px; scrollbar-width: none; overscroll-behavior-x: contain; }
   .board::-webkit-scrollbar { display: none; }
-  .board-col { flex: 0 0 86%; scroll-snap-align: start; scroll-snap-stop: always; }
+  .board-col { flex: 0 0 86%; scroll-snap-align: start; }
   .col-body { overscroll-behavior-y: contain; }
   .col-body { padding-bottom: 76px; }
   .board-card .task-row { padding: 10px 10px 10px 11px; font-size: 14px; }
@@ -751,3 +751,10 @@ html.vt-close::view-transition-new(root) { z-index: 1; }
 .alongside-row { display: flex; align-items: center; gap: 7px; font-size: 13px; min-height: 30px; }
 .alongside-row .al-title { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .alongside-row b { font-size: 13px; }
+
+/* Phones: long-press a card → Move to… */
+.move-sheet { display: flex; flex-direction: column; gap: 10px; }
+.move-sheet .move-title { font-size: 16px; line-height: 1.3; }
+.move-sheet .dock-row { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+.move-sheet .dock-target { background: var(--bg-surface); border-style: solid; cursor: pointer; }
+.move-sheet .zone { width: 100%; min-height: 44px; cursor: pointer; font: inherit; text-align: left; }

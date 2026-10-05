@@ -1,5 +1,5 @@
 'use client';
-import { useEffect, useMemo, useRef, useState, type DragEvent, type ReactNode, type TouchEvent as ReactTouchEvent } from 'react';
+import { useEffect, useMemo, useRef, useState, type DragEvent, type ReactNode } from 'react';
 import { createPortal } from 'react-dom';
 import { CalendarClock, CircleCheck, Inbox, Layers } from 'lucide-react';
 import { m } from '@/i18n/en';
@@ -49,14 +49,14 @@ export function TaskBoard(p: Props) {
   const { day, minute, cols, blocks, dayTasks, areaMap, tracked, selId, coarse } = p;
   const dragged = useDraggedTask();
   const [over, setOver] = useState<string | null>(null);
-  const [touch, setTouch] = useState<{ task: Task; from: Column; x: number; y: number } | null>(null);
-  const [touchOver, setTouchOver] = useState<string | null>(null);
-  const overRef = useRef<string | null>(null);
+  // Phones: long-press a card → a “Move to…” sheet (no dragging, so scrolling stays fully native).
+  const [sheet, setSheet] = useState<{ task: Task; from: Column } | null>(null);
+  const press = useRef<{ timer: number; x: number; y: number } | null>(null);
   const boardRef = useRef<HTMLDivElement>(null);
   const [active, setActive] = useState<Column>('inbox');
   const [allDone, setAllDone] = useState(false);
 
-  const moving = dragged ?? touch?.task ?? null;
+  const moving = dragged ?? null;
   const from = moving ? columnOf(moving, day) : null;
   const ahead = useMemo(() => blocks.filter(b => b.end > minute), [blocks, minute]);
 
@@ -89,61 +89,30 @@ export function TaskBoard(p: Props) {
     },
   });
 
-  // ── Touch: long-press to lift, drop on the dock ──
-  // One listener on the board for the whole gesture (registered once): it only blocks scrolling
-  // while a card is lifted, so ordinary swipes and scrolls are never held up.
-  const gesture = useRef<{ task: Task; col: Column; sx: number; sy: number; lifted: boolean; timer: number } | null>(null);
-  const latest = useRef(p.onDrop);
-  useEffect(() => { latest.current = p.onDrop; });
-  useEffect(() => {
-    const el = boardRef.current;
-    if (!el || !coarse) return;
-    const reset = () => { const g = gesture.current; if (g) clearTimeout(g.timer); gesture.current = null; };
-    const move = (ev: TouchEvent) => {
-      const g = gesture.current;
-      if (!g) return;
-      const q = ev.touches[0];
-      if (!g.lifted) { if (Math.hypot(q.clientX - g.sx, q.clientY - g.sy) > 10) reset(); return; }
-      ev.preventDefault();
-      const target = document.elementFromPoint(q.clientX, q.clientY)?.closest<HTMLElement>('[data-drop]')?.dataset.drop ?? null;
-      if (target !== overRef.current) { overRef.current = target; setTouchOver(target); if (target) navigator.vibrate?.(4); }
-      setTouch(d => d && { ...d, x: q.clientX, y: q.clientY });
-    };
-    const end = (ev: TouchEvent) => {
-      const g = gesture.current;
-      if (g?.lifted) {
-        ev.preventDefault();
-        const target = overRef.current;
-        setTouch(null); setTouchOver(null);
-        if (target) latest.current(g.task, target, 'long_press');
-      }
-      reset();
-    };
-    const cancel = () => { if (gesture.current?.lifted) { setTouch(null); setTouchOver(null); } reset(); };
-    el.addEventListener('touchmove', move, { passive: false });
-    el.addEventListener('touchend', end, { passive: false });
-    el.addEventListener('touchcancel', cancel);
-    return () => { el.removeEventListener('touchmove', move); el.removeEventListener('touchend', end); el.removeEventListener('touchcancel', cancel); };
-  }, [coarse]);
-
-  function onTouchStart(e: ReactTouchEvent, task: Task, col: Column) {
-    if (!coarse || e.touches.length !== 1) return;
+  // ── Phones: long-press opens “Move to…” (passive pointer handlers only — nothing ever blocks scrolling) ──
+  function pressStart(e: React.PointerEvent, task: Task, col: Column) {
+    if (!coarse || e.pointerType === 'mouse') return;
     if ((e.target as HTMLElement).closest('input, .task-actions')) return;
-    const sx = e.touches[0].clientX, sy = e.touches[0].clientY;
-    if (gesture.current) clearTimeout(gesture.current.timer);
-    const g = { task, col, sx, sy, lifted: false, timer: 0 };
-    g.timer = window.setTimeout(() => {
-      g.lifted = true;
-      overRef.current = null;
-      navigator.vibrate?.(12);
-      setTouch({ task, from: col, x: sx, y: sy });
-    }, LONG_PRESS_MS);
-    gesture.current = g;
+    pressEnd();
+    const x = e.clientX, y = e.clientY;
+    const timer = window.setTimeout(() => { press.current = null; navigator.vibrate?.(12); setSheet({ task, from: col }); }, LONG_PRESS_MS);
+    press.current = { timer, x, y };
+  }
+  function pressMove(e: React.PointerEvent) {
+    const pr = press.current;
+    if (pr && Math.hypot(e.clientX - pr.x, e.clientY - pr.y) > 10) pressEnd();
+  }
+  function pressEnd() { if (press.current) { clearTimeout(press.current.timer); press.current = null; } }
+  function pick(target: string) {
+    const st = sheet;
+    setSheet(null);
+    if (st) p.onDrop(st.task, target, 'long_press');
   }
 
   const row = (t: Task, col: Column) => (
-    <div key={t.id} className={`board-card${touch?.task.id === t.id ? ' lifted' : ''}`} role="presentation"
-      onClick={() => p.onSelect(t.id)} onTouchStart={e => onTouchStart(e, t, col)} onContextMenu={e => { if (coarse) e.preventDefault(); }}>
+    <div key={t.id} className={`board-card${sheet?.task.id === t.id ? ' lifted' : ''}`} role="presentation"
+      onClick={() => p.onSelect(t.id)} onPointerDown={e => pressStart(e, t, col)} onPointerMove={pressMove} onPointerUp={pressEnd} onPointerCancel={pressEnd}
+      onContextMenu={e => { if (coarse) e.preventDefault(); }}>
       <TaskRow task={t} areaMap={areaMap} dayId={day} selected={t.id === selId} tracked={tracked.get(t.id)} nativeDrag={!coarse}
         onOpen={x => p.onOpen(x.id)} onToday={p.onToday} />
     </div>
@@ -166,7 +135,7 @@ export function TaskBoard(p: Props) {
         const same = !!forTask?.areaId && forTask.areaId === b.areaId;
         const cap = capacity({ ...b, start: Math.max(b.start, minute) }, dayTasks.filter(t => t.id !== forTask?.id));
         return (
-          <div key={b.id} className={`zone${same ? ' same' : ''}${(over === target || touchOver === target) ? ' on' : ''}`} data-color={area?.color ?? 'gray'} {...(coarse ? { 'data-drop': target } : dropProps(target))}>
+          <div key={b.id} className={`zone${same ? ' same' : ''}${over === target ? ' on' : ''}`} data-color={area?.color ?? 'gray'} {...(coarse ? { 'data-drop': target } : dropProps(target))}>
             <span className="dot" />
             <span className="tabular muted">{fmtMin(b.start)}</span>
             <span className="zone-name">{b.title}</span>
@@ -204,7 +173,7 @@ export function TaskBoard(p: Props) {
         {COLUMNS.map(c => {
           const n = c === 'done' ? 0 : cols[c].length;
           return (
-            <button key={c} type="button" aria-pressed={active === c} data-drop={`col:${c}`} className={touchOver === `col:${c}` ? 'on' : ''} onClick={() => scrollToCol(c)}>
+            <button key={c} type="button" aria-pressed={active === c} data-drop={`col:${c}`} onClick={() => scrollToCol(c)}>
               {m.tasks.lists[c]}{n > 0 && <span className="tabular">{n}</span>}
             </button>
           );
@@ -262,27 +231,36 @@ export function TaskBoard(p: Props) {
           </>
         ))}
       </div>
-      {touch && createPortal(
+      {sheet && createPortal(
         <>
-          <div className="lift-ghost" data-color={areaMap.get(touch.task.areaId ?? '')?.color ?? 'gray'} style={{ left: touch.x, top: touch.y }}>{touch.task.title}</div>
-          <div className="dock" role="presentation">
-            {(touchOver === 'col:today' || touchOver?.startsWith('block:')) && ahead.length > 0 && (
-              <div className="dock-panel" data-drop="col:today">
-                <span className="sublabel">{m.tasks.board.dropBlock}</span>
-                {blockZones(ahead, touch.task, 'zones')}
-              </div>
-            )}
+          <div className="modal-backdrop" onClick={() => setSheet(null)} />
+          <div className="modal move-sheet" role="dialog" aria-label={m.tasks.board.moveTo}>
+            <span className="label">{m.tasks.board.moveTo}</span>
+            <b className="move-title">{sheet.task.title}</b>
             <div className="dock-row">
-              {COLUMNS.map(c => {
+              {COLUMNS.filter(c => c !== sheet.from).map(c => {
                 const Icon = COL_ICON[c];
-                const on = touchOver === `col:${c}` || (c === 'today' && !!touchOver?.startsWith('block:'));
-                return (
-                  <div key={c} className={`dock-target${on ? ' on' : ''}${touch.from === c ? ' from' : ''}`} data-drop={`col:${c}`}>
-                    <Icon size={18} /><span>{m.tasks.lists[c]}</span>
-                  </div>
-                );
+                return <button key={c} type="button" className="dock-target" onClick={() => pick(`col:${c}`)}><Icon size={18} /><span>{m.tasks.lists[c]}</span></button>;
               })}
             </div>
+            {ahead.length > 0 && (
+              <>
+                <span className="sublabel">{m.tasks.board.dropBlock}</span>
+                <div className="zones">
+                  {ahead.map(b => {
+                    const area = areaMap.get(b.areaId);
+                    const same = !!sheet.task.areaId && sheet.task.areaId === b.areaId;
+                    const cap = capacity({ ...b, start: Math.max(b.start, minute) }, dayTasks.filter(t => t.id !== sheet.task.id));
+                    return (
+                      <button key={b.id} type="button" className={`zone${same ? ' same' : ''}`} data-color={area?.color ?? 'gray'} onClick={() => pick(`block:${b.id}`)}>
+                        <span className="dot" /><span className="tabular muted">{fmtMin(b.start)}</span><span className="zone-name">{b.title}</span>
+                        <span className="tabular muted">{m.tasks.fit.free(fmtDuration(Math.max(0, cap.available - cap.estimated)))}</span>
+                      </button>
+                    );
+                  })}
+                </div>
+              </>
+            )}
           </div>
         </>,
         document.body,

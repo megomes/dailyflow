@@ -21,7 +21,8 @@ export async function POST(req: Request) {
     const found = (await db.query(`select id, data, updated_at from sync_records where entity = 'task' and id = $1 and not deleted`, [taskId])) as { id: string; data: Record<string, unknown>; updated_at: string }[];
     if (!found[0]) return Response.json({ error: 'not_found' }, { status: 404 });
     const task = { ...found[0].data, id: found[0].id, updatedAt: new Date(found[0].updated_at).toISOString() } as unknown as Task & { updatedAt: string };
-    const { ops, message } = doneOps(task, new Date(), () => crypto.randomUUID());
+    const pref = (await db.query(`select data from sync_records where entity = 'pref' and id = 'prefs' and not deleted`)) as { data: { recurLeadDays?: number } }[];
+    const { ops, message } = doneOps(task, new Date(), () => crypto.randomUUID(), pref[0]?.data.recurLeadDays ?? 1);
     await write(ops, deviceId);
     return Response.json({ ok: true, message, changed: ops.length });
   }

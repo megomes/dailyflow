@@ -20,6 +20,16 @@ describe('quick actions', () => {
     expect(quickOps('stop', { blocks, records: [running] }, at, 'America/Sao_Paulo', 4, () => 'x').ops[0]).toMatchObject({ data: { end: 620 } });
     expect(quickOps('stop', { blocks, records: [] }, at, 'America/Sao_Paulo', 4, () => 'x').message).toBe('Nothing running');
   });
+  it('starting a block already running alongside promotes it instead of a second timer (note #23)', () => {
+    const main = { id: 'm', dayId: '2026-10-05', start: 560, end: null, areaId: 'area-maker', title: 'Maker', source: 'live', createdAt: '', updatedAt: '' } as TimeRecord;
+    const side = { id: 's', dayId: '2026-10-05', start: 600, end: null, areaId: 'area-work', title: 'Work', blockId: 'w', alongside: true, source: 'live', createdAt: '', updatedAt: '' } as TimeRecord;
+    const { ops } = quickOps('start', { blocks, records: [side, main] }, at, 'America/Sao_Paulo', 4, () => 'new');
+    expect(ops).toHaveLength(2);
+    expect(ops[0]).toMatchObject({ id: 'm', data: { end: 620 } });
+    expect(ops[1]).toMatchObject({ id: 's', data: { alongside: false, end: null } });
+    const stopped = quickOps('stop', { blocks, records: [side, main] }, at, 'America/Sao_Paulo', 4, () => 'x').ops;
+    expect(stopped.map(o => o.id)).toEqual(['m', 's']);
+  });
 });
 
 describe('checking off from a widget', () => {

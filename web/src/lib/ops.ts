@@ -106,7 +106,16 @@ export async function startActivity(dayId: string, a: { areaId: string; title: s
   // `from` backdates the start (e.g. “since 09:00”): the previous activity ends there.
   const now = from && from.getTime() < Date.now() ? from : new Date();
   const running = await runningRecord();
-  if (running) await stopActivity(running.id, now);
+  // Already running alongside (e.g. Work started next to Maker, then “Switch” to Work): it becomes
+  // the main one instead of a second timer for the same thing (note #23).
+  const same = (await getDB().timeRecords.toArray()).find(r => r.end == null && !r.deleted && r.alongside && r.id !== running?.id
+    && (a.blockId ? r.blockId === a.blockId : r.areaId === a.areaId && (!a.title || r.title === a.title)));
+  if (running) await stopActivity(running.id, now, false);
+  if (same) {
+    await update<TimeRecord>('time_record', same.id, { alongside: false });
+    track('activity_switched', { source: a.source, area: a.areaId, merged_alongside: true, had_running: !!running });
+    return { ...same, alongside: false };
+  }
   const start = Math.round(minuteOfDay(dayId, now));
   const rec: TimeRecord = {
     id: uid(), dayId, start, end: null, startedAt: now.toISOString(), areaId: a.areaId, title: a.title,
@@ -121,10 +130,15 @@ export async function startActivity(dayId: string, a: { areaId: string; title: s
   return rec;
 }
 
-export async function stopActivity(id: string, at = new Date()) {
+/** Stops one activity. When the main one stops, something still running alongside takes its place (note #23). */
+export async function stopActivity(id: string, at = new Date(), promote = true) {
   const r = await getDB().timeRecords.get(id);
   if (!r || r.end != null) return;
   const end = Math.round(minuteOfDay(r.dayId, at));
+  if (promote && !r.alongside) {
+    const next = (await getDB().timeRecords.toArray()).filter(x => x.end == null && !x.deleted && x.alongside && x.id !== id).sort((x, y) => x.start - y.start)[0];
+    if (next) await update<TimeRecord>('time_record', next.id, { alongside: false });
+  }
   if (end - r.start < 1) { await remove('time_record', id); track('block_finished', { discarded: true }); return; }
   await update<TimeRecord>('time_record', id, { end });
   const block = r.blockId ? await getDB().dayBlocks.get(r.blockId) : undefined;
@@ -151,6 +165,12 @@ export async function updateRecord(id: string, patch: Partial<TimeRecord>, field
   if (!r) return;
   // A running activity whose start is edited keeps its exact start in step (the timers count from it).
   const startedAt = patch.start != null && r.end == null ? { startedAt: dateAtMinute(r.dayId, patch.start).toISOString() } : {};
+  // A record still carrying an inherited name (its area's, or the planned block's it was drawn over)
+  // follows the area when it changes; a name you typed stays (note #21).
+  if (patch.areaId && patch.areaId !== r.areaId && patch.title === undefined) {
+    const [from, to, block] = await Promise.all([getDB().areas.get(r.areaId), getDB().areas.get(patch.areaId), r.blockId ? getDB().dayBlocks.get(r.blockId) : undefined]);
+    if (to && (!r.title || r.title === from?.name || r.title === block?.title)) patch = { ...patch, title: to.name };
+  }
   await update<TimeRecord>('time_record', id, { ...patch, ...startedAt, ...(await markHistorical(r.dayId)) });
   track('time_record_edited', { field, source: r.source, days_ago: daysAgo(r.dayId) });
 }

@@ -12,7 +12,8 @@ export function quickOps(action: 'start' | 'stop' | 'next', rows: { blocks: DayB
   const { day, min } = logicalAt(at, tz, cutoff);
   const ts = at.toISOString();
   const ops: QuickOp[] = [];
-  const running = rows.records.find(r => !r.deleted && r.end == null);
+  const open = rows.records.filter(r => !r.deleted && r.end == null);
+  const running = open.find(r => !r.alongside) ?? open[0];
   const minuteFor = (r: TimeRecord) => (r.dayId === day ? min : min + (Date.parse(`${day}T00:00:00Z`) - Date.parse(`${r.dayId}T00:00:00Z`)) / 60000);
   const stop = (r: TimeRecord) => {
     const end = Math.round(minuteFor(r));
@@ -21,9 +22,16 @@ export function quickOps(action: 'start' | 'stop' | 'next', rows: { blocks: DayB
       ? { entity: 'time_record', id, updatedAt: ts, deleted: true, data: rest }
       : { entity: 'time_record', id, updatedAt: ts, deleted: false, data: { ...rest, end } });
   };
+  /** Something running alongside becomes the main activity (note #23: never two timers for one thing). */
+  const promote = (r: TimeRecord) => {
+    const { id, updatedAt: _u, deleted: _d, ...rest } = r;
+    ops.push({ entity: 'time_record', id, updatedAt: new Date(at.getTime() + 1).toISOString(), deleted: false, data: { ...rest, alongside: false } });
+  };
   if (action === 'stop') {
     if (!running) return { ops, message: 'Nothing running' };
     stop(running);
+    const next = open.filter(r => r.id !== running.id && r.alongside).sort((x, y) => x.start - y.start)[0];
+    if (!running.alongside && next) promote(next);
     return { ops, message: `Stopped ${running.title}` };
   }
   const live = rows.blocks.filter(b => !b.deleted && b.dayId === day).sort((a, b) => a.start - b.start);
@@ -33,7 +41,9 @@ export function quickOps(action: 'start' | 'stop' | 'next', rows: { blocks: DayB
   const block = action === 'next' ? live.find(b => b.start > min && b.id !== current?.id) : current;
   if (!block) return { ops, message: action === 'next' ? 'Nothing next' : 'Nothing planned now' };
   if (running?.blockId === block.id) return { ops, message: `Already on ${block.title}` };
+  const same = open.find(r => r.blockId === block.id && r.id !== running?.id);
   if (running) stop(running);
+  if (same) { promote(same); return { ops, message: `Now on ${block.title}` }; }
   ops.push({ entity: 'time_record', id: newId(), updatedAt: new Date(at.getTime() + 1).toISOString(), deleted: false, data: {
     dayId: day, start: min, end: null, startedAt: ts, areaId: block.areaId, title: block.title, blockId: block.id, source: 'live', createdAt: ts,
   } });

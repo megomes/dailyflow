@@ -192,6 +192,35 @@ describe('two things at once (note #8) and edited starts', () => {
     await startActivity('2026-10-05', { areaId: 'area-music', title: 'Guitar', source: 'switch' });
     expect((await getDB().timeRecords.toArray()).filter(r => r.end == null && !r.deleted).map(r => r.title).sort()).toEqual(['Guitar', 'Maker']);
   });
+  it('switching to what already runs alongside keeps one timer (note #23)', async () => {
+    const { startActivity, startAlongside, runningRecord, stopActivity } = await import('./ops');
+    const day = '2026-10-05';
+    await ensureDay(day);
+    for (const r of await getDB().timeRecords.toArray()) await getDB().timeRecords.delete(r.id);
+    await startActivity(day, { areaId: 'area-maker', title: 'Maker', source: 'live' });
+    const work = await startAlongside(day, { areaId: 'area-work', title: 'Work', blockId: 'bw' });
+    await startActivity(day, { areaId: 'area-work', title: 'Work', blockId: 'bw', source: 'live' });
+    const open = (await getDB().timeRecords.toArray()).filter(r => r.end == null && !r.deleted);
+    expect(open.map(r => r.title)).toEqual(['Work']);
+    expect((await runningRecord())?.id).toBe(work);
+    // Stopping the main one hands over to what runs alongside.
+    const g = await startAlongside(day, { areaId: 'area-music', title: 'Guitar' });
+    await stopActivity(work!);
+    expect((await runningRecord())?.id).toBe(g);
+  });
+  it('a record keeps following its area until renamed (note #21)', async () => {
+    const { addRecord, updateRecord } = await import('./ops');
+    const day = '2026-10-05';
+    await ensureDay(day);
+    const fam = (await getDB().areas.get('area-personal'))!.name;
+    const rec = await addRecord(day, { start: 600, end: 660, areaId: 'area-personal', title: fam }, 'manual');
+    await updateRecord(rec.id, { areaId: 'area-maker' }, 'area');
+    const maker = (await getDB().areas.get('area-maker'))!.name;
+    expect((await getDB().timeRecords.get(rec.id))?.title).toBe(maker);
+    await updateRecord(rec.id, { title: 'Soldering' }, 'title');
+    await updateRecord(rec.id, { areaId: 'area-music' }, 'area');
+    expect((await getDB().timeRecords.get(rec.id))?.title).toBe('Soldering');
+  });
 });
 
 describe('calendar events inside blocks', () => {

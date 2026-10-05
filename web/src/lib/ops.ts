@@ -193,6 +193,14 @@ export async function addBlock(dayId: string, b: Omit<DayBlock, 'id' | 'dayId' |
   return { id: block.id, revId };
 }
 
+/** “Keep both”: remembered on the day, so no screen or device asks again about this pair. */
+export async function keepOverlap(dayId: string, key: string) {
+  const day = await getDB().days.get(dayId);
+  if (!day) return;
+  await update<Day>('day', dayId, { keptOverlaps: [...new Set([...(day.keptOverlaps ?? []), key])] });
+  track('overlap_kept', {});
+}
+
 export async function patchBlock(id: string, patch: Partial<DayBlock>, kind: Revision['kind']) {
   const before = await getDB().dayBlocks.get(id);
   if (!before) return null;
@@ -263,6 +271,12 @@ export async function scheduleTask(id: string, dayId: string, blockId?: string, 
   const addedLate = already ? t.addedLate : late ? new Date().toISOString() : undefined;
   await update<Task>('task', id, { status: t.status === 'done' ? 'done' : 'today', dayId, blockId, addedLate, ...areaPatch });
   track('task_scheduled', { target: blockId ? 'block' : 'day', surface, carried: (t.carried ?? []).length, after_start: late });
+}
+
+/** Snooze (“Later”): out of sight until [until]; null brings it back now. */
+export async function deferTask(id: string, until: string | null, surface: string) {
+  await update<Task>('task', id, { deferUntil: until ?? undefined });
+  track(until ? 'task_deferred' : 'task_undeferred', { surface, until });
 }
 
 export async function unscheduleTask(id: string) {

@@ -62,6 +62,8 @@ export interface Day extends SyncFields {
   closedAt?: string;
   reopenedAt?: string;
   reflection?: Reflection;
+  /** Overlapping block pairs the user chose to keep ("a|b", ids sorted): never asked about again. */
+  keptOverlaps?: string[];
 }
 
 export interface DayBlock extends SyncFields {
@@ -117,6 +119,8 @@ export interface Task extends SyncFields {
   carried?: string[];
   /** When it was put on its day after that day had started (not in the plan made for it). */
   addedLate?: string;
+  /** Snoozed: hidden from Inbox/Backlog/Not scheduled until this day (YYYY-MM-DD), then it comes back by itself. */
+  deferUntil?: string;
   // E12 — optional fields, all empty by default so the core stays light.
   category?: 'work' | 'personal';
   project?: string;
@@ -134,6 +138,12 @@ export interface Recurrence {
   freq: 'daily' | 'weekdays' | 'weekly' | 'monthly';
   /** Every N days/weeks/months (default 1). */
   interval?: number;
+  /** Weekly: day of the week (0 = Sunday … 6 = Saturday), e.g. every Friday. */
+  weekday?: number;
+  /** Monthly: day of the month (1–31; clamped to the month's last day). */
+  monthDay?: number;
+  /** Monthly: a Saturday/Sunday moves to the next Monday (e.g. invoices on the 1st or next business day). */
+  businessDay?: boolean;
 }
 
 /** One change to the plan after Start day (spec §7). */

@@ -14,7 +14,7 @@ import { getDB } from '@/lib/db';
 import { useClock, useCoarsePointer, useIsMobile } from '@/lib/hooks';
 import { deleteTask, moveTask, placeOf, restoreTask, scheduleTask, toggleTaskDone, trackedByTask, updateTask, type TaskPlace } from '@/lib/ops';
 import { activeAreas } from '@/lib/repo';
-import { columnOf, COLUMNS, type Column } from '@/lib/taskBoard';
+import { columnOf, COLUMNS, isSnoozed, type Column } from '@/lib/taskBoard';
 import { facets, isFiltering, matches, type TaskFilter } from '@/lib/taskFilter';
 import type { Task } from '@/lib/types';
 
@@ -41,12 +41,14 @@ export default function TasksPage() {
   const fac = useMemo(() => facets(unfiltered), [unfiltered]);
   const cols = useMemo(() => {
     const by: Record<Column, Task[]> = { inbox: [], backlog: [], today: [], done: [] };
-    for (const t of all) { const c = columnOf(t, day); if (c) by[c].push(t); }
+    const snoozed: Task[] = [];
+    for (const t of all) { if (isSnoozed(t, day)) { snoozed.push(t); continue; } const c = columnOf(t, day); if (c) by[c].push(t); }
+    snoozed.sort((a, b) => (a.deferUntil ?? '').localeCompare(b.deferUntil ?? ''));
     by.inbox.sort((a, b) => b.sort - a.sort);
     by.backlog.sort((a, b) => prioRank(a) - prioRank(b) || (a.due ?? '9').localeCompare(b.due ?? '9') || a.sort - b.sort);
     by.today.sort((a, b) => a.sort - b.sort);
     by.done.sort((a, b) => (b.doneAt ?? '').localeCompare(a.doneAt ?? ''));
-    return by;
+    return { ...by, snoozed };
   }, [all, day]);
   const sel = all.find(t => t.id === selId) ?? null;
   const detail = all.find(t => t.id === open) ?? null;
@@ -163,7 +165,7 @@ export default function TasksPage() {
         </select>
         {isFiltering(filter) && <button type="button" className="btn sm ghost" onClick={() => setFilter({})}>{m.tasks.clear}</button>}
       </div>
-      <TaskBoard day={day} minute={minute} cols={cols} blocks={d.blocks} dayTasks={d.tasks} areaMap={areaMap} tracked={tracked} selId={selId} coarse={coarse} jump={jump}
+      <TaskBoard day={day} minute={minute} cols={cols} snoozed={cols.snoozed} blocks={d.blocks} dayTasks={d.tasks} areaMap={areaMap} tracked={tracked} selId={selId} coarse={coarse} jump={jump}
         todayTop={!isMobile ? fitCard : undefined}
         onSelect={setSelId} onOpen={id => { setSelId(id); setOpen(id); }}
         onToday={t => void move(t, 'col:today', 'button')} onDrop={(t, target, surface) => void move(t, target, surface)} />

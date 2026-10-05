@@ -3,6 +3,7 @@ import { useLiveQuery } from 'dexie-react-hooks';
 import { useMemo } from 'react';
 import { getDB } from '@/lib/db';
 import { liveBlocks } from '@/lib/repo';
+import { logicalDay } from '@/lib/time';
 import type { Area, Day, DayBlock, DayStatus, FocusSession, Revision, Task, TimeRecord } from '@/lib/types';
 
 export interface DayData {
@@ -47,7 +48,9 @@ export function useDay(dayId: string): DayData {
 /** Backlog/Inbox tasks not scheduled on any day, for the tray and planning. */
 export function useOpenTasks() {
   const rows = useLiveQuery(() => getDB().tasks.where('status').anyOf('inbox', 'backlog').toArray(), []);
-  return useMemo(() => (rows ?? []).filter(t => !t.deleted).sort((a, b) => prioRank(a) - prioRank(b) || a.sort - b.sort), [rows]);
+  // Snoozed tasks stay out of sight until their day.
+  const today = logicalDay();
+  return useMemo(() => (rows ?? []).filter(t => !t.deleted && !(t.deferUntil && t.deferUntil > today)).sort((a, b) => prioRank(a) - prioRank(b) || a.sort - b.sort), [rows, today]);
 }
 
 export function useAllSessions() {

@@ -6,7 +6,7 @@ import { m } from '@/i18n/en';
 import { getDB } from '@/lib/db';
 import { track } from '@/lib/analytics';
 import { deleteFocus, deleteTask, editFocusMinutes, PRIORITIES, scheduleTask, scheduleTaskOn, unscheduleTask, updateTask } from '@/lib/ops';
-import { describe } from '@/lib/recurrence';
+import { describe, firstDate } from '@/lib/recurrence';
 import { uid } from '@/lib/repo';
 import { facets } from '@/lib/taskFilter';
 import { liveBlocks } from '@/lib/repo';
@@ -15,10 +15,46 @@ import type { Area, Recurrence, Task } from '@/lib/types';
 import { AreaPicker } from '../day/Inspectors';
 
 export const ESTIMATES = [15, 30, 45, 60, 90, 120, 180];
-const REPEATS: [string, Recurrence][] = [
-  ['daily:1', { freq: 'daily' }], ['weekdays:1', { freq: 'weekdays' }], ['weekly:1', { freq: 'weekly' }],
-  ['weekly:2', { freq: 'weekly', interval: 2 }], ['monthly:1', { freq: 'monthly' }],
-];
+const KINDS = ['daily', 'weekdays', 'weekly', 'biweekly', 'monthly'] as const;
+type Kind = (typeof KINDS)[number];
+const WEEKDAYS = ['S', 'M', 'T', 'W', 'T', 'F', 'S'];
+
+/** Repeat: how often, then the details that matter — which weekday, which day of the month (or the next business day). */
+function RepeatPicker({ rule, day, onChange }: { rule?: Recurrence; day: string; onChange: (r: Recurrence | undefined) => void }) {
+  const kind: Kind | '' = !rule ? '' : rule.freq === 'weekly' && (rule.interval ?? 1) === 2 ? 'biweekly' : rule.freq;
+  const today = new Date(`${day}T12:00:00`);
+  function pick(k: Kind | '') {
+    if (!k) return onChange(undefined);
+    if (k === 'weekly' || k === 'biweekly') return onChange({ freq: 'weekly', interval: k === 'biweekly' ? 2 : 1, weekday: rule?.weekday ?? today.getDay() });
+    if (k === 'monthly') return onChange({ freq: 'monthly', monthDay: rule?.monthDay ?? today.getDate(), businessDay: rule?.businessDay });
+    onChange({ freq: k });
+  }
+  return (
+    <div className="repeat">
+      <select className="input" value={kind} onChange={e => pick(e.target.value as Kind | '')}>
+        <option value="">{m.tasks.noRepeat}</option>
+        {KINDS.map(k => <option key={k} value={k}>{m.tasks.repeat.kinds[k]}</option>)}
+      </select>
+      {rule?.freq === 'weekly' && (
+        <div className="seg repeat-days" role="group" aria-label={m.tasks.repeat.onDay}>
+          {WEEKDAYS.map((w, i) => (
+            <button key={i} type="button" aria-pressed={(rule.weekday ?? today.getDay()) === i} onClick={() => onChange({ ...rule, weekday: i })}>{w}</button>
+          ))}
+        </div>
+      )}
+      {rule?.freq === 'monthly' && (
+        <div className="row wrap repeat-month">
+          <label className="row">{m.tasks.repeat.onThe}
+            <input className="input" type="number" min={1} max={31} value={rule.monthDay ?? today.getDate()}
+              onChange={e => onChange({ ...rule, monthDay: Math.max(1, Math.min(31, Number(e.target.value) || 1)) })} />
+          </label>
+          <label className="row"><input type="checkbox" checked={!!rule.businessDay} onChange={e => onChange({ ...rule, businessDay: e.target.checked || undefined })} />{m.tasks.repeat.businessDay}</label>
+        </div>
+      )}
+      {rule && <span className="muted repeat-desc">{describe(rule)}</span>}
+    </div>
+  );
+}
 
 /**
  * One form for creating and editing a to-do (Things/Todoist detail view). Edit mode writes on
@@ -107,17 +143,14 @@ export function TaskForm({ task, areas, day, onPatch, create = false, autoFocusT
           </form>
         </div>
       </div>
-      <label className="field"><span>{m.tasks.fields.repeat}</span>
-        <select className="input" value={task.recurrence ? `${task.recurrence.freq}:${task.recurrence.interval ?? 1}` : ''}
-          onChange={e => {
-            const [freq, n] = e.target.value.split(':');
-            onPatch({ recurrence: freq ? { freq: freq as Recurrence['freq'], interval: Number(n) || 1 } : undefined }, ['recurrence']);
-            if (freq) track('recurrence_created', { rule: e.target.value });
-          }}>
-          <option value="">{m.tasks.noRepeat}</option>
-          {REPEATS.map(([v, r]) => <option key={v} value={v}>{describe(r)}</option>)}
-        </select>
-      </label>
+      <div className="field"><span>{m.tasks.fields.repeat}</span>
+        <RepeatPicker rule={task.recurrence} day={day} onChange={r => {
+          // A rule anchored to a weekday / day of the month sets the due date to its first occurrence.
+          const anchored = r && (r.weekday != null || r.monthDay != null);
+          onPatch({ recurrence: r, ...(r && (anchored || !task.due) ? { due: firstDate(r, day) } : {}) }, ['recurrence']);
+          if (r) track('recurrence_created', { rule: `${r.freq}:${r.interval ?? 1}`, weekday: r.weekday, month_day: r.monthDay, business_day: !!r.businessDay });
+        }} />
+      </div>
       <label className="field"><span>{m.tasks.fields.notes}</span>
         <textarea className="input" value={create ? task.notes ?? '' : notes} onChange={e => (create ? onPatch({ notes: e.target.value }) : setNotes(e.target.value))} onBlur={() => { if (!create && notes !== (task.notes ?? '')) onPatch({ notes }); }} />
       </label>

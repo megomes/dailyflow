@@ -19,6 +19,8 @@ interface Props {
   day: string;
   minute: number;
   cols: Record<Column, Task[]>;
+  /** Snoozed (“Later”) tasks: out of the columns until their day, listed collapsed under the Backlog. */
+  snoozed?: Task[];
   /** Today's blocks (time order) and to-dos, for grouping the Today column and the drop zones. */
   blocks: DayBlock[];
   dayTasks: Task[];
@@ -88,44 +90,55 @@ export function TaskBoard(p: Props) {
   });
 
   // ── Touch: long-press to lift, drop on the dock ──
-  function onTouchStart(e: ReactTouchEvent, task: Task, col: Column) {
-    if (!coarse || e.touches.length !== 1) return;
-    if ((e.target as HTMLElement).closest('input, .task-actions')) return;
-    const sx = e.touches[0].clientX, sy = e.touches[0].clientY;
-    let lifted = false;
-    const timer = window.setTimeout(() => {
-      lifted = true;
-      overRef.current = null;
-      navigator.vibrate?.(12);
-      setTouch({ task, from: col, x: sx, y: sy });
-    }, LONG_PRESS_MS);
-    const stop = () => {
-      clearTimeout(timer);
-      document.removeEventListener('touchmove', move);
-      document.removeEventListener('touchend', end);
-      document.removeEventListener('touchcancel', cancel);
-    };
+  // One listener on the board for the whole gesture (registered once): it only blocks scrolling
+  // while a card is lifted, so ordinary swipes and scrolls are never held up.
+  const gesture = useRef<{ task: Task; col: Column; sx: number; sy: number; lifted: boolean; timer: number } | null>(null);
+  const latest = useRef(p.onDrop);
+  useEffect(() => { latest.current = p.onDrop; });
+  useEffect(() => {
+    const el = boardRef.current;
+    if (!el || !coarse) return;
+    const reset = () => { const g = gesture.current; if (g) clearTimeout(g.timer); gesture.current = null; };
     const move = (ev: TouchEvent) => {
+      const g = gesture.current;
+      if (!g) return;
       const q = ev.touches[0];
-      if (!lifted) { if (Math.hypot(q.clientX - sx, q.clientY - sy) > 10) stop(); return; }
+      if (!g.lifted) { if (Math.hypot(q.clientX - g.sx, q.clientY - g.sy) > 10) reset(); return; }
       ev.preventDefault();
       const target = document.elementFromPoint(q.clientX, q.clientY)?.closest<HTMLElement>('[data-drop]')?.dataset.drop ?? null;
       if (target !== overRef.current) { overRef.current = target; setTouchOver(target); if (target) navigator.vibrate?.(4); }
       setTouch(d => d && { ...d, x: q.clientX, y: q.clientY });
     };
     const end = (ev: TouchEvent) => {
-      if (lifted) {
+      const g = gesture.current;
+      if (g?.lifted) {
         ev.preventDefault();
         const target = overRef.current;
         setTouch(null); setTouchOver(null);
-        if (target) p.onDrop(task, target, 'long_press');
+        if (target) latest.current(g.task, target, 'long_press');
       }
-      stop();
+      reset();
     };
-    const cancel = () => { if (lifted) { setTouch(null); setTouchOver(null); } stop(); };
-    document.addEventListener('touchmove', move, { passive: false });
-    document.addEventListener('touchend', end, { passive: false });
-    document.addEventListener('touchcancel', cancel);
+    const cancel = () => { if (gesture.current?.lifted) { setTouch(null); setTouchOver(null); } reset(); };
+    el.addEventListener('touchmove', move, { passive: false });
+    el.addEventListener('touchend', end, { passive: false });
+    el.addEventListener('touchcancel', cancel);
+    return () => { el.removeEventListener('touchmove', move); el.removeEventListener('touchend', end); el.removeEventListener('touchcancel', cancel); };
+  }, [coarse]);
+
+  function onTouchStart(e: ReactTouchEvent, task: Task, col: Column) {
+    if (!coarse || e.touches.length !== 1) return;
+    if ((e.target as HTMLElement).closest('input, .task-actions')) return;
+    const sx = e.touches[0].clientX, sy = e.touches[0].clientY;
+    if (gesture.current) clearTimeout(gesture.current.timer);
+    const g = { task, col, sx, sy, lifted: false, timer: 0 };
+    g.timer = window.setTimeout(() => {
+      g.lifted = true;
+      overRef.current = null;
+      navigator.vibrate?.(12);
+      setTouch({ task, from: col, x: sx, y: sy });
+    }, LONG_PRESS_MS);
+    gesture.current = g;
   }
 
   const row = (t: Task, col: Column) => (
@@ -199,7 +212,17 @@ export function TaskBoard(p: Props) {
       </nav>
       <div className="board" ref={boardRef} onScroll={onScroll}>
         {column('inbox', cols.inbox.length ? cols.inbox.map(t => row(t, 'inbox')) : <p className="col-empty">{m.tasks.board.empty.inbox}</p>)}
-        {column('backlog', cols.backlog.length ? cols.backlog.map(t => row(t, 'backlog')) : <p className="col-empty">{m.tasks.board.empty.backlog}</p>)}
+        {column('backlog', (
+          <>
+            {cols.backlog.length ? cols.backlog.map(t => row(t, 'backlog')) : <p className="col-empty">{m.tasks.board.empty.backlog}</p>}
+            {(p.snoozed?.length ?? 0) > 0 && (
+              <details className="col-snoozed">
+                <summary className="sublabel">{m.tasks.later.snoozed(p.snoozed!.length)}</summary>
+                <div className="col-group">{p.snoozed!.map(t => row(t, 'backlog'))}</div>
+              </details>
+            )}
+          </>
+        ))}
         {column('today', (
           <>
             {p.todayTop}

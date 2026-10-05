@@ -1,8 +1,11 @@
 'use client';
 import type { DragEvent } from 'react';
-import { CalendarClock, CornerUpLeft, GripVertical, Repeat, Timer } from 'lucide-react';
+import { useEffect, useRef, useState } from 'react';
+import { AlarmClock, CalendarClock, CornerUpLeft, GripVertical, Repeat, Timer } from 'lucide-react';
+import { deferDate } from '@/lib/taskBoard';
+import { logicalDay } from '@/lib/time';
 import { m } from '@/i18n/en';
-import { PRESETS, scheduleTask, startFocus, toggleTaskDone, unscheduleTask } from '@/lib/ops';
+import { deferTask, PRESETS, scheduleTask, startFocus, toggleTaskDone, unscheduleTask } from '@/lib/ops';
 import { fmtDuration } from '@/lib/time';
 import type { Area, Task } from '@/lib/types';
 import { setDraggedTask } from './dragState';
@@ -29,6 +32,20 @@ export function TaskRow({ task: t, areaMap, dayId, compact, selected, tracked, o
   const done = t.status === 'done';
   const today = new Date().toISOString().slice(0, 10);
   const overdue = !!t.due && t.due < today && !done;
+  const [later, setLater] = useState(false);
+  const laterRef = useRef<HTMLSpanElement>(null);
+  useEffect(() => {
+    if (!later) return;
+    const close = (e: PointerEvent) => { if (!laterRef.current?.contains(e.target as Node)) setLater(false); };
+    document.addEventListener('pointerdown', close);
+    return () => document.removeEventListener('pointerdown', close);
+  }, [later]);
+  const canDefer = !done && (t.status === 'inbox' || t.status === 'backlog');
+  const snoozed = !!t.deferUntil && t.deferUntil > (dayId ?? logicalDay());
+  function defer(when: 'tomorrow' | 'week' | 'month' | null) {
+    setLater(false);
+    void deferTask(t.id, when ? deferDate(when, dayId ?? logicalDay()) : null, 'row');
+  }
 
   function dragStart(e: DragEvent) {
     e.dataTransfer.setData('text/df-task', t.id);
@@ -51,6 +68,7 @@ export function TaskRow({ task: t, areaMap, dayId, compact, selected, tracked, o
         {t.project && !compact && <span className="pill" data-color="gray">{t.project}</span>}
         {!compact && t.tags?.slice(0, 2).map(x => <span key={x} className="muted">#{x}</span>)}
         {t.status === 'today' && t.dayId && dayId && t.dayId > dayId && <span className="pill" data-color="blue">{m.tasks.onDay(fmtDue(t.dayId))}</span>}
+        {snoozed && <span className="pill" data-color="purple" title={m.tasks.later.snoozedTitle}>{m.tasks.later.until(fmtDue(t.deferUntil!))}</span>}
         {area && !compact && <span className="pill" data-color={area.color}>{area.name}</span>}
         {t.addedLate && t.status === 'today' && dayId && t.dayId === dayId && (
           <span className="pill" data-color="yellow" title={m.tasks.board.addedLateTitle}>{m.tasks.board.addedLate(new Date(t.addedLate).toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', hour12: false }))}</span>
@@ -63,6 +81,19 @@ export function TaskRow({ task: t, areaMap, dayId, compact, selected, tracked, o
       {!done && dayId && (
         <span className="task-actions">
           {t.status !== 'today' && <button type="button" className="btn icon sm ghost" title={m.tasks.toToday} aria-label={m.tasks.toToday} onClick={() => (onToday ? onToday(t) : void scheduleTask(t.id, dayId, undefined, 'button'))}><CalendarClock size={13} /></button>}
+          {canDefer && (
+            <span className="later-wrap" ref={laterRef}>
+              <button type="button" className="btn icon sm ghost" title={m.tasks.later.title} aria-label={m.tasks.later.title} aria-expanded={later} onClick={() => setLater(!later)}><AlarmClock size={13} /></button>
+              {later && (
+                <span className="later-menu" role="menu">
+                  <button type="button" role="menuitem" onClick={() => defer('tomorrow')}>{m.tasks.later.tomorrow}</button>
+                  <button type="button" role="menuitem" onClick={() => defer('week')}>{m.tasks.later.week}</button>
+                  <button type="button" role="menuitem" onClick={() => defer('month')}>{m.tasks.later.month}</button>
+                  {snoozed && <button type="button" role="menuitem" onClick={() => defer(null)}>{m.tasks.later.now}</button>}
+                </span>
+              )}
+            </span>
+          )}
           {t.status === 'today' && !compact && <button type="button" className="btn icon sm ghost" title={m.tasks.toBacklog} aria-label={m.tasks.toBacklog} onClick={() => void unscheduleTask(t.id)}><CornerUpLeft size={13} /></button>}
           <button type="button" className="btn icon sm ghost" title={m.focus.start} aria-label={m.focus.start}
             onClick={() => void startFocus(dayId, { preset: PRESETS[0], taskId: t.id, blockId: t.blockId, areaId: t.areaId ?? 'area-personal', title: t.title })}><Timer size={13} /></button>

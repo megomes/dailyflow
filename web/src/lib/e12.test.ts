@@ -56,3 +56,19 @@ describe('E12 operations', () => {
     expect(entityCsv(ex.data.area as Record<string, unknown>[]).split('\n')).toHaveLength(12);
   });
 });
+
+describe('richer recurrence (note #11)', () => {
+  it('repeats on a chosen weekday and on a day of the month or the next business day', async () => {
+    const { nextDate, firstDate, describe } = await import('./recurrence');
+    // Every Friday: from Fri 2026-10-09 → Fri 10-16; first from Mon 10-05 → Fri 10-09.
+    expect(nextDate({ freq: 'weekly', weekday: 5 }, '2026-10-09')).toBe('2026-10-16');
+    expect(firstDate({ freq: 'weekly', weekday: 5 }, '2026-10-05')).toBe('2026-10-09');
+    expect(describe({ freq: 'weekly', weekday: 5 })).toBe('Every Friday');
+    // Invoices on the 1st or the next business day: Nov 1st 2026 is a Sunday → Mon Nov 2nd; then Dec 1st (Tue).
+    const inv = { freq: 'monthly', monthDay: 1, businessDay: true } as const;
+    expect(nextDate(inv, '2026-10-01')).toBe('2026-11-02');
+    expect(nextDate(inv, '2026-11-02')).toBe('2026-12-01');
+    expect(firstDate(inv, '2026-10-05')).toBe('2026-11-02');
+    expect(describe(inv)).toBe('Monthly on the 1st (or next business day)');
+  });
+});

@@ -12,7 +12,7 @@ import { useDay, useOpenTasks } from '@/components/day/useDay';
 import { useDraggedTask } from '@/components/tasks/dragState';
 import { TaskRow } from '@/components/tasks/TaskRow';
 import { m } from '@/i18n/en';
-import { capacity, overlaps, recEnd } from '@/lib/actual';
+import { capacity, openOverlaps, recEnd } from '@/lib/actual';
 import { track } from '@/lib/analytics';
 import { getDB } from '@/lib/db';
 import { useClock, useIsMobile } from '@/lib/hooks';
@@ -46,7 +46,7 @@ function PlanInner() {
   }, [dayId]); // eslint-disable-line react-hooks/exhaustive-deps
   useEffect(() => { stepRef.current = step; track('planning_stage_viewed', { stage: step }); }, [step]);
 
-  const conflicts = useMemo(() => overlaps(d.blocks), [d.blocks]);
+  const conflicts = useMemo(() => openOverlaps(d.blocks, d.day?.keptOverlaps), [d.blocks, d.day?.keptOverlaps]);
   const overCap = useMemo(() => d.blocks.map(b => ({ b, c: capacity(b, d.tasks) })).filter(x => x.c.over), [d.blocks, d.tasks]);
 
   if (!d.ready) return <div className="page" />;
@@ -159,7 +159,7 @@ function PlanInner() {
         <div className="stack narrow">
           <b>{m.planning.conflictsTitle}</b>
           {conflicts.length === 0 && overCap.length === 0 && <span className="ok-line"><Check size={14} />{m.planning.noConflicts}</span>}
-          {conflicts.length > 0 && <ConflictsCard conflicts={conflicts} />}
+          {conflicts.length > 0 && <ConflictsCard dayId={dayId} conflicts={conflicts} />}
           {overCap.map(({ b, c }) => (
             <section key={b.id} className="card conflicts">
               <span className="label row"><AlertTriangle size={13} />{b.title}</span>

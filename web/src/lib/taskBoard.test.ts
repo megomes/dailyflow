@@ -61,3 +61,15 @@ describe('moving tasks on the board', () => {
     expect(await db.tasks.get(b.id)).toMatchObject({ status: 'backlog', dayId: undefined, addedLate: undefined });
   });
 });
+
+describe('snoozing (Later)', () => {
+  it('sends a task to tomorrow, next Monday or the 1st of next month, and hides it until then', async () => {
+    const { deferDate, isSnoozed } = await import('./taskBoard');
+    expect(deferDate('tomorrow', '2026-10-05')).toBe('2026-10-06');
+    expect(deferDate('week', '2026-10-05')).toBe('2026-10-12'); // Monday → next Monday
+    expect(deferDate('week', '2026-10-09')).toBe('2026-10-12'); // Friday → Monday
+    expect(deferDate('month', '2026-10-31')).toBe('2026-11-01');
+    expect(isSnoozed(t({ status: 'inbox', deferUntil: '2026-10-06' }), DAY)).toBe(true);
+    expect(isSnoozed(t({ status: 'inbox', deferUntil: DAY }), DAY)).toBe(false);
+  });
+});

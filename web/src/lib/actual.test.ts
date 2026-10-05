@@ -55,6 +55,13 @@ describe('what changed', () => {
     // Music had a record over it (family), so it counts as skipped for that part; 700–720 is just untracked.
     expect(lines.find(l => l.kind === 'area' && l.areaId === 'music')).toMatchObject({ planned: 40, actual: 0 });
   });
+  it('does not call a block skipped while it is still under way', () => {
+    const plan = [blk('w', 600, 720, 'work')];
+    const during = whatChanged(undefined, plan, [rec(600, 640, 'maker')], 640);
+    expect(during.find(l => l.kind === 'area' && l.areaId === 'work')).toBeUndefined();
+    const after = whatChanged(undefined, plan, [rec(600, 720, 'maker')], 730);
+    expect(after.find(l => l.kind === 'area' && l.areaId === 'work')).toMatchObject({ actual: 0 });
+  });
   it('describes plan changes against the baseline', () => {
     const base = [blk('a', 600, 660), blk('b', 700, 760), blk('c', 800, 860)];
     const cur = [blk('a', 780, 840), blk('b', 700, 730), blk('n', 900, 930)];

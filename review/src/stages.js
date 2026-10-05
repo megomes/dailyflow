@@ -411,6 +411,36 @@ const STAGES = [
     grow: ['Android e widgets', 'Relógio', 'Floresta'],
     daily: [], retro: [], logs: [['widget_opened_app', 'widget', 'Widgets substituem abrir o app?']],
     crit: ['Definidos quando a etapa for planejada'], fail: '' },
+
+  { id: 'EF', name: 'Floresta viva', short: 'Floresta', wave: 'wh', pri: 'P3', deps: ['EH', 'E7', 'E11'], dur: '2–3 semanas', icon: 'sunrise', state: 'rascunho',
+    nav: ['hoje', 'insights'], hero: '', wf: [],
+    q: 'Ver a vida crescer num mundo bonito me faz querer viver o plano, sem virar placar nem culpa?',
+    why: 'Nota #24: a Floresta atual (grade de 12 semanas com árvores SVG paradas) é feia, desmotivante e inútil. A refação troca a grade por um mundo vivo, com cara de jogo e muita animação, mantendo a regra da spec (§85): representa como a vida foi vivida, nada é perdido, descanso e família crescem igual, sem pontuação de produtividade.',
+    feats: [
+      ['sunrise', 'Arte primeiro: árvores low-poly 3D procedurais e bonitas (tronco com galhos, copa em camadas, luz suave, sombra, vento balançando), uma espécie por área com variações de idade (broto → muda → árvore → ancestral); protótipo visual aprovado antes de qualquer outra coisa', ['CAP-L4']],
+      ['layers', 'Um mundo só no lugar da grade: ilha 3D em que cada área é uma região (bioma próprio: Maker com vagalumes, Música com cerejeiras e notas no ar, Família com pomar e casinha, Atividade física com trilha na montanha, Descanso com lago…); arrastar, girar, zoom; tocar numa árvore mostra o dia e o que foi feito', ['CAP-L4']],
+      ['clock', 'Crescer ao vivo: enquanto uma atividade roda, uma semente brota e cresce em tempo real (no Forest, no card Agora e na pílula do computador); ao terminar, a árvore “assenta” na ilha com partículas', []],
+      ['moon', 'Ciclo de dia e noite e estações do hemisfério sul de verdade: céu, luz e cores mudam com a hora; vagalumes à noite, pássaros de dia, folhas no outono', []],
+      ['check', 'Recap ao fechar o dia: câmera passa pelas árvores novas, contadores sobem, desbloqueios aparecem (o momento de recompensa)', ['US-CLOSE-001']],
+      ['chart', 'Progressão por área, sem placar global: cada região sobe de nível com o tempo vivido e ganha decorações (trilha, banco, ponte, cabana, cachoeira…); nada diminui', []],
+      ['tasks', 'Coleção (herbário) com raridades: espécies comuns por área e raras por padrões saudáveis (ex.: 5 dias com Música na semana, um dia com todas as áreas, descanso de verdade num domingo); conquistas sem sequência que quebra (ritmo medido em 28 dias)', []],
+      ['flag', 'Missões semanais opcionais a partir das metas por área (E11): “3h de Música esta semana” → decoração especial', ['E11']],
+      ['history', 'Time-lapse: deslizar no tempo e ver a ilha crescer semana a semana', []],
+      ['gear', 'Movimento reduzido e aparelho fraco: versão 2D ilustrada com as mesmas regras; som opcional, desligado por padrão', []],
+    ],
+    not: ['Pontuação de produtividade ou ranking', 'Árvore que morre, murcha ou sequência que se perde', 'Recompensa por trabalhar mais que o planejado', 'Assets de terceiros: tudo procedural ou desenhado para o app'],
+    grow: ['Árvores bonitas', 'Ilha viva', 'Crescer ao vivo', 'Recap do dia', 'Níveis e coleção', 'Missões e time-lapse'],
+    daily: [],
+    retro: [['A Floresta te dá vontade de viver o plano? (1–5)', 'Escala'], ['Abriu a Floresta sem precisar? O que procurou lá?', 'Texto livre'], ['Algo na Floresta pareceu cobrança ou culpa?', 'Texto livre']],
+    logs: [
+      ['forest_opened', 'source (nav | recap | now_card | mini), ms_visible', 'A ilha é visitada espontaneamente?'],
+      ['forest_tree_tapped / forest_region_tapped', 'area, age_days', 'Explora o próprio histórico?'],
+      ['forest_recap', 'shown, skipped_at_ms, new_trees, unlocks', 'O recap é visto até o fim?'],
+      ['forest_unlock', 'kind (species | decoration | achievement), id, rarity', 'Desbloqueios acontecem num ritmo bom?'],
+      ['forest_quest', 'id, state (offered | done | ignored)', 'Missões ajudam ou atrapalham?'],
+    ],
+    crit: ['Abre a Floresta por conta própria pelo menos 2× por semana', 'Recap visto até o fim em mais da metade dos dias fechados', 'Nenhuma resposta de culpa ou cobrança na retro'],
+    fail: 'Se não motivar em 3 semanas, voltar para uma vista contemplativa simples (sem progressão) e cortar missões e níveis.' },
 ];
 
 const STAGE_KIT = {

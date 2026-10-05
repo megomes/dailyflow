@@ -2,11 +2,13 @@ import 'server-only';
 import { createHash } from 'node:crypto';
 import { sql } from '../server';
 import type { CalClass, CalProvider } from '../types';
-import { defaultClass, fromGoogle, fromGraph, logicalAt, toRows, type GoogleEvent, type GraphEvent, type RawEvent } from './normalize';
+import { defaultClass, fromGoogle, fromGraph, fromIcs, logicalAt, toRows, type GoogleEvent, type GraphEvent, type RawEvent } from './normalize';
 
 /**
  * E9 server side: OAuth for Google and Microsoft, encrypted token storage, reading calendars and
  * events, and writing them as sync_records so every device gets them through /api/sync.
+ * ICS accounts (a published Outlook calendar link, no app registration) keep the link sealed in
+ * access_token and are read by downloading the file.
  *
  * Env: APP_URL, CALENDAR_TOKEN_KEY (base64, 32 bytes), GOOGLE_CLIENT_ID, GOOGLE_CLIENT_SECRET,
  *      MS_CLIENT_ID, MS_CLIENT_SECRET, MS_TENANT (default 'common').
@@ -27,6 +29,7 @@ const msTenant = () => process.env.MS_TENANT || 'common';
 
 export function providerConfigured(p: CalProvider) {
   if (!process.env.CALENDAR_TOKEN_KEY) return false;
+  if (p === 'ics') return true;
   return p === 'google' ? !!(process.env.GOOGLE_CLIENT_ID && process.env.GOOGLE_CLIENT_SECRET) : !!(process.env.MS_CLIENT_ID && process.env.MS_CLIENT_SECRET);
 }
 
@@ -107,6 +110,39 @@ export async function exchangeCode(p: CalProvider, code: string): Promise<Accoun
   return { id, provider: p, email, access_token: access, refresh_token: refresh, expires_at: expires, status: 'ok' };
 }
 
+/** Normalises a pasted calendar link (webcal:// → https://); only http(s) links are accepted. */
+export function icsUrl(raw: string): string | null {
+  try {
+    const u = new URL(raw.trim().replace(/^webcals?:\/\//i, 'https://'));
+    return u.protocol === 'https:' || u.protocol === 'http:' ? u.toString() : null;
+  } catch { return null; }
+}
+
+async function fetchIcs(url: string): Promise<string> {
+  const res = await fetch(url, { headers: { accept: 'text/calendar' }, cache: 'no-store' });
+  if (!res.ok) throw new Error(`ics ${res.status}`);
+  const text = await res.text();
+  if (!text.includes('BEGIN:VCALENDAR')) throw new Error('ics: not an iCalendar file');
+  return text;
+}
+
+/** Adds (or updates) an ICS account after checking the link really serves a calendar. The link is stored sealed. */
+export async function addIcsAccount(url: string, label: string): Promise<Account> {
+  const text = await fetchIcs(url);
+  fromIcs(text, new Date(), new Date(Date.now() + 86_400_000)); // throws on a file it cannot read
+  const id = `ics:${createHash('sha1').update(url).digest('hex').slice(0, 12)}`;
+  const name = label.trim() || text.match(/^X-WR-CALNAME:(.*)$/m)?.[1]?.trim() || 'Calendar';
+  const sealed = await seal(url);
+  const expires = '9999-12-31T00:00:00Z';
+  await sql().query(
+    `insert into calendar_accounts (id, provider, email, access_token, refresh_token, expires_at, scope, status, last_error, updated_at)
+     values ($1, 'ics', $2, $3, null, $4, null, 'ok', null, now())
+     on conflict (id) do update set email = excluded.email, access_token = excluded.access_token, status = 'ok', last_error = null, updated_at = now()`,
+    [id, name, sealed, expires],
+  );
+  return { id, provider: 'ics', email: name, access_token: sealed, refresh_token: null, expires_at: expires, status: 'ok' };
+}
+
 export async function accounts(): Promise<Account[]> {
   return (await sql().query(`select * from calendar_accounts order by created_at`)) as Account[];
 }
@@ -155,6 +191,7 @@ async function api<T>(url: string, token: string, headers: Record<string, string
 export interface RemoteCalendar { calendarId: string; name: string; color?: string; primary?: boolean; canWrite: boolean }
 
 export async function listCalendars(a: Account, token: string): Promise<RemoteCalendar[]> {
+  if (a.provider === 'ics') return [{ calendarId: 'ics', name: a.email ?? 'Calendar', primary: true, canWrite: false }];
   if (a.provider === 'google') {
     const out: RemoteCalendar[] = [];
     let page: string | undefined;
@@ -171,6 +208,7 @@ export async function listCalendars(a: Account, token: string): Promise<RemoteCa
 }
 
 export async function listEvents(a: Account, token: string, calendarId: string, from: Date, to: Date): Promise<RawEvent[]> {
+  if (a.provider === 'ics') return fromIcs(await fetchIcs(token), from, to);
   const out: RawEvent[] = [];
   if (a.provider === 'google') {
     let page: string | undefined;
@@ -253,7 +291,7 @@ export async function writeEvents(accountId: string, provider: CalProvider, cale
 
 // ── Events → blocks (note: calendar events work as blocks, not to-dos) ───────
 
-const DEFAULT_AREA: Record<CalProvider, string> = { microsoft: 'area-work', google: 'area-personal' };
+const DEFAULT_AREA: Record<CalProvider, string> = { microsoft: 'area-work', ics: 'area-work', google: 'area-personal' };
 /** Outlook holds nobody should book over (“Blocker” category): not commitments, ignored. */
 export const isBlocker = (e: RawEvent) => (e.categories ?? []).some(c => c.trim().toLowerCase() === 'blocker');
 

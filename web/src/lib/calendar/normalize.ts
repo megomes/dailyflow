@@ -1,4 +1,5 @@
 import type { CalClass, CalEvent, CalProvider } from '../types';
+import ICAL from 'ical.js';
 
 /**
  * Provider payloads → CalEvent rows (pure, runs on the server, unit-tested with real-shaped
@@ -154,11 +155,80 @@ export function fromGraph(e: GraphEvent): RawEvent | null {
 export function defaultClass(name: string, primary: boolean, provider: CalProvider): CalClass {
   const n = name.toLowerCase();
   if (/holiday|feriad|birthday|aniversár|week numbers|contacts/.test(n)) return 'hidden';
-  if (primary || provider === 'microsoft') return 'commitment';
+  if (primary || provider !== 'google') return 'commitment';
   return 'awareness';
 }
 
 /** Effective classification: per-event override first, then the calendar's. */
 export function effectiveClass(ev: CalEvent, calendars: Map<string, { classification: CalClass }>, overrides: Map<string, CalClass>): CalClass {
   return overrides.get(ev.id) ?? calendars.get(ev.calendarKey)?.classification ?? 'awareness';
+}
+
+// ── ICS (published Outlook / any iCalendar link) ──────────────────────────
+
+const ICS_CANCELLED = /^(cancelad[oa]|canceled|cancelled)\s*:/i;
+/** Published Outlook calendars drop categories, so the "Blocker" holds are recognised by title. */
+const ICS_BLOCKER = /^(block|blocked|blocker)$/i;
+const icsDay = (t: ICAL.Time) => iso(t.year, t.month, t.day);
+
+/**
+ * An iCalendar file → RawEvents overlapping [from, to]. Recurring series are expanded (EXDATE and
+ * moved/edited occurrences included); VTIMEZONEs in the file (Outlook's Windows zone names) are registered first.
+ */
+export function fromIcs(text: string, from: Date, to: Date): RawEvent[] {
+  const root = new ICAL.Component(ICAL.parse(text));
+  for (const tz of root.getAllSubcomponents('vtimezone')) {
+    const id = String(tz.getFirstPropertyValue('tzid') ?? '');
+    if (id && !ICAL.TimezoneService.has(id)) ICAL.TimezoneService.register(tz);
+  }
+  const vevents = root.getAllSubcomponents('vevent');
+  const masters = new Map<string, ICAL.Event>();
+  const singles: ICAL.Event[] = [];
+  for (const v of vevents) if (!v.hasProperty('recurrence-id')) {
+    const ev = new ICAL.Event(v);
+    if (ev.isRecurring()) masters.set(ev.uid, ev); else singles.push(ev);
+  }
+  for (const v of vevents) if (v.hasProperty('recurrence-id')) {
+    const ev = new ICAL.Event(v);
+    const master = masters.get(ev.uid);
+    if (master) master.relateException(ev); else singles.push(ev);
+  }
+
+  const out: RawEvent[] = [];
+  const push = (item: ICAL.Event, s: ICAL.Time, e: ICAL.Time, eventId: string) => {
+    const start = s.toJSDate(), end = e.toJSDate();
+    if (end <= from || start >= to) return;
+    const c = item.component;
+    const title = item.summary ?? '';
+    const busy = String(c.getFirstPropertyValue('x-microsoft-cdo-busystatus') ?? '').toUpperCase();
+    const status = String(c.getFirstPropertyValue('status') ?? '').toUpperCase();
+    const cats = c.getAllProperties('categories').flatMap(p => p.getValues().map(String));
+    out.push({
+      eventId,
+      title,
+      location: item.location || undefined,
+      allDay: s.isDate,
+      start, end,
+      startDate: s.isDate ? icsDay(s) : undefined,
+      endDate: s.isDate ? icsDay(e) : undefined,
+      free: busy === 'FREE' || String(c.getFirstPropertyValue('transp') ?? '').toUpperCase() === 'TRANSPARENT',
+      status: status === 'CANCELLED' || ICS_CANCELLED.test(title) ? 'cancelled' : busy === 'TENTATIVE' || status === 'TENTATIVE' ? 'tentative' : 'confirmed',
+      declined: false,
+      categories: ICS_BLOCKER.test(title.trim()) ? [...cats, 'Blocker'] : cats,
+    });
+  };
+
+  for (const ev of singles) {
+    const rid = ev.component.getFirstPropertyValue('recurrence-id');
+    push(ev, ev.startDate, ev.endDate, rid ? `${ev.uid}:${(rid as ICAL.Time).toJSDate().toISOString()}` : ev.uid);
+  }
+  for (const ev of masters.values()) {
+    const it = ev.iterator();
+    for (let next = it.next(), guard = 0; next && guard < 5000; next = it.next(), guard++) {
+      if (next.toJSDate() >= to) break;
+      const d = ev.getOccurrenceDetails(next);
+      push(d.item, d.startDate, d.endDate, `${ev.uid}:${d.recurrenceId.toJSDate().toISOString()}`);
+    }
+  }
+  return out;
 }

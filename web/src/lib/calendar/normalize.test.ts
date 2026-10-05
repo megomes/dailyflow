@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { defaultClass, effectiveClass, fromGoogle, fromGraph, logicalAt, toRows } from './normalize';
+import { defaultClass, effectiveClass, fromGoogle, fromGraph, fromIcs, logicalAt, toRows } from './normalize';
 import type { CalEvent } from '../types';
 
 const TZ = 'America/Sao_Paulo';
@@ -57,5 +57,40 @@ describe('Teams Blocker holds are not commitments', () => {
     const blocker = (e: { categories?: string[] }) => (e.categories ?? []).some(c => c.trim().toLowerCase() === 'blocker');
     expect(blocker(ev!)).toBe(true);
     expect(blocker({ categories: ['Red category'] })).toBe(false);
+  });
+});
+
+describe('ICS (published Outlook calendar)', () => {
+  const ics = [
+    'BEGIN:VCALENDAR', 'METHOD:PUBLISH', 'PRODID:Microsoft Exchange Server 2010', 'VERSION:2.0',
+    'BEGIN:VTIMEZONE', 'TZID:E. South America Standard Time',
+    'BEGIN:STANDARD', 'DTSTART:16010101T000000', 'TZOFFSETFROM:-0300', 'TZOFFSETTO:-0300', 'END:STANDARD', 'END:VTIMEZONE',
+    // weekly Mon standup, one occurrence skipped (EXDATE) and one moved to 15:00
+    'BEGIN:VEVENT', 'UID:standup', 'SUMMARY:Standup', 'RRULE:FREQ=WEEKLY;BYDAY=MO;INTERVAL=1',
+    'EXDATE;TZID=E. South America Standard Time:20261012T100000',
+    'DTSTART;TZID=E. South America Standard Time:20261005T100000', 'DTEND;TZID=E. South America Standard Time:20261005T103000',
+    'STATUS:CONFIRMED', 'X-MICROSOFT-CDO-BUSYSTATUS:BUSY', 'END:VEVENT',
+    'BEGIN:VEVENT', 'UID:standup', 'SUMMARY:Standup', 'RECURRENCE-ID;TZID=E. South America Standard Time:20261019T100000',
+    'DTSTART;TZID=E. South America Standard Time:20261019T150000', 'DTEND;TZID=E. South America Standard Time:20261019T153000',
+    'STATUS:CONFIRMED', 'X-MICROSOFT-CDO-BUSYSTATUS:BUSY', 'END:VEVENT',
+    'BEGIN:VEVENT', 'UID:hold', 'SUMMARY:Block', 'DTSTART;TZID=E. South America Standard Time:20261007T100000',
+    'DTEND;TZID=E. South America Standard Time:20261007T120000', 'X-MICROSOFT-CDO-BUSYSTATUS:BUSY', 'END:VEVENT',
+    'BEGIN:VEVENT', 'UID:gone', 'SUMMARY:Cancelado: Sync', 'DTSTART;TZID=E. South America Standard Time:20261008T163000',
+    'DTEND;TZID=E. South America Standard Time:20261008T173000', 'X-MICROSOFT-CDO-BUSYSTATUS:FREE', 'TRANSP:TRANSPARENT', 'END:VEVENT',
+    'BEGIN:VEVENT', 'UID:maybe', 'SUMMARY:Planning', 'DTSTART;TZID=E. South America Standard Time:20261006T090000',
+    'DTEND;TZID=E. South America Standard Time:20261006T100000', 'X-MICROSOFT-CDO-BUSYSTATUS:TENTATIVE', 'END:VEVENT',
+    'END:VCALENDAR',
+  ].join('\r\n');
+  const evs = fromIcs(ics, new Date('2026-10-04T00:00:00Z'), new Date('2026-10-25T00:00:00Z'));
+  const byId = (s: string) => evs.filter(e => e.eventId.startsWith(s));
+
+  it('expands series with EXDATE and moved occurrences in the Windows zone', () => {
+    expect(byId('standup').map(e => e.start.toISOString()).sort()).toEqual(['2026-10-05T13:00:00.000Z', '2026-10-19T18:00:00.000Z']);
+    expect(new Set(byId('standup').map(e => e.eventId)).size).toBe(2);
+  });
+  it('marks Block holds, "Cancelado:" titles and tentative replies', () => {
+    expect(byId('hold')[0].categories).toContain('Blocker');
+    expect(byId('gone')[0]).toMatchObject({ status: 'cancelled', free: true });
+    expect(byId('maybe')[0].status).toBe('tentative');
   });
 });

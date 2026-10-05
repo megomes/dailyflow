@@ -104,7 +104,7 @@ alter table devices add column if not exists kind text;
 -- E9: external calendar accounts (OAuth tokens, encrypted). See db/migrations/2026-10-05-e9-calendars.sql.
 create table if not exists calendar_accounts (
   id            text        primary key,
-  provider      text        not null check (provider in ('google', 'microsoft')),
+  provider      text        not null check (provider in ('google', 'microsoft', 'ics')),
   email         text,
   access_token  text        not null,
   refresh_token text,

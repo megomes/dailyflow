@@ -220,7 +220,7 @@ export type Entity = 'area' | 'template_block' | 'day' | 'day_block' | 'checkin'
 
 // ── E9: external calendars (read) ──────────────────────────────────────────
 
-export type CalProvider = 'google' | 'microsoft';
+export type CalProvider = 'google' | 'microsoft' | 'ics';
 /** Commitment: blocks time (timeline + conflicts). Awareness: shown faintly. Hidden: ignored (CAP-J2). */
 export type CalClass = 'commitment' | 'awareness' | 'hidden';
 

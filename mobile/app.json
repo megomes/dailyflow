@@ -23,7 +23,6 @@
       ]
     },
     "plugins": [
-      "expo-router",
       "expo-secure-store",
       "expo-background-task",
       [
@@ -120,11 +119,7 @@
         }
       ]
     ],
-    "experiments": {
-      "typedRoutes": false
-    },
     "extra": {
-      "router": {},
       "eas": {
         "projectId": "65d44795-dbe0-4398-bc8d-91c12b4f3d86"
       }

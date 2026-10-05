@@ -1,0 +1,34 @@
+{
+  "expo": {
+    "name": "DailyFlow",
+    "slug": "dailyflow",
+    "scheme": "dailyflow",
+    "version": "0.1.0",
+    "orientation": "portrait",
+    "icon": "./assets/icon.png",
+    "userInterfaceStyle": "dark",
+    "backgroundColor": "#141416",
+    "android": {
+      "package": "app.dailyflow",
+      "adaptiveIcon": { "foregroundImage": "./assets/icon.png", "backgroundColor": "#141416" },
+      "permissions": ["POST_NOTIFICATIONS", "CAMERA"]
+    },
+    "plugins": [
+      "expo-router",
+      "expo-secure-store",
+      "expo-background-task",
+      ["expo-camera", { "cameraPermission": "DailyFlow uses the camera only to scan the pairing QR code." }],
+      ["expo-notifications", { "color": "#248CF2" }],
+      ["react-native-android-widget", {
+        "widgets": [
+          { "name": "Now", "label": "DailyFlow · Now", "description": "Current block, time left and what is next", "minWidth": "180dp", "minHeight": "110dp", "targetCellWidth": 3, "targetCellHeight": 2, "resizeMode": "horizontal|vertical", "updatePeriodMillis": 1800000, "previewImage": "./assets/widget-now.png" },
+          { "name": "Timeline", "label": "DailyFlow · Timeline", "description": "Today's blocks", "minWidth": "180dp", "minHeight": "180dp", "targetCellWidth": 3, "targetCellHeight": 3, "resizeMode": "horizontal|vertical", "updatePeriodMillis": 1800000, "previewImage": "./assets/widget-timeline.png" },
+          { "name": "Tasks", "label": "DailyFlow · Tasks", "description": "In progress, high priority or today", "minWidth": "180dp", "minHeight": "110dp", "targetCellWidth": 3, "targetCellHeight": 2, "resizeMode": "horizontal|vertical", "updatePeriodMillis": 1800000, "previewImage": "./assets/widget-tasks.png" },
+          { "name": "NextTasks", "label": "DailyFlow · Next tasks", "description": "What to do in this block", "minWidth": "110dp", "minHeight": "110dp", "targetCellWidth": 2, "targetCellHeight": 2, "resizeMode": "horizontal|vertical", "updatePeriodMillis": 1800000, "previewImage": "./assets/widget-next.png" },
+          { "name": "Progress", "label": "DailyFlow · Day", "description": "Now and next, minimal", "minWidth": "110dp", "minHeight": "50dp", "targetCellWidth": 2, "targetCellHeight": 1, "resizeMode": "horizontal", "updatePeriodMillis": 1800000, "previewImage": "./assets/widget-progress.png" }
+        ]
+      }]
+    ],
+    "experiments": { "typedRoutes": false }
+  }
+}

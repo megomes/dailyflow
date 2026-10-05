@@ -158,6 +158,8 @@ export interface Prefs extends SyncFields {
   notifyFocus?: boolean;
   notifyBlocks?: boolean;
   focusPreset?: string;
+  /** Weekly goal in minutes per area id (E11). */
+  goals?: Record<string, number>;
 }
 
 /** One answered (or skipped) daily check-in, keyed by the day it is about. */

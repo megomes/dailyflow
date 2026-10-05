@@ -2,7 +2,7 @@
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { useEffect, useRef, useSyncExternalStore, type ReactNode } from 'react';
-import { CalendarDays, CheckSquare, History, MessageSquareText, Moon, Settings, Sun } from 'lucide-react';
+import { BarChart3, CalendarDays, CheckSquare, History, MessageSquareText, Moon, Settings, Sun } from 'lucide-react';
 import { m } from '@/i18n/en';
 import { setScreen, track } from '@/lib/analytics';
 import { useSyncState } from '@/lib/hooks';
@@ -14,7 +14,8 @@ const NAV = [
   { href: '/', label: m.nav.today, icon: CalendarDays, match: (p: string) => p === '/' || p.startsWith('/plan') || p.startsWith('/close') },
   { href: '/tasks', label: m.nav.tasks, icon: CheckSquare, match: (p: string) => p.startsWith('/tasks') },
   { href: '/history', label: m.nav.history, icon: History, match: (p: string) => p.startsWith('/history') || p.startsWith('/day') },
-  { href: '/notes', label: m.nav.notes, icon: MessageSquareText, match: (p: string) => p.startsWith('/notes') },
+  { href: '/insights', label: m.nav.insights, icon: BarChart3, match: (p: string) => p.startsWith('/insights') },
+  { href: '/notes', label: m.nav.notes, icon: MessageSquareText, match: (p: string) => p.startsWith('/notes'), tab: false },
   { href: '/settings', label: m.nav.settings, icon: Settings, match: (p: string) => p.startsWith('/settings') },
 ];
 
@@ -88,7 +89,7 @@ export function AppShell({ children }: { children: ReactNode }) {
       <Palette />
       <LiveAgents />
       <nav className="tabbar" aria-label="Main">
-        {NAV.map(n => (
+        {NAV.filter(n => n.tab !== false).map(n => (
           <Link key={n.href} href={n.href} aria-current={n.match(path) ? 'page' : undefined}>
             <n.icon size={20} strokeWidth={1.6} />{n.label}
           </Link>

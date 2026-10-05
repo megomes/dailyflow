@@ -3,7 +3,9 @@ import type { WidgetTaskHandlerProps } from 'react-native-android-widget';
 import type { Snapshot } from '@shared/snapshot';
 import { api, getCredential } from '../auth';
 import { remoteSnapshot } from '../snapshot';
+import { scheduleWidgetRefresh } from '../../modules/widget-alarm';
 import { WIDGETS, type TaskList } from './render';
+import { nextRefreshAt } from './schedule';
 
 const ORDER: TaskList[] = ['today', 'inProgress', 'high'];
 const listKey = (id: number) => `df.widget.list.${id}`;
@@ -54,5 +56,8 @@ export async function widgetTaskHandler(props: WidgetTaskHandlerProps) {
       await api(cred, '/api/quick', { method: 'POST', body: JSON.stringify({ action: clickAction === 'QUICK_START' ? 'start' : 'stop', tz: tz() }) }).catch(() => null);
     }
   }
-  props.renderWidget(render(await freshSnapshot(), widgetInfo, { list, laterOpen }));
+  const snap = await freshSnapshot();
+  props.renderWidget(render(snap, widgetInfo, { list, laterOpen }));
+  // Chain the next redraw to when the day changes (note #25).
+  scheduleWidgetRefresh(nextRefreshAt(snap, Date.now()));
 }

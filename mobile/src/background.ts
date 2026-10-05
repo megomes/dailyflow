@@ -5,7 +5,9 @@ import { showNow } from './notify';
 import { remoteSnapshot } from './snapshot';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import type { Snapshot } from '@shared/snapshot';
+import { scheduleWidgetRefresh } from '../modules/widget-alarm';
 import { WIDGETS, type TaskList } from './widgets/render';
+import { nextRefreshAt } from './widgets/schedule';
 
 const TASK = 'dailyflow-refresh';
 
@@ -36,4 +38,5 @@ export async function refreshSurfaces(local?: Snapshot | null) {
       }),
     });
   }
+  scheduleWidgetRefresh(nextRefreshAt(snap, Date.now()));
 }

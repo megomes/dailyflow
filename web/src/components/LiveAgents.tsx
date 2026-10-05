@@ -1,4 +1,5 @@
 'use client';
+import { startedMs } from '@/lib/actual';
 import { useLiveQuery } from 'dexie-react-hooks';
 import { useEffect, useState } from 'react';
 import { m } from '@/i18n/en';
@@ -37,8 +38,8 @@ function TabTitle({ running, focus }: { running?: TimeRecord; focus?: FocusSessi
       const left = focus.focusMin * 60 - el;
       const clock = focus.focusMin ? (left >= 0 ? fmtClock(left) : `+${fmtClock(-left)}`) : fmtClock(el);
       document.title = `${focus.state === 'paused' ? '⏸ ' : ''}${clock} · ${focus.title}`;
-    } else if (running?.startedAt) {
-      document.title = `● ${fmtClock((Date.now() - Date.parse(running.startedAt)) / 1000)} · ${running.title}`;
+    } else if (running) {
+      document.title = `● ${fmtClock((Date.now() - startedMs(running)) / 1000)} · ${running.title}`;
     } else document.title = 'DailyFlow';
   }, [tick, running, focus]);
   return null;
@@ -67,15 +68,15 @@ function Forgotten({ running, focus }: { running?: TimeRecord; focus?: FocusSess
   if (focus && focus.state === 'running' && focus.id !== dismissed) {
     const el = focusElapsedSec(focus, now) / 60;
     if ((focus.focusMin && el > focus.focusMin + focus.breakMin + 20) || (!focus.focusMin && el > 180)) { kind = 'focus'; id = focus.id; }
-  } else if (running && running.id !== dismissed && running.startedAt) {
-    const el = (now - Date.parse(running.startedAt)) / 60000;
+  } else if (running && running.id !== dismissed) {
+    const el = (now - startedMs(running)) / 60000;
     const pastBlock = block ? minuteOfDay(running.dayId, new Date(now)) - block.end : el - 120;
     if (el > 90 && pastBlock > 90) { kind = 'activity'; id = running.id; }
   }
   if (!kind) return null;
 
   const title = kind === 'focus' ? focus!.title : running!.title;
-  const startedAt = kind === 'focus' ? Date.parse(focus!.startedAt) : Date.parse(running!.startedAt!);
+  const startedAt = kind === 'focus' ? Date.parse(focus!.startedAt) : startedMs(running!);
   const plannedEnd = kind === 'focus'
     ? new Date(startedAt + (focus!.focusMin || 60) * 60000 + focus!.pausedMs)
     : block ? dateAtMinute(running!.dayId, block.end) : new Date(startedAt + 60 * 60000);

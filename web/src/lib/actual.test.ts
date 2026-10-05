@@ -1,7 +1,7 @@
 import 'fake-indexeddb/auto';
 import { beforeEach, describe, expect, it } from 'vitest';
 import { blockActual, capacity, dayGaps, mergeSpans, overlaps, planAsReal, planChanges, replanRemaining, uncovered, whatChanged } from './actual';
-import { DailyFlowDB, setDB } from './db';
+import { DailyFlowDB, getDB, setDB } from './db';
 import { acceptPlanAsReal, addBlock, adoptPlan, closeDay, createTask, deleteBlock, endFocus, focusElapsedSec, patchBlock, scheduleTask, startDay, startFocus, PRESETS } from './ops';
 import { ensureDay, save, seedIfEmpty } from './repo';
 import type { Task, TimeRecord } from './types';
@@ -161,5 +161,35 @@ describe('day operations', () => {
     expect(Math.round(focusElapsedSec(stored!) / 60)).toBe(90);
     await endFocus(f.id, 'done', new Date(Date.now() - 60 * 60000));
     expect((await db.focusSessions.get(f.id))?.actualMin).toBe(30);
+  });
+});
+
+describe('two things at once (note #8) and edited starts', () => {
+  beforeEach(async () => { setDB(new DailyFlowDB(`par-${Math.random()}`)); await seedIfEmpty(); });
+  it('counts the clock once for the day and reports the parallel part', async () => {
+    const { coverage } = await import('./actual');
+    expect(coverage([{ start: 600, end: 720 }, { start: 660, end: 720 }])).toEqual({ total: 120, parallel: 60 });
+  });
+  it('timers follow an edited start (the minute wins over a stale startedAt)', async () => {
+    const { startedMs } = await import('./actual');
+    const { dateAtMinute } = await import('./time');
+    const day = '2026-10-05';
+    const edited = { dayId: day, start: 13 * 60 + 31, startedAt: dateAtMinute(day, 14 * 60 + 20).toISOString() };
+    expect(startedMs(edited)).toBe(dateAtMinute(day, 13 * 60 + 31).getTime());
+    const exact = { dayId: day, start: 600, startedAt: new Date(dateAtMinute(day, 600).getTime() + 25_000).toISOString() };
+    expect(startedMs(exact)).toBe(Date.parse(exact.startedAt));
+  });
+  it('starts something alongside without stopping the main activity', async () => {
+    const { startActivity, startAlongside, runningRecord } = await import('./ops');
+    await ensureDay('2026-10-05');
+    await startActivity('2026-10-05', { areaId: 'area-work', title: 'Work', source: 'live' });
+    const id = await startAlongside('2026-10-05', { areaId: 'area-maker', title: 'Maker' });
+    const open = (await getDB().timeRecords.toArray()).filter(r => r.end == null && !r.deleted);
+    expect(open).toHaveLength(2);
+    expect((await runningRecord())?.title).toBe('Work');
+    expect(open.find(r => r.id === id)?.alongside).toBe(true);
+    // Switching the main activity keeps the one alongside running.
+    await startActivity('2026-10-05', { areaId: 'area-music', title: 'Guitar', source: 'switch' });
+    expect((await getDB().timeRecords.toArray()).filter(r => r.end == null && !r.deleted).map(r => r.title).sort()).toEqual(['Guitar', 'Maker']);
   });
 });

@@ -1,10 +1,11 @@
 'use client';
+import { startedMs } from '@/lib/actual';
 import { useEffect, useState } from 'react';
 import { Coffee, Pause, Play, Plus, Square, Timer, Zap } from 'lucide-react';
 import { m } from '@/i18n/en';
 import { nowNext } from '@/lib/dayLogic';
 import { AreaIcon } from '@/lib/icons';
-import { endBreak, endFocus, scheduleTask, extendFocus, focusElapsedSec, pauseFocus, PRESETS, resumeFocus, startActivity, startFocus, stopActivity, toggleTaskDone, type Preset } from '@/lib/ops';
+import { endBreak, endFocus, scheduleTask, extendFocus, focusElapsedSec, pauseFocus, PRESETS, resumeFocus, startActivity, startFocus, startAlongside, stopActivity, toggleTaskDone, type Preset } from '@/lib/ops';
 import { dateAtMinute, fmtClock, fmtDuration, fmtMin } from '@/lib/time';
 import { track } from '@/lib/analytics';
 import type { Area, DayBlock, FocusSession, Task, TimeRecord } from '@/lib/types';
@@ -34,17 +35,20 @@ interface Props {
   areas: Area[];
   areaMap: Map<string, Area>;
   running: TimeRecord | undefined;
+  /** Activities running alongside the main one (two things at once). */
+  alongside?: TimeRecord[];
   focus: FocusSession | undefined;
 }
 
 /** Now card in live mode: the running activity (or focus timer), else the current block with Start. */
-export function NowCard({ dayId, minute, blocks, tasks, areas, areaMap, running, focus }: Props) {
+export function NowCard({ dayId, minute, blocks, tasks, areas, areaMap, running, alongside = [], focus }: Props) {
   const { now, next, remaining, progress, untilNext } = nowNext(blocks, minute);
   const [switching, setSwitching] = useState(false);
+  const [adding, setAdding] = useState(false);
   const [presetId, setPresetId] = useState('25/5');
   const [choosing, setChoosing] = useState(false);
   const [free, setFree] = useState('');
-  const tick = useSecond(!!running || !!focus);
+  const tick = useSecond(!!running || !!focus || alongside.length > 0);
 
   useEffect(() => { void getMeta<string>('focusPreset', '25/5').then(setPresetId); }, []);
   const prefs = useLiveQuery(() => getDB().prefs.get('prefs'), []);
@@ -73,6 +77,9 @@ export function NowCard({ dayId, minute, blocks, tasks, areas, areaMap, running,
   }
 
   const na = areaMap.get((running ?? now)?.areaId ?? '');
+  // Another block planned for right now (overlapping on purpose): offer to run it alongside.
+  const mainBlockId = running?.blockId ?? now?.id;
+  const parallel = blocks.filter(b => b.start <= minute && minute < b.end && b.id !== mainBlockId && !alongside.some(r => r.blockId === b.id));
   const xa = next ? areaMap.get(next.areaId) : undefined;
   const onBreak = focus && focus.state === 'done' && focus.breakStartedAt && !focus.breakEndedAt;
 
@@ -89,7 +96,7 @@ export function NowCard({ dayId, minute, blocks, tasks, areas, areaMap, running,
             <div className="big"><span className="dot" />{na && <AreaIcon name={na.icon} size={16} />}<span>{running.title || na?.name}</span></div>
             <div className="meta tabular">
               <span>{m.activity.since(fmtMin(running.start))}</span>
-              <b className="elapsed">{fmtClock((tick - Date.parse(running.startedAt ?? new Date().toISOString())) / 1000)}</b>
+              <b className="elapsed">{fmtClock((tick - startedMs(running)) / 1000)}</b>
             </div>
             {now && now.id !== running.blockId && now.start > running.start && (
               <div className="handoff" data-color={areaMap.get(now.areaId)?.color ?? 'gray'}>
@@ -114,6 +121,30 @@ export function NowCard({ dayId, minute, blocks, tasks, areas, areaMap, running,
           </>
         )}
 
+        {alongside.length > 0 && (
+          <div className="alongside">
+            {alongside.map(r => {
+              const a = areaMap.get(r.areaId);
+              return (
+                <div key={r.id} className="alongside-row" data-color={a?.color ?? 'gray'}>
+                  <span className="live-dot" /><span className="dot" />
+                  <span className="al-title"><span className="muted">{m.activity.also}</span> {r.title || a?.name}</span>
+                  <b className="tabular">{fmtClock((tick - startedMs(r)) / 1000)}</b>
+                  <button type="button" className="btn icon sm ghost" title={m.activity.stop} aria-label={m.activity.stop} onClick={() => void stopActivity(r.id)}><Square size={12} /></button>
+                </div>
+              );
+            })}
+          </div>
+        )}
+        {!focus && !onBreak && parallel.length > 0 && (running || alongside.length > 0) && (
+          <div className="row wrap">
+            {parallel.map(b => (
+              <button key={b.id} type="button" className="btn sm" data-color={areaMap.get(b.areaId)?.color ?? 'gray'}
+                onClick={() => void startAlongside(dayId, { areaId: b.areaId, title: b.title, blockId: b.id })}><Play size={13} />{m.activity.startToo(b.title)}</button>
+            ))}
+          </div>
+        )}
+
         {!focus && !onBreak && (
           <div className="row wrap now-actions">
             {running ? (
@@ -125,6 +156,7 @@ export function NowCard({ dayId, minute, blocks, tasks, areas, areaMap, running,
             ) : null}
             <button type="button" className="btn sm" onClick={() => setChoosing(c => !c)} aria-expanded={choosing}><Timer size={13} />{m.activity.focus}</button>
             <button type="button" className="btn sm ghost" onClick={() => setSwitching(true)}><Zap size={13} />{m.activity.switch}</button>
+            {running && <button type="button" className="btn sm ghost" onClick={() => setAdding(true)} title={m.activity.alsoHint}><Plus size={13} />{m.activity.alsoDoing}</button>}
           </div>
         )}
         {choosing && !focus && (
@@ -171,6 +203,7 @@ export function NowCard({ dayId, minute, blocks, tasks, areas, areaMap, running,
         )}
       </section>
       {switching && <QuickSwitch areas={areas} onClose={() => setSwitching(false)} onPick={(areaId, title) => { setSwitching(false); void startActivity(dayId, { areaId, title, source: 'switch' }); }} />}
+      {adding && <QuickSwitch areas={areas} title={m.activity.alsoDoing} onClose={() => setAdding(false)} onPick={(areaId, title) => { setAdding(false); void startAlongside(dayId, { areaId, title }); }} />}
 
       <section className="card nowcard next" data-color={xa?.color ?? 'gray'} aria-label={m.today.next}>
         <span className="label">{m.today.next}</span>

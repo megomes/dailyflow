@@ -43,7 +43,7 @@ function readMode(): DayViewMode | null {
 
 export function DayView({ dayId, live, title, sub, sideTop, sideBottom, headExtra }: Props) {
   const d = useDay(dayId);
-  const { running, focus } = useLive();
+  const { running, alongside, focus } = useLive();
   const { minute: clockMin } = useClock();
   const isMobile = useIsMobile();
   const dragged = useDraggedTask();
@@ -289,7 +289,7 @@ export function DayView({ dayId, live, title, sub, sideTop, sideBottom, headExtr
           {sideTop}
           {live && d.status === 'active' && d.day?.startMode === 'implicit' && <NotPlannedCard dayId={dayId} startedAt={d.day.startedAt} />}
           {live && d.status === 'unplanned' && <StartDayCard dayId={dayId} blocks={d.blocks} templateName={templateName} minute={clockMin} />}
-          {live && <NowCard dayId={dayId} minute={clockMin} blocks={d.blocks} tasks={d.tasks} areas={d.areas} areaMap={d.areaMap} running={running} focus={focus} />}
+          {live && <NowCard dayId={dayId} minute={clockMin} blocks={d.blocks} tasks={d.tasks} areas={d.areas} areaMap={d.areaMap} running={running} alongside={alongside} focus={focus} />}
           {reason && <ReasonPrompt key={reason.revId} revId={reason.revId} label={reason.label} onDone={() => setReason(null)} />}
           {mismatch && (
             <section className="card reason">

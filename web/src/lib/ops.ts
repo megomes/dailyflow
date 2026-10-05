@@ -2,7 +2,7 @@ import { planAsReal, recEnd, type RecordDraft, type ReplanResult, type Span } fr
 import { track } from './analytics';
 import { getDB } from './db';
 import { liveBlocks, nowIso, remove, save, saveMany, uid, update } from './repo';
-import { minuteOfDay } from './time';
+import { dateAtMinute, minuteOfDay } from './time';
 import { nextDate } from './recurrence';
 import type { Column } from './taskBoard';
 import type { Day, DayBlock, DayKey, FocusSession, PlanBlock, Priority, Reflection, Revision, Task, TemplateBlock, TimeRecord } from './types';
@@ -54,8 +54,8 @@ async function ensureStarted(dayId: string) {
 
 export async function closeDay(dayId: string, reflection: Reflection | undefined, startedMs: number) {
   const db = getDB();
-  const running = (await db.timeRecords.where('dayId').equals(dayId).toArray()).find(r => r.end == null && !r.deleted);
-  if (running) await stopActivity(running.id);
+  // Everything still running stops with the day (the main activity and anything alongside).
+  for (const r of (await db.timeRecords.where('dayId').equals(dayId).toArray()).filter(x => x.end == null && !x.deleted)) await stopActivity(r.id);
   // Unfinished tasks scheduled on this day go back to the Backlog (spec §16–17).
   const tasks = (await db.tasks.where('dayId').equals(dayId).toArray()).filter(t => !t.deleted && t.status === 'today');
   for (const t of tasks) {
@@ -79,8 +79,25 @@ export async function reopenDay(dayId: string) {
 
 // ── Actual time ───────────────────────────────────────────────────────────
 
+/** The main running activity (one at a time). */
 export async function runningRecord(): Promise<TimeRecord | undefined> {
-  return (await getDB().timeRecords.toArray()).find(r => r.end == null && !r.deleted);
+  return (await getDB().timeRecords.toArray()).find(r => r.end == null && !r.deleted && !r.alongside);
+}
+
+/** Start something alongside the main activity (two at once): nothing is stopped. */
+export async function startAlongside(dayId: string, a: { areaId: string; title: string; blockId?: string; taskId?: string }) {
+  await ensureStarted(dayId);
+  const now = new Date();
+  const others = (await getDB().timeRecords.toArray()).filter(r => r.end == null && !r.deleted);
+  // The same thing twice makes no sense: it is already running.
+  if (others.some(r => r.areaId === a.areaId && r.title === a.title)) return null;
+  const rec: TimeRecord = {
+    id: uid(), dayId, start: Math.round(minuteOfDay(dayId, now)), end: null, startedAt: now.toISOString(), areaId: a.areaId, title: a.title,
+    ...(a.blockId ? { blockId: a.blockId } : {}), ...(a.taskId ? { taskId: a.taskId } : {}), source: 'live', createdAt: now.toISOString(), updatedAt: '', alongside: true,
+  };
+  await save('time_record', rec);
+  track('activity_started_alongside', { area: a.areaId, with_main: others.some(r => !r.alongside), from_block: !!a.blockId });
+  return rec.id;
 }
 
 /** One activity at a time (US-SYS-002): starting one stops the previous at the same minute. */
@@ -132,7 +149,9 @@ export async function addRecord(dayId: string, d: RecordDraft, source: TimeRecor
 export async function updateRecord(id: string, patch: Partial<TimeRecord>, field: string) {
   const r = await getDB().timeRecords.get(id);
   if (!r) return;
-  await update<TimeRecord>('time_record', id, { ...patch, ...(await markHistorical(r.dayId)) });
+  // A running activity whose start is edited keeps its exact start in step (the timers count from it).
+  const startedAt = patch.start != null && r.end == null ? { startedAt: dateAtMinute(r.dayId, patch.start).toISOString() } : {};
+  await update<TimeRecord>('time_record', id, { ...patch, ...startedAt, ...(await markHistorical(r.dayId)) });
   track('time_record_edited', { field, source: r.source, days_ago: daysAgo(r.dayId) });
 }
 

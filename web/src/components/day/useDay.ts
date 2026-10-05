@@ -61,9 +61,11 @@ export const prioRank = (t: Task) => (t.priority === 'high' ? 0 : t.priority ===
 
 /** The global running activity and focus session (any day). */
 export function useLive() {
-  const rec = useLiveQuery(async () => (await getDB().timeRecords.toArray()).find(r => r.end == null && !r.deleted), []);
+  const open = useLiveQuery(async () => (await getDB().timeRecords.toArray()).filter(r => r.end == null && !r.deleted), []);
+  const rec = open?.find(r => !r.alongside);
+  const alongside = useMemo(() => (open ?? []).filter(r => r.alongside).sort((a, b) => a.start - b.start), [open]);
   const focus = useLiveQuery(async () => (await getDB().focusSessions.toArray())
     .filter(f => !f.deleted && (f.state === 'running' || f.state === 'paused' || (f.breakStartedAt && !f.breakEndedAt)))
     .sort((a, b) => b.startedAt.localeCompare(a.startedAt))[0], []);
-  return { running: rec, focus };
+  return { running: rec, alongside, focus };
 }

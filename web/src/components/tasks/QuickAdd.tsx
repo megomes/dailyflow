@@ -1,7 +1,7 @@
 'use client';
 import { useLiveQuery } from 'dexie-react-hooks';
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { CalendarDays, Clock, Flag, Inbox, Plus, Undo2 } from 'lucide-react';
+import { CalendarDays, Clock, Flag, Inbox, Maximize2, Plus, Undo2 } from 'lucide-react';
 import { m } from '@/i18n/en';
 import { getDB } from '@/lib/db';
 import { useClock } from '@/lib/hooks';
@@ -11,6 +11,7 @@ import { parseQuick } from '@/lib/quickParse';
 import { activeAreas, liveBlocks } from '@/lib/repo';
 import { addDays, fmtDuration, fmtMin } from '@/lib/time';
 import type { Task } from '@/lib/types';
+import { TaskComposer } from './TaskComposer';
 
 /**
  * The one way to add a to-do, used everywhere (Today, block inspector, Tasks, ⌘K / N, phone +).
@@ -29,9 +30,13 @@ interface Props {
   surface: string;
   onAdded?: (t: Task) => void;
   placeholder?: string;
+  /** Area given to the to-do unless #area says otherwise (Now card: the current activity's area). */
+  areaId?: string;
+  /** Just the field: destination fixed by the props, no chips (Now card). */
+  compact?: boolean;
 }
 
-export function QuickAdd({ mode, dayId: dayProp, blockId: pinned, autoFocus, expanded, surface, onAdded, placeholder }: Props) {
+export function QuickAdd({ mode, dayId: dayProp, blockId: pinned, autoFocus, expanded, surface, onAdded, placeholder, areaId: defaultArea, compact }: Props) {
   const { day: today, minute } = useClock();
   const dayId = dayProp ?? today;
   const [text, setText] = useState('');
@@ -39,6 +44,7 @@ export function QuickAdd({ mode, dayId: dayProp, blockId: pinned, autoFocus, exp
   const [blockId, setBlockId] = useState<string | null>(pinned ?? null);
   const [focused, setFocused] = useState(false);
   const [added, setAdded] = useState<{ task: Task; where: string } | null>(null);
+  const [detail, setDetail] = useState(false);
   const t0 = useRef<number | null>(null);
   const input = useRef<HTMLInputElement>(null);
 
@@ -72,7 +78,7 @@ export function QuickAdd({ mode, dayId: dayProp, blockId: pinned, autoFocus, exp
       status: goesToday ? 'today' : 'inbox',
       ...(goesToday ? { dayId: targetDay } : {}),
       ...(effectiveBlock ? { blockId: effectiveBlock.id } : {}),
-      ...(parsed.areaId ? { areaId: parsed.areaId } : effectiveBlock ? { areaId: effectiveBlock.areaId } : {}),
+      ...(parsed.areaId ? { areaId: parsed.areaId } : effectiveBlock ? { areaId: effectiveBlock.areaId } : defaultArea ? { areaId: defaultArea } : {}),
       ...(parsed.estimate ? { estimate: parsed.estimate } : {}),
       ...(parsed.priority ? { priority: parsed.priority } : {}),
     }, surface, t0.current ?? undefined);
@@ -83,18 +89,35 @@ export function QuickAdd({ mode, dayId: dayProp, blockId: pinned, autoFocus, exp
     input.current?.focus();
   }
 
-  const showChips = expanded || focused || !!text;
+  /** What the quick line already says, handed to the detailed form. */
+  function draft(): Partial<Task> {
+    return {
+      title: parsed.title,
+      status: goesToday ? 'today' : 'inbox',
+      ...(goesToday ? { dayId: targetDay } : {}),
+      ...(effectiveBlock ? { blockId: effectiveBlock.id } : {}),
+      ...(parsed.areaId ? { areaId: parsed.areaId } : effectiveBlock ? { areaId: effectiveBlock.areaId } : defaultArea ? { areaId: defaultArea } : {}),
+      ...(parsed.estimate ? { estimate: parsed.estimate } : {}),
+      ...(parsed.priority ? { priority: parsed.priority } : {}),
+    };
+  }
+
+  const showChips = !compact && (expanded || focused || !!text);
   return (
-    <div className={`quick-add${showChips ? ' open' : ''}`}>
+    <div className={`quick-add${showChips ? ' open' : ''}${compact ? ' compact' : ''}`}>
       <form className="qa-row" onSubmit={e => { e.preventDefault(); void submit(); }}>
         <Plus size={16} className="qa-plus" aria-hidden />
         <input ref={input} className="input qa-input" value={text} autoFocus={autoFocus}
           placeholder={placeholder ?? m.quick.placeholder}
           aria-label={m.quick.placeholder}
           onFocus={() => setFocused(true)} onBlur={() => setTimeout(() => setFocused(false), 150)}
-          onKeyDown={e => { if (e.key === 'Escape') { setText(''); (e.target as HTMLInputElement).blur(); } }}
+          onKeyDown={e => {
+            if (e.key === 'Escape' && text) { e.stopPropagation(); setText(''); }
+            if (e.key === 'Enter' && e.shiftKey && !compact) { e.preventDefault(); setDetail(true); }
+          }}
           onChange={e => { if (t0.current == null) t0.current = performance.now(); setText(e.target.value); }} />
-        <button type="submit" className={`btn sm${parsed.title ? ' primary' : ''}`} disabled={!parsed.title}>{m.quick.add}</button>
+        {!compact && <button type="button" className="btn icon sm ghost" title={m.quick.details} aria-label={m.quick.details} onClick={() => setDetail(true)}><Maximize2 size={14} /></button>}
+        {(!compact || parsed.title) && <button type="submit" className={`btn sm${parsed.title ? ' primary' : ''}`} disabled={!parsed.title}>{m.quick.add}</button>}
       </form>
       {added && (
         <div className="qa-added" role="status">
@@ -103,6 +126,7 @@ export function QuickAdd({ mode, dayId: dayProp, blockId: pinned, autoFocus, exp
         </div>
       )}
 
+      {detail && <TaskComposer initial={draft()} day={dayId} onClose={() => setDetail(false)} onCreated={t => { setText(''); setAdded({ task: t, where: t.status === 'today' ? m.quick.today : m.quick.inbox }); onAdded?.(t); }} />}
       {showChips && (
         <div className="qa-chips" onMouseDown={e => e.preventDefault()}>
           {mode !== 'block' && (

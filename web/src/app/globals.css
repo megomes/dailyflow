@@ -583,3 +583,7 @@ html.vt-close::view-transition-new(root) { z-index: 1; }
 .qa-other.on { border-color: var(--focus); color: var(--text-primary); }
 @media (max-width: 820px) { .qa-other { height: 32px; } }
 .modal > .card { border: 0; padding: 0; background: transparent; }
+.task-form { display: flex; flex-direction: column; gap: 12px; }
+.composer-foot { display: flex; align-items: center; gap: 8px; border-top: 1px solid var(--border-subtle); padding-top: 12px; position: sticky; bottom: -16px; background: var(--bg-elevated); padding-bottom: 4px; }
+.composer-foot label { gap: 6px; cursor: pointer; }
+.kbd-inv { font-size: 11px; opacity: .6; margin-left: 4px; }

@@ -4,13 +4,16 @@ import { Coffee, Pause, Play, Plus, Square, Timer, Zap } from 'lucide-react';
 import { m } from '@/i18n/en';
 import { nowNext } from '@/lib/dayLogic';
 import { AreaIcon } from '@/lib/icons';
-import { endBreak, endFocus, extendFocus, focusElapsedSec, pauseFocus, PRESETS, resumeFocus, startActivity, startFocus, stopActivity, toggleTaskDone, type Preset } from '@/lib/ops';
+import { endBreak, endFocus, scheduleTask, extendFocus, focusElapsedSec, pauseFocus, PRESETS, resumeFocus, startActivity, startFocus, stopActivity, toggleTaskDone, type Preset } from '@/lib/ops';
 import { dateAtMinute, fmtClock, fmtDuration, fmtMin } from '@/lib/time';
 import { track } from '@/lib/analytics';
 import type { Area, DayBlock, FocusSession, Task, TimeRecord } from '@/lib/types';
 import { useLiveQuery } from 'dexie-react-hooks';
 import { getDB, getMeta, setMeta } from '@/lib/db';
 import { QuickSwitch } from './QuickSwitch';
+import { QuickAdd } from '../tasks/QuickAdd';
+import { useOpenTasks } from './useDay';
+import { activityTasks } from '@/lib/activityTasks';
 
 /** Ticks every second while mounted (timers). */
 export function useSecond(active = true) {
@@ -48,10 +51,12 @@ export function NowCard({ dayId, minute, blocks, tasks, areas, areaMap, running,
   const presets = [...PRESETS, ...(prefs?.customPresets ?? [])];
   const preset = presets.find(p => p.id === (prefs?.focusPreset ?? presetId)) ?? PRESETS[0];
 
-  const runningBlock = running?.blockId ? blocks.find(b => b.id === running.blockId) : undefined;
+  // What the to-do list follows: the running activity (even off-plan), else the planned block now.
+  const act = running ? { areaId: running.areaId, blockId: running.blockId, title: running.title } : now ? { areaId: now.areaId, blockId: now.id, title: now.title } : null;
+  const actArea = act ? areaMap.get(act.areaId) : undefined;
+  const openTasks = useOpenTasks();
+  const actTasks = act ? activityTasks(act, dayId, [...tasks, ...openTasks], blocks) : { today: [], suggestions: [] };
   const focusBlockId = focus?.blockId ?? running?.blockId ?? now?.id;
-  const ctxBlock = runningBlock ?? (running ? undefined : now ?? undefined);
-  const blockTasks = ctxBlock ? tasks.filter(t => t.blockId === ctxBlock.id) : [];
 
   async function focusOn(p: Preset, task?: Task) {
     if (p.id !== 'free') { await setMeta('focusPreset', p.id); setPresetId(p.id); }
@@ -133,19 +138,35 @@ export function NowCard({ dayId, minute, blocks, tasks, areas, areaMap, running,
           </div>
         )}
 
-        {blockTasks.length > 0 && !focus && (
+        {act && !onBreak && (
           <div className="now-tasks">
-            <span className="label">{m.activity.tasksHere}</span>
-            {blockTasks.map(t => (
+            <span className="label">{m.activity.todosFor(actArea?.name ?? act.title)}</span>
+            {actTasks.today.map(t => (
               <div key={t.id} className="now-task">
                 <input type="checkbox" checked={t.status === 'done'} onChange={() => void toggleTaskDone(t.id)} aria-label={t.title} />
-                <span className={t.status === 'done' ? 'done' : ''}>{t.title}</span>
+                <span className={t.status === 'done' ? 'done' : ''}>{t.priority === 'high' && <b className="prio">! </b>}{t.title}</span>
                 {t.estimate ? <span className="muted tabular">{fmtDuration(t.estimate)}</span> : null}
-                {t.status !== 'done' && (
+                {t.status !== 'done' && !focus && (
                   <button type="button" className="btn icon sm ghost" title={m.focus.start} aria-label={m.focus.start} onClick={() => void focusOn(preset, t)}><Timer size={13} /></button>
                 )}
               </div>
             ))}
+            {actTasks.today.length === 0 && <span className="hint">{m.activity.noTodos}</span>}
+            <QuickAdd key={`${act.blockId ?? ''}:${act.areaId}`} mode={act.blockId ? 'block' : 'today'} dayId={dayId} blockId={act.blockId} areaId={act.areaId} compact surface="now_card"
+              placeholder={m.activity.addTodo(actArea?.name ?? act.title)} />
+            {actTasks.suggestions.length > 0 && (
+              <details className="now-suggest">
+                <summary className="sublabel">{m.activity.fromBacklog(actArea?.name ?? '', actTasks.suggestions.length)}</summary>
+                {actTasks.suggestions.map(t => (
+                  <div key={t.id} className="now-task">
+                    <span className="muted">○</span>
+                    <span>{t.priority === 'high' && <b className="prio">! </b>}{t.title}</span>
+                    {t.estimate ? <span className="muted tabular">{fmtDuration(t.estimate)}</span> : null}
+                    <button type="button" className="btn sm ghost" onClick={() => void scheduleTask(t.id, dayId, act.blockId, 'now_card')}>{m.activity.bringNow}</button>
+                  </div>
+                ))}
+              </details>
+            )}
           </div>
         )}
       </section>

@@ -56,3 +56,15 @@ MS_TENANT=common
 - `src/lib/calendar/server.ts` — OAuth, tokens AES-GCM, refresh, leitura paginada, escrita em `sync_records` (só muda `seq` quando o evento muda; o que sumiu vira tombstone).
 - `POST /api/calendars/sync` — janela ontem → +14 dias; o cliente chama no boot, a cada 15 min e no botão.
 - Cliente: `useDayEvents`, `CalendarWatcher` (mudanças → revisões), `ExternalConflictsCard`, `EventInspector` (exceção por evento, virar bloco fixo).
+
+# E10 · Proteger o tempo (branch `feat/e10-protect`, empilhada na E9)
+
+Não precisa de setup extra: os escopos da E9 já pedem escrita (`calendar.events`, `Calendars.ReadWrite`). Se você conectou antes desta branch com escopo só de leitura, clique em **Reconnect**.
+
+- Inspector do bloco → **Protect this time** → escolha calendários (Google, Microsoft ou os dois) e **Busy/Free**.
+- O agente de publicação (no app, a cada mudança, 2 s depois) cria/atualiza/exclui o evento. Os ids do Google são derivados do bloco e a Microsoft usa `transactionId`, então uma nova tentativa não duplica o evento.
+- Mover/redimensionar/renomear o bloco atualiza o evento. Excluir pergunta: “só no DailyFlow” (o evento fica) ou “no calendário também”.
+- Falhas aparecem no bloco com **Try again**; nada falha em silêncio (`publish_failed` nos eventos).
+- Eventos que o próprio DailyFlow publicou não aparecem duplicados na timeline nem viram conflito.
+
+Roteiro de teste: proteger um bloco de Work como Busy → ver no Google Calendar → arrastar o bloco → o evento move → excluir “no calendário também” → some do Google.

@@ -21,6 +21,10 @@ import { BlockInspector, RecordInspector } from './Inspectors';
 import { NowCard } from './NowCard';
 import { Summary } from './Summary';
 import { useDay, useLive } from './useDay';
+import { hasLiveCopies } from './PublishControls';
+import { detach } from '@/lib/calendar/publish';
+import { update } from '@/lib/repo';
+import { Modal } from '../Modal';
 import { useCalStatus, useDayEvents } from './useCalendar';
 import { CalendarDayCard, CalendarStatusBanner, CalendarWatcher, EventInspector, ExternalConflictsCard } from './CalendarCards';
 
@@ -46,6 +50,9 @@ function readMode(): DayViewMode | null {
 export function DayView({ dayId, live, title, sub, sideTop, sideBottom, headExtra }: Props) {
   const d = useDay(dayId);
   const cal = useDayEvents(dayId);
+  // Events DailyFlow itself published (E10) are copies of blocks: not shown twice, never conflicts.
+  const ownEvents = useMemo(() => new Set(d.blocks.flatMap(b => (b.published ?? []).map(t => t.eventId).filter(Boolean) as string[])), [d.blocks]);
+  const commitments = useMemo(() => cal.commitments.filter(e => !ownEvents.has(e.eventId)), [cal.commitments, ownEvents]);
   const calStatus = useCalStatus();
   const { running, focus } = useLive();
   const { minute: clockMin } = useClock();
@@ -57,6 +64,7 @@ export function DayView({ dayId, live, title, sub, sideTop, sideBottom, headExtr
   const [mismatch, setMismatch] = useState<{ taskId: string; title: string; target?: DayBlock; blockId: string; taskArea: string; blockArea: string } | null>(null);
   const [replan, setReplan] = useState(false);
   const [saveTpl, setSaveTpl] = useState(false);
+  const [askDelete, setAskDelete] = useState<DayBlock | null>(null);
   const prefs = useLiveQuery(() => getDB().prefs.get('prefs'), []);
   const density = prefs?.density === 'compact' ? 0.75 : prefs?.density === 'roomy' ? 1.6 : 1;
   const scrolled = useRef(false);
@@ -106,7 +114,7 @@ export function DayView({ dayId, live, title, sub, sideTop, sideBottom, headExtr
       }
       return item;
     });
-    const eventItems: TLItem[] = cal.timed.filter(e => e.cls === 'commitment' && !d.blocks.some(b => b.fromEvent === e.id)).map(e => ({
+    const eventItems: TLItem[] = cal.timed.filter(e => e.cls === 'commitment' && !d.blocks.some(b => b.fromEvent === e.id) && !ownEvents.has(e.eventId)).map(e => ({
       id: `ev:${e.id}`, start: e.start, end: e.end, title: e.title, areaId: '', variant: 'event', color: e.free ? 'gray' : 'indigo',
     }));
     planItems.push(...eventItems);
@@ -124,7 +132,7 @@ export function DayView({ dayId, live, title, sub, sideTop, sideBottom, headExtr
       { id: 'plan', label: m.day.cols.final, items: planItems, editable: true },
       { id: 'real', label: m.day.cols.real, items: realItems, editable: true },
     ];
-  }, [d.blocks, d.records, d.tasks, d.day?.baseline, view, started, until, cal.timed]);
+  }, [d.blocks, d.records, d.tasks, d.day?.baseline, view, started, until, cal.timed, ownEvents]);
 
   function afterRevision(revId: string | null, label: string) {
     if (revId) setReason({ revId, label });
@@ -168,7 +176,9 @@ export function DayView({ dayId, live, title, sub, sideTop, sideBottom, headExtr
     if (kind !== 'fixed' && kind !== 'rename') afterRevision(revId, `${b.title}: ${m.day.revKinds[kind]}`);
   }
 
-  async function onDeleteBlock(b: DayBlock) {
+  async function onDeleteBlock(b: DayBlock, scope?: 'only' | 'both') {
+    if (!scope && hasLiveCopies(b)) { setAskDelete(b); return; }
+    if (scope === 'only') await update<DayBlock>('day_block', b.id, { published: detach(b.published ?? []) });
     setSel(null);
     const revId = await deleteBlock(b.id);
     track('block_deleted', { area: b.areaId, duration_min: b.end - b.start, from_template: !!b.fromTemplate });
@@ -311,7 +321,7 @@ export function DayView({ dayId, live, title, sub, sideTop, sideBottom, headExtr
           )}
           {(started || d.records.length > 0) && <GapsCard dayId={dayId} blocks={d.blocks} records={d.records} areas={d.areas} until={until} />}
           {live && <CalendarStatusBanner problems={calStatus.results.filter(r => r.error)} />}
-          {cal.commitments.length > 0 && <ExternalConflictsCard events={cal.commitments} blocks={d.blocks} />}
+          {commitments.length > 0 && <ExternalConflictsCard events={commitments} blocks={d.blocks} />}
           {conflicts.length > 0 && <ConflictsCard conflicts={conflicts} />}
           {!isMobile && inspector}
           {!isMobile && after}
@@ -337,7 +347,16 @@ export function DayView({ dayId, live, title, sub, sideTop, sideBottom, headExtr
           <div className="sheet" role="dialog" aria-label={m.inspector.title}>{inspector}</div>
         </>
       )}
-      <CalendarWatcher dayId={dayId} started={started} commitments={cal.commitments} />
+      <CalendarWatcher dayId={dayId} started={started} commitments={commitments} />
+      {askDelete && (
+        <Modal onClose={() => setAskDelete(null)} label={m.protect.deleteTitle}>
+          <b>{m.protect.deleteTitle}</b>
+          <div className="row wrap">
+            <button type="button" className="btn sm" onClick={() => { const b = askDelete; setAskDelete(null); void onDeleteBlock(b, 'only'); track('published_block_deleted', { scope: 'dailyflow' }); }}>{m.protect.deleteOnly}</button>
+            <button type="button" className="btn sm danger" onClick={() => { const b = askDelete; setAskDelete(null); void onDeleteBlock(b, 'both'); }}>{m.protect.deleteBoth}</button>
+          </div>
+        </Modal>
+      )}
       {saveTpl && <SaveTemplateModal dayId={dayId} count={d.blocks.length} onClose={() => setSaveTpl(false)} />}
       {replan && <ReplanModal dayId={dayId} blocks={d.blocks} records={d.records} minute={clockMin} onClose={() => setReplan(false)} />}
     </div>

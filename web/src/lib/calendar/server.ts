@@ -248,3 +248,58 @@ export async function writeEvents(accountId: string, provider: CalProvider, cale
   )) as { id: string }[];
   return { upserted: rows.length, removed: gone.length };
 }
+
+// ── E10: publish blocks as events ─────────────────────────────────────────
+
+/** Deterministic Google event id (base32hex-safe hex) so a retried insert can never duplicate. */
+export async function googleEventId(blockId: string, calendarId: string) {
+  const h = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(`${blockId}|${calendarId}`));
+  return `df${Buffer.from(h).toString('hex').slice(0, 40)}`;
+}
+
+export interface PublishInput { blockId: string; calendarId: string; eventId?: string; title: string; start: string; end: string; availability: 'busy' | 'free' }
+
+async function send(url: string, token: string, method: string, body?: unknown) {
+  const res = await fetch(url, { method, headers: { authorization: `Bearer ${token}`, 'content-type': 'application/json' }, body: body ? JSON.stringify(body) : undefined });
+  if (res.status === 401) throw Object.assign(new Error('reauth'), { reauth: true });
+  return res;
+}
+
+/** Creates or updates the external copy of a block. Returns the remote event id. */
+export async function publishEvent(a: Account, token: string, p: PublishInput): Promise<string> {
+  if (a.provider === 'google') {
+    const id = p.eventId ?? (await googleEventId(p.blockId, p.calendarId));
+    const body = {
+      id, summary: p.title, start: { dateTime: p.start }, end: { dateTime: p.end },
+      transparency: p.availability === 'busy' ? 'opaque' : 'transparent',
+      reminders: { useDefault: false }, extendedProperties: { private: { dailyflowBlock: p.blockId } },
+    };
+    const base = `https://www.googleapis.com/calendar/v3/calendars/${encodeURIComponent(p.calendarId)}/events`;
+    let res = await send(`${base}/${id}`, token, 'PATCH', body);
+    if (res.status === 404) res = await send(base, token, 'POST', body);
+    if (res.status === 409) res = await send(`${base}/${id}`, token, 'PUT', { ...body, status: 'confirmed' }); // was deleted: revive
+    if (!res.ok) throw new Error(`google publish ${res.status}: ${(await res.text()).slice(0, 200)}`);
+    return id;
+  }
+  const body = {
+    subject: p.title, start: { dateTime: p.start, timeZone: 'UTC' }, end: { dateTime: p.end, timeZone: 'UTC' },
+    showAs: p.availability, isReminderOn: false,
+  };
+  if (p.eventId) {
+    const res = await send(`https://graph.microsoft.com/v1.0/me/events/${encodeURIComponent(p.eventId)}`, token, 'PATCH', body);
+    if (res.ok) return p.eventId;
+    if (res.status !== 404) throw new Error(`graph publish ${res.status}: ${(await res.text()).slice(0, 200)}`);
+  }
+  // transactionId makes Graph drop a duplicate create from a retry.
+  const res = await send(`https://graph.microsoft.com/v1.0/me/calendars/${encodeURIComponent(p.calendarId)}/events`, token, 'POST', { ...body, transactionId: (await googleEventId(p.blockId, p.calendarId)).slice(0, 36) });
+  if (!res.ok) throw new Error(`graph publish ${res.status}: ${(await res.text()).slice(0, 200)}`);
+  return ((await res.json()) as { id: string }).id;
+}
+
+export async function unpublishEvent(a: Account, token: string, calendarId: string, eventId: string) {
+  const url = a.provider === 'google'
+    ? `https://www.googleapis.com/calendar/v3/calendars/${encodeURIComponent(calendarId)}/events/${encodeURIComponent(eventId)}`
+    : `https://graph.microsoft.com/v1.0/me/events/${encodeURIComponent(eventId)}`;
+  const res = await send(url, token, 'DELETE');
+  if (!res.ok && res.status !== 404 && res.status !== 410) throw new Error(`${a.provider} delete ${res.status}`);
+}

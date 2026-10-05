@@ -76,6 +76,26 @@ export interface DayBlock extends SyncFields {
   fixed?: boolean;
   /** Block made from a calendar event (E9): the event is not a conflict with it. */
   fromEvent?: string;
+  /** E10: copies of this block published to external calendars as Busy/Free. */
+  published?: PublishTarget[];
+}
+
+/** One external copy of a block (E10). The publish agent drives `state` to 'ok' or 'error'. */
+export interface PublishTarget {
+  /** Calendar record id (accountId:calendarId). */
+  calendarKey: string;
+  provider: CalProvider;
+  accountId: string;
+  calendarId: string;
+  availability: 'busy' | 'free';
+  /** Remote event id once created. Google ids are derived from the block id, so retries are idempotent. */
+  eventId?: string;
+  state: 'pending' | 'ok' | 'error' | 'remove' | 'removed';
+  error?: string;
+  /** What the remote event currently has; a difference with the block means it must be updated. */
+  synced?: { start: number; end: number; title: string; availability: 'busy' | 'free' };
+  /** Device working on it and when (avoids two devices publishing at once). */
+  lock?: { device: string; at: string };
 }
 
 /** What actually happened (spec §25). Minutes are relative to the logical day's date, like blocks. */

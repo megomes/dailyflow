@@ -460,6 +460,17 @@ export const m = {
     none: 'No calendars connected.',
     events: (n: number) => `${n} event${n === 1 ? '' : 's'}`,
   },
+  protect: {
+    title: 'Protect this time',
+    availability: { busy: 'Busy', free: 'Free' } as Record<string, string>,
+    published: 'On your calendar',
+    publishing: 'Publishing…',
+    failed: (e: string) => `Could not publish${e ? `: ${e}` : ''}`,
+    retry: 'Try again',
+    deleteTitle: 'This block is on your calendar',
+    deleteOnly: 'Delete only in DailyFlow',
+    deleteBoth: 'Delete in the calendar too',
+  },
   prefs: {
     title: 'Preferences',
     hint: 'Day turnover, focus, display, notifications, export',

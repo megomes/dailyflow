@@ -9,6 +9,7 @@ import { createTask, deleteRecord, PRESETS, startActivity, startFocus, stopActiv
 import { fmtDuration, fmtMin, parseHHMM } from '@/lib/time';
 import type { Area, DayBlock, Revision, Task, TimeRecord } from '@/lib/types';
 import { TaskRow } from '../tasks/TaskRow';
+import { PublishControls } from './PublishControls';
 
 export interface TimesProps { start: number; end: number; onCommit: (start: number, end: number) => void; endEditable?: boolean }
 
@@ -114,6 +115,7 @@ export function BlockInspector({ dayId, block, areas, areaMap, tasks, revisions,
         </div>
       )}
       <AreaPicker areas={areas} value={block.areaId} onPick={id => onPatch({ areaId: id }, 'area')} />
+      <PublishControls block={block} />
       <div className="field">
         <span>{m.tasks.title}{cap.estimated > 0 && <em className={`cap${cap.over ? ' over' : ''}`}> · {m.tasks.capacity(fmtDuration(cap.estimated), fmtDuration(cap.available))}</em>}</span>
         <div className="task-list compact">

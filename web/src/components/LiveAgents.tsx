@@ -10,6 +10,7 @@ import { dateAtMinute, fmtClock, fmtDuration, fmtMin, minuteOfDay, parseHHMM } f
 import type { FocusSession, TimeRecord } from '@/lib/types';
 import { useLive } from './day/useDay';
 import { Modal } from './Modal';
+import { PublishAgent } from './PublishAgent';
 
 /** Background helpers mounted once in the shell: tab title, forgotten timers, notifications. */
 export function LiveAgents() {
@@ -19,6 +20,7 @@ export function LiveAgents() {
       <TabTitle running={running} focus={focus} />
       <Forgotten running={running} focus={focus} />
       <Notifier focus={focus} />
+      <PublishAgent />
     </>
   );
 }

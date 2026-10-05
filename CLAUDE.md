@@ -23,6 +23,15 @@ A ferramenta de revisão (`review/`) e o artifact publicado (https://claude.ai/a
 - Código de acesso: `.secrets/access-code.txt` (fora do git). Trocar: `npm run hash-code -- "<novo>"` e atualizar `ACCESS_CODE_HASH` na Vercel.
 - Antes de commitar: `npm run lint`, `npm test`, `npm run build` em `web/`.
 
+## App Android (`mobile/`)
+
+- **Web e app têm SEMPRE as mesmas funcionalidades.** O app é uma casca nativa (Expo) em volta do próprio webapp numa WebView (`src/WebShell.tsx`), logada com o token do aparelho via `/api/devices/web`. Funcionalidade nova vai **no web** (com layout de celular); nunca crie telas nativas paralelas.
+- O nativo só faz o que o web não faz: widgets (`src/widgets/`, desenhados a partir de `/api/snapshot`), notificação da tela de bloqueio, OTA, voltar do Android e links do widget (`dailyflow:///tasks`). O web avisa o app depois de cada sync (`postNative({type:'changed'})` em `web/src/lib/native.ts`) e o app redesenha os widgets.
+- **OTA:** mudança só de JS → `cd mobile && npx -y eas-cli@latest update --channel production --environment production --platform android --message "…" --non-interactive` (o app aplica ao vir para a frente).
+- **Mudança nativa** (lib nativa, permissão, plugin no `app.json`) → suba `version` no `mobile/app.json` (o runtime do OTA segue a versão; senão o APK novo baixa JS antigo), gere APK novo e publique um OTA logo em seguida.
+- **APK:** em `mobile/`: `npx expo prebuild --platform android --clean --no-install`; `android/local.properties` com `sdk.dir=C\:/Users/mathe/Android/Sdk`; em `android/`: `gradlew assembleRelease -PreactNativeArchitectures=arm64-v8a`. Se quebrar por caminho > 260 caracteres: `subst X: C:\Users\mathe\Code\dailyflow`, build em C: (gera o codegen) e repete em `X:\mobile\android`. Instalar: `adb -s <ip:porta> install -r` com o caminho Windows do APK (celular por Wi‑Fi; porta em `adb mdns services`; no Git Bash use `MSYS_NO_PATHCONV=1` para caminhos `/sdcard`).
+- Pareamento sem passar pelo web: gerar código, gravar `sha256("dailyflow-pair:"+código)` em `pair_codes` (Neon `main`) e abrir `dailyflow://pair?host=…&code=…` no celular desbloqueado.
+
 ## Notas do app (página Notes) — fila de trabalho do usuário
 
 O usuário escreve comentários sobre o app em **Notes** (`/notes`). Cada nota tem id sequencial (`#1`, `#2`…, nunca reutilizado). Quando ele pedir "faz os ids 2, 3, 4 e 5", é dessa fila que se trata. Os dados ficam no Neon **branch `main`** (produção; projeto `muddy-shape-19725660`, sem `branch_id`), tabelas `notes` e `note_log` (ver `web/db/schema.sql`). Use a ferramenta de SQL do Neon.

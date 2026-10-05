@@ -28,6 +28,14 @@ export function hero(s: Snapshot): Hero {
       progress: total ? Math.min(1, s.focus.elapsedSec / total) : null, action: null,
     };
   }
+  const also = s.alsoRunning ?? [];
+  if (s.running && also.length) {
+    // Two things at once (a meeting + guitar): both names, the main one's color.
+    return {
+      mode: 'running', tag: `${also.length + 1} AT ONCE`, title: [s.running.title, ...also.map(a => a.title)].join(' + '), color: s.running.color,
+      sub: `since ${s.running.sinceLabel}${s.now ? ` · until ${s.now.endLabel}` : ''}`, progress: s.now ? s.now.progress : null, action: 'QUICK_STOP',
+    };
+  }
   if (s.running) {
     const off = s.now && s.now.title !== s.running.title;
     return {
@@ -36,6 +44,8 @@ export function hero(s: Snapshot): Hero {
       progress: s.now && !off ? s.now.progress : null, action: 'QUICK_STOP',
     };
   }
+  const nowAll = s.nowAll ?? [];
+  if (nowAll.length > 1) return { mode: 'idle', tag: `${nowAll.length} AT ONCE · NOT STARTED`, title: nowAll.map(b => b.title).join(' + '), color: nowAll[0].color, sub: `until ${nowAll[0].endLabel}`, progress: s.now?.progress ?? null, action: 'QUICK_START' };
   if (s.now) return { mode: 'idle', tag: 'NOW · NOT STARTED', title: s.now.title, color: s.now.color, sub: `${s.now.startLabel} – ${s.now.endLabel}`, progress: s.now.progress, action: 'QUICK_START' };
   if (s.next) return { mode: 'free', tag: 'FREE', title: `Free until ${s.next.startLabel}`, color: C.muted, sub: `then ${s.next.title}`, progress: null, action: null };
   if (s.timeline.length) return { mode: 'over', tag: 'DAY DONE', title: 'That was the day', color: C.ok, sub: `${dur(s.progress.trackedMin)} tracked · close it in the app`, progress: null, action: null };
@@ -136,7 +146,9 @@ export function DayWidget({ s, info, pending }: { s: Snapshot | null; info: Widg
   const total = doneCount + todos.length;
   const nowTodos = todos.filter(t => t.inNow);
   const later = todos.filter(t => !t.inNow);
-  const agenda = s.timeline.filter(b => b.end > s.minute);
+  // Everything on now first (parallel blocks together), then what comes next.
+  const isNowB = (b: { start: number; end: number }) => b.start <= s.minute && s.minute < b.end;
+  const agenda = [...s.timeline.filter(isNowB), ...s.timeline.filter(b => b.start > s.minute)];
   const perBlock = new Map<string, number>();
   for (const t of todos) if (t.blockStart) perBlock.set(`${t.blockStart}|${t.blockTitle}`, (perBlock.get(`${t.blockStart}|${t.blockTitle}`) ?? 0) + 1);
   const fit = fitRows(H, s.timeline.length > 0, agenda.length, nowTodos.length, later.length);
@@ -166,7 +178,7 @@ export function DayWidget({ s, info, pending }: { s: Snapshot | null; info: Widg
         )}
 
         {/* Now & next, as a short agenda */}
-        {agenda.length > 0 && <SectionLabel text="NOW & NEXT" />}
+        {agenda.length > 0 && <SectionLabel text={(s.nowAll?.length ?? 0) > 1 ? `NOW (${s.nowAll!.length} AT ONCE) & NEXT` : 'NOW & NEXT'} />}
         {agenda.slice(0, fit.agendaRows).map((b, i) => {
           const isNow = b.start <= s.minute && s.minute < b.end;
           const n = perBlock.get(`${b.startLabel}|${b.title}`) ?? 0;

@@ -34,6 +34,13 @@ A ferramenta de revisão (`review/`) e o artifact publicado (https://claude.ai/a
 - **Nunca** navegue na interface do celular/relógio por toques simulados (`adb shell input`); peça ao usuário. Print (`screencap`) para conferir é ok.
 - Pareamento sem passar pelo web: gerar código, gravar `sha256("dailyflow-pair:"+código)` em `pair_codes` (Neon `main`) e abrir `dailyflow://pair?host=…&code=…` no celular desbloqueado.
 
+## App de desktop (`desktop/`)
+
+- Casca Electron em volta do web (nota #20), mesma regra do Android: funcionalidade nova vai **no web**. A janelinha flutuante carrega `/mini` (`web/src/app/(mini)/mini/page.tsx`) sempre por cima, no canto; o ícone da bandeja/barra de menus mostra um anel de progresso na cor da área e o timer. Ponte: `window.dailyflowDesktop` (`desktop/preload.js` ↔ `web/src/lib/desktop.ts`).
+- Testar contra o local: `cd desktop && npm run dev` (usa `http://localhost:3000`). Atalho global: Ctrl/⌘+Alt+D.
+- Instalador Windows: `cd desktop && npm run dist:win` → `desktop/dist/DailyFlow Setup <versão>.exe` (sem assinatura: o SmartScreen pede “Executar assim mesmo”). Mac: rodar `npm run dist:mac` num Mac (dmg sem assinatura: abrir com botão direito › Abrir).
+- Como a janela carrega a produção, mudanças no `/mini` chegam com o deploy do web; só mexer no `desktop/` exige instalador novo (suba `version` no `desktop/package.json`).
+
 ## Notas do app (página Notes) — fila de trabalho do usuário
 
 O usuário escreve comentários sobre o app em **Notes** (`/notes`). Cada nota tem id sequencial (`#1`, `#2`…, nunca reutilizado). Quando ele pedir "faz os ids 2, 3, 4 e 5", é dessa fila que se trata. Os dados ficam no Neon **branch `main`** (produção; projeto `muddy-shape-19725660`, sem `branch_id`), tabelas `notes` e `note_log` (ver `web/db/schema.sql`). Use a ferramenta de SQL do Neon.

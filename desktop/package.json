@@ -1,0 +1,29 @@
+{
+  "name": "dailyflow-desktop",
+  "productName": "DailyFlow",
+  "version": "1.0.0",
+  "description": "DailyFlow on the computer: Now/Next floating in a corner, plus a tray / menu-bar icon (note #20).",
+  "author": "Matheus Ervilha Gomes",
+  "private": true,
+  "main": "main.js",
+  "scripts": {
+    "start": "electron .",
+    "dev": "cross-env DAILYFLOW_URL=http://localhost:3000 electron .",
+    "dist:win": "electron-builder --win nsis",
+    "dist:mac": "electron-builder --mac dmg"
+  },
+  "build": {
+    "appId": "app.dailyflow.desktop",
+    "productName": "DailyFlow",
+    "files": ["main.js", "preload.js", "build/tray.png", "build/icon.png"],
+    "directories": { "output": "dist", "buildResources": "build" },
+    "win": { "target": "nsis", "icon": "build/icon.ico" },
+    "nsis": { "oneClick": true, "perMachine": false, "createDesktopShortcut": false, "runAfterFinish": true },
+    "mac": { "target": "dmg", "icon": "build/icon.png", "category": "public.app-category.productivity", "extendInfo": { "LSUIElement": true } }
+  },
+  "devDependencies": {
+    "cross-env": "^7.0.3",
+    "electron": "^44.5.1",
+    "electron-builder": "^26.15.3"
+  }
+}

@@ -10,8 +10,10 @@ export async function proxy(req: NextRequest) {
   if (ok) return NextResponse.next();
   if (req.nextUrl.pathname.startsWith('/api/')) return NextResponse.json({ error: 'unauthorized' }, { status: 401 });
   const url = req.nextUrl.clone();
+  // Come back here after signing in (the desktop companion opens /mini).
+  const next = req.nextUrl.pathname !== '/' ? req.nextUrl.pathname : '';
   url.pathname = '/login';
-  url.search = '';
+  url.search = next ? `?next=${encodeURIComponent(next)}` : '';
   return NextResponse.redirect(url);
 }
 

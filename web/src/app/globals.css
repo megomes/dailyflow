@@ -819,3 +819,46 @@ a.btn[aria-disabled='true'] { opacity: .5; pointer-events: none; }
 /* Press-and-hold opens our menu, not the browser's text selection / callout */
 @media (pointer: coarse) { .task-row, .board-card, .blk { -webkit-touch-callout: none; -webkit-user-select: none; user-select: none; } }
 .ctx-chips .chip.on { border-color: var(--focus); color: var(--text-primary); background: var(--bg-surface-active); }
+
+/* Desktop companion · Now/Next (note #20). Transparent window: only the pill/card paint. */
+html.mw-root, html.mw-root body { background: transparent !important; overflow: hidden; }
+.mw { position: fixed; top: 0; left: 0; width: 100%; height: 100%; box-sizing: border-box; max-width: 360px; max-height: 420px; display: flex; flex-direction: column; padding: 6px; font-size: 13px; color: var(--text-primary); -webkit-app-region: drag; user-select: none; }
+.mw > * { min-width: 0; background: var(--bg-elevated); border: 1px solid var(--border-strong); box-shadow: 0 8px 24px rgba(0,0,0,.35); }
+.mw-bar { display: flex; align-items: center; gap: 10px; height: 62px; padding: 0 8px 0 10px; border-radius: 16px; position: relative; overflow: hidden; flex: none; transition: border-color .3s; }
+.mw-bar::before { content: ''; position: absolute; inset: 0; background: linear-gradient(90deg, color-mix(in srgb, var(--c) 22%, transparent), transparent 70%); opacity: .55; pointer-events: none; }
+.mw.mw-open .mw-bar { border-radius: 16px 16px 0 0; border-bottom-color: var(--border-subtle); }
+.mw-ring { --p: 0; width: 40px; height: 40px; border-radius: 50%; flex: none; display: grid; place-items: center; position: relative;
+  background: conic-gradient(var(--c) calc(var(--p) * 360deg), color-mix(in srgb, var(--text-muted) 28%, transparent) 0); transition: background .6s; }
+.mw-ring-in { width: 30px; height: 30px; border-radius: 50%; background: var(--bg-elevated); display: grid; place-items: center; color: var(--c); }
+.mw.s-live .mw-ring, .mw.s-focus .mw-ring { box-shadow: 0 0 0 0 color-mix(in srgb, var(--c) 55%, transparent); animation: mini-breathe 3.2s ease-in-out infinite; }
+@keyframes mini-breathe { 50% { box-shadow: 0 0 0 5px color-mix(in srgb, var(--c) 0%, transparent); } }
+.mw-main { flex: 1; min-width: 0; position: relative; display: flex; flex-direction: column; gap: 3px; }
+.mw-title { display: flex; align-items: center; gap: 6px; font-weight: 640; font-size: 14px; min-width: 0; }
+.mw-name { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.mw-tag { font-size: 10.5px; font-weight: 600; padding: 1px 6px; border-radius: 5px; background: var(--bg-surface-active); color: var(--text-secondary); flex: none; }
+.mw-sub { display: flex; align-items: center; gap: 8px; color: var(--text-secondary); font-size: 12px; white-space: nowrap; overflow: hidden; }
+.mw-time { display: inline-flex; align-items: center; gap: 4px; font-weight: 650; color: var(--text-primary); font-variant-numeric: tabular-nums; }
+.mw-over { color: var(--c-orange); font-weight: 600; }
+.mw-next { overflow: hidden; text-overflow: ellipsis; color: var(--text-muted); }
+.mw-next.soon { color: var(--text-primary); }
+.mw.soon .mw-bar { border-color: color-mix(in srgb, var(--c) 70%, var(--border-strong)); animation: mini-nudge 2.4s ease-in-out infinite; }
+@keyframes mini-nudge { 50% { box-shadow: 0 0 0 3px color-mix(in srgb, var(--c) 35%, transparent), 0 8px 24px rgba(0,0,0,.35); } }
+.mw.s-over .mw-bar { border-color: color-mix(in srgb, var(--c-orange) 60%, var(--border-strong)); }
+.mw-actions { display: flex; gap: 4px; position: relative; -webkit-app-region: no-drag; }
+.mw-btn { width: 32px; height: 32px; border-radius: 10px; border: 1px solid var(--border-default); background: var(--bg-button); color: var(--text-primary); display: grid; place-items: center; cursor: pointer; transition: var(--transition-fast); }
+.mw-btn:hover { background: var(--bg-surface-hover); }
+.mw-btn.hot { background: var(--c); border-color: transparent; color: #fff; }
+.mw-btn.ghost { background: transparent; border-color: transparent; color: var(--text-secondary); }
+.mw-card { border-top: 0; border-radius: 0 0 16px 16px; padding: 10px 12px 12px; display: flex; flex-direction: column; gap: 10px; flex: 1; min-height: 0; overflow-y: auto; -webkit-app-region: no-drag; }
+.mw-plan, .mw-row-actions { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; }
+.mw-plan b { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.mw-also { display: flex; flex-wrap: wrap; gap: 4px; }
+.mw-also button { border: 0; background: transparent; color: inherit; cursor: pointer; padding: 0 0 0 4px; }
+.mw-todos { display: flex; flex-direction: column; gap: 4px; }
+.mw-todo { display: flex; align-items: center; gap: 8px; min-height: 26px; cursor: pointer; }
+.mw-todo span:first-of-type { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.mw-todo.done span:first-of-type { text-decoration: line-through; color: var(--text-muted); }
+.mw-nextcard { display: flex; align-items: center; gap: 6px; padding: 8px 10px; border-radius: 10px; background: var(--bg-surface); border: 1px solid var(--border-subtle); flex-wrap: wrap; }
+.mw-nextcard b { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.mw-openapp { align-self: flex-start; }
+@media (prefers-reduced-motion: reduce) { .mw-ring, .mw.soon .mw-bar { animation: none !important; } }

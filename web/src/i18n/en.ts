@@ -3,12 +3,12 @@ import { fmtDuration as fmtD } from '@/lib/time';
 /** UI copy. English per decision Q-02; keep every user-facing string here so it can be translated later. */
 export const m = {
   app: { name: 'DailyFlow' },
-  nav: { today: 'Today', tasks: 'Tasks', history: 'History', insights: 'Insights', forest: 'Forest', notes: 'Notes', settings: 'Settings' },
+  nav: { today: 'Today', tasks: 'Tasks', history: 'History', insights: 'Insights', forest: 'Forest', notes: 'App Feedback', settings: 'Settings' },
   notes: {
-    title: 'Notes',
+    title: 'App Feedback',
     subtitle: 'Comments about the app. Each one gets a number; Claude works on them and records exactly what was done.',
     placeholder: 'What should change, what bothered you, what is missing…',
-    add: 'Add note',
+    add: 'Send feedback',
     kinds: { bug: 'Bug', idea: 'Idea', ux: 'UX', question: 'Question' },
     status: { open: 'Open', discussing: 'Discussing', in_progress: 'In progress', done: 'Done', ignored: 'Ignored', archived: 'Confirmed' },
     verify: 'Tested it?',
@@ -301,6 +301,12 @@ export const m = {
     addSubtask: 'Add subtask…',
     more: 'More: project, tags, subtasks, repeat, notes',
     noRepeat: 'Does not repeat',
+    repeat: {
+      kinds: { daily: 'Every day', weekdays: 'Every weekday', weekly: 'Every week', biweekly: 'Every 2 weeks', monthly: 'Every month' } as Record<string, string>,
+      onDay: 'On',
+      onThe: 'On day',
+      businessDay: 'or the next business day',
+    },
     search: 'Search tasks…',
     anyArea: 'Any area', anyPriority: 'Any priority', anyProject: 'Any project', anyTag: 'Any tag', anyDue: 'Any due',
     dueFilters: { overdue: 'Overdue', week: 'Due in 7 days', any: 'Has due date', none: 'No due date' } as Record<string, string>,
@@ -320,6 +326,16 @@ export const m = {
     added: 'Added to Inbox',
     addedToday: 'Added to Today',
     addToBlock: 'Add task here…',
+    later: {
+      title: 'Later',
+      tomorrow: 'Tomorrow',
+      week: 'Next week',
+      month: 'Next month',
+      now: 'Bring back now',
+      until: (d: string) => `until ${d}`,
+      snoozedTitle: 'Snoozed: hidden until this day, then it comes back by itself',
+      snoozed: (n: number) => `Snoozed · ${n}`,
+    },
     board: {
       dropHere: 'Drop here',
       dropBlock: 'Drop into a block',
@@ -422,7 +438,7 @@ export const m = {
     hint: '↑↓ choose · Enter runs · Esc closes · N adds a to-do from anywhere',
     commands: {
       new: 'New to-do', insights: 'Go to Insights',
-      today: 'Go to Today', tasks: 'Go to Tasks', history: 'Go to History', notes: 'Go to Notes', settings: 'Go to Settings',
+      today: 'Go to Today', tasks: 'Go to Tasks', history: 'Go to History', notes: 'Go to App Feedback', settings: 'Go to Settings',
       startDay: 'Start day', closeDay: 'Close day', stop: 'Stop current activity', plan: 'Plan the day', replan: 'Replan rest of day',
     } as Record<string, string>,
   },

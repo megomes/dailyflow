@@ -132,8 +132,11 @@ export function whatChanged(baseline: PlanBlock[] | undefined, current: Timeline
   }
   const actual = areaTotals(records.filter(r => r.start < until).map(r => ({ start: r.start, end: Math.min(recEnd(r, until), until), areaId: r.areaId })), until);
   const lines: ChangeLine[] = [];
+  // An area with a block still under way is not “skipped” yet: that only holds once the block is over.
+  const ongoing = new Set(current.filter(b => b.start < until && until < b.end).map(b => b.areaId));
   for (const id of new Set([...planned.keys(), ...actual.keys()])) {
     const p = Math.round(planned.get(id) ?? 0), a = Math.round(actual.get(id) ?? 0);
+    if (a === 0 && ongoing.has(id)) continue;
     if (Math.abs(a - p) >= minDelta) lines.push({ kind: 'area', areaId: id, planned: p, actual: a, delta: a - p });
   }
   const changes = baseline ? planChanges(baseline, current).filter(c => ('delta' in c ? c.delta : c.minutes) >= 5) : [];
@@ -159,6 +162,14 @@ export function overlaps(blocks: TimelineBlock[]): Conflict[] {
     }
   }
   return out;
+}
+
+/** Key of an overlapping pair, independent of order. */
+export const overlapKey = (a: { id: string }, b: { id: string }) => [a.id, b.id].sort().join('|');
+
+/** Overlaps still to decide: the ones kept on purpose (two things at once) are left alone. */
+export function openOverlaps(blocks: TimelineBlock[], kept: string[] = []): Conflict[] {
+  return overlaps(blocks).filter(c => !kept.includes(overlapKey(c.a, c.b)));
 }
 
 export interface ReplanResult {

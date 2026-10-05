@@ -3,9 +3,9 @@ import Link from 'next/link';
 import { useEffect, useState } from 'react';
 import { AlertTriangle, ListChecks, Moon, Play, RefreshCw, Sunrise, X } from 'lucide-react';
 import { m } from '@/i18n/en';
-import { dayGaps, recEnd, replanRemaining, whatChanged, type ChangeLine, type Conflict, type Span } from '@/lib/actual';
+import { dayGaps, overlapKey, recEnd, replanRemaining, whatChanged, type ChangeLine, type Conflict, type Span } from '@/lib/actual';
 import { track } from '@/lib/analytics';
-import { acceptPlanAsReal, addRecord, adoptPlan, applyReplan, saveDayAsTemplate, closeDay, deleteBlock, lateStart, patchBlock, setRevisionReason, startDay } from '@/lib/ops';
+import { acceptPlanAsReal, addRecord, adoptPlan, applyReplan, saveDayAsTemplate, closeDay, deleteBlock, keepOverlap, lateStart, patchBlock, setRevisionReason, startDay } from '@/lib/ops';
 import { DAY_KEYS, fmtDuration, fmtMin, templateIdForDate } from '@/lib/time';
 import type { Area, DayBlock, DayKey, PlanBlock, TimeRecord } from '@/lib/types';
 import { Modal } from '../Modal';
@@ -106,10 +106,9 @@ export function ChangesCard({ baseline, blocks, records, until, areaMap }: { bas
 const msSince = (t: number) => Date.now() - t;
 
 /** Overlap detected (US-REPLAN-001) with the four actions. */
-export function ConflictsCard({ conflicts }: { conflicts: Conflict[] }) {
-  const [kept, setKept] = useState<string[]>([]);
+export function ConflictsCard({ dayId, conflicts }: { dayId: string; conflicts: Conflict[] }) {
   const [t0] = useState(() => Date.now());
-  const open = conflicts.filter(c => !kept.includes(`${c.a.id}|${c.b.id}`));
+  const open = conflicts;
   const key = open[0] ? `${open[0].a.id}|${open[0].b.id}` : '';
   useEffect(() => { if (key) track('conflict_detected', { kind: 'overlap' }); }, [key]);
   if (!open.length) return null;
@@ -123,7 +122,7 @@ export function ConflictsCard({ conflicts }: { conflicts: Conflict[] }) {
         <button type="button" className="btn sm" onClick={() => { void patchBlock(c.b.id, { start: c.a.end, end: c.a.end + (c.b.end - c.b.start) }, 'move'); done('move'); }}>{m.day.moveAfter(c.b.title)}</button>
         <button type="button" className="btn sm" onClick={() => { void patchBlock(c.a.id, { end: Math.max(c.a.start + 10, c.b.start) }, 'resize'); done('shorten'); }}>{m.day.shorten(c.a.title)}</button>
         <button type="button" className="btn sm ghost" onClick={() => { void deleteBlock(c.b.id); done('remove'); }}>{m.day.removeB(c.b.title)}</button>
-        <button type="button" className="btn sm ghost" onClick={() => { setKept(k => [...k, `${c.a.id}|${c.b.id}`]); done('keep'); }}>{m.day.keepBoth}</button>
+        <button type="button" className="btn sm ghost" onClick={() => { void keepOverlap(dayId, overlapKey(c.a, c.b)); done('keep'); }}>{m.day.keepBoth}</button>
       </div>
     </section>
   );

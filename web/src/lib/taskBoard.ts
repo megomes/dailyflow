@@ -4,6 +4,18 @@ import type { DayBlock, Task } from './types';
 export type Column = 'inbox' | 'backlog' | 'today' | 'done';
 export const COLUMNS: Column[] = ['inbox', 'backlog', 'today', 'done'];
 
+/** Snoozed until a later day (it comes back by itself on that day). */
+export const isSnoozed = (t: Task, day: string) => !!t.deferUntil && t.deferUntil > day && (t.status === 'inbox' || t.status === 'backlog');
+
+/** Where “Later” sends a task: tomorrow, next Monday or the 1st of next month. */
+export function deferDate(when: 'tomorrow' | 'week' | 'month', day: string): string {
+  const d = new Date(`${day}T12:00:00`);
+  if (when === 'tomorrow') d.setDate(d.getDate() + 1);
+  else if (when === 'week') d.setDate(d.getDate() + (((8 - d.getDay()) % 7) || 7));
+  else { d.setMonth(d.getMonth() + 1, 1); }
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+}
+
 export function columnOf(t: Task, day: string): Column | null {
   if (t.deleted || t.status === 'archived') return null;
   if (t.status === 'done') return 'done';

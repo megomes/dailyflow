@@ -573,7 +573,8 @@ html.vt-close::view-transition-new(root) { z-index: 1; }
   .board-nav button.on { border-color: var(--focus); color: var(--text-primary); }
   .board { display: flex; gap: 10px; margin: 10px -16px 0; padding: 0 16px 12px; overflow-x: auto; overflow-y: hidden; scroll-snap-type: x mandatory; scroll-padding: 0 16px; scrollbar-width: none; overscroll-behavior-x: contain; }
   .board::-webkit-scrollbar { display: none; }
-  .board-col { flex: 0 0 86%; scroll-snap-align: start; }
+  .board-col { flex: 0 0 86%; scroll-snap-align: start; scroll-snap-stop: always; }
+  .col-body { overscroll-behavior-y: contain; }
   .col-body { padding-bottom: 76px; }
   .board-card .task-row { padding: 10px 10px 10px 11px; font-size: 14px; }
   .board-card .task-actions { margin: -6px -6px -6px 0; }
@@ -713,3 +714,34 @@ html.vt-close::view-transition-new(root) { z-index: 1; }
 .pair { display: flex; gap: 18px; align-items: center; flex-wrap: wrap; }
 .pair img { border-radius: 10px; background: #fff; }
 .pair-code { font-size: 30px; letter-spacing: .12em; }
+
+/* Later (snooze) menu on task rows */
+.later-wrap { position: relative; display: inline-flex; }
+.later-menu { position: absolute; right: 0; top: calc(100% + 4px); z-index: 30; display: flex; flex-direction: column; min-width: 150px; padding: 4px; border-radius: 9px;
+  background: var(--bg-elevated); border: 1px solid var(--border-strong); box-shadow: 0 10px 28px rgba(0,0,0,.3); }
+.later-menu button { height: 32px; padding: 0 10px; border: 0; border-radius: 6px; background: transparent; color: var(--text-primary); font-size: 13px; text-align: left; cursor: pointer; }
+.later-menu button:hover { background: var(--bg-surface-hover); }
+.col-snoozed { margin-top: 6px; }
+.col-snoozed > summary { list-style: none; cursor: pointer; padding: 4px; }
+.col-snoozed .col-group { margin-top: 6px; opacity: .8; }
+@media (pointer: coarse) { .later-menu button { height: 40px; font-size: 14px; } }
+.task-row:has(.later-menu) .task-actions { opacity: 1; }
+
+/* Repeat picker (weekday / day of the month) */
+.repeat { display: flex; flex-direction: column; gap: 6px; }
+.repeat-days button { min-width: 30px; padding: 0 8px; }
+.repeat-month { gap: 12px; font-size: 13px; color: var(--text-secondary); }
+.repeat-month .row { gap: 6px; }
+.repeat-month input[type=number] { width: 64px; height: 30px; }
+.repeat-desc { font-size: 12px; }
+
+/* Today on desktop: one screen, no outer scroll — the side panel and the timeline scroll on their own. */
+@media (min-width: 821px) {
+  .day-page { height: 100dvh; display: flex; flex-direction: column; padding-bottom: 16px; }
+  .day-page > .page-head { flex: none; }
+  .day-page .today { flex: 1; min-height: 0; align-items: stretch; }
+  .day-page .today-side { position: static; max-height: none; min-height: 0; overflow-y: auto; scrollbar-width: thin; padding-right: 4px; }
+  .day-page .today-side::-webkit-scrollbar { display: initial; width: 6px; }
+  .day-page .today > .tl-wrap { min-height: 0; overflow-y: auto; overscroll-behavior: contain; scrollbar-width: thin; }
+  .day-page .tl-cols { position: sticky; top: 0; z-index: 4; background: var(--bg-surface); }
+}

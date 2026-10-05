@@ -38,7 +38,7 @@ class MainActivity : ComponentActivity() {
         val api = Api(this)
         app.dailyflow.wear.notify.Transitions.ensureChannel(this)
         // adb shell am start -n app.dailyflow/.wear.MainActivity --ez preview_transition true
-        if (intent.getBooleanExtra("preview_transition", false)) { app.dailyflow.wear.face.FaceData.load(this); app.dailyflow.wear.notify.Transitions.preview(this) }
+        if (intent.getBooleanExtra("preview_transition", false)) { app.dailyflow.wear.face.FaceData.load(this); app.dailyflow.wear.notify.Transitions.preview(this); finish(); return }
         if (checkSelfPermission(android.Manifest.permission.POST_NOTIFICATIONS) != android.content.pm.PackageManager.PERMISSION_GRANTED) requestPermissions(arrayOf(android.Manifest.permission.POST_NOTIFICATIONS), 1)
         setContent {
             MaterialTheme {

@@ -5,7 +5,7 @@ import { useLiveQuery } from 'dexie-react-hooks';
 import { LayoutTemplate, ListChecks, Moon, Plus, RefreshCw, RotateCcw } from 'lucide-react';
 import { SyncBadge } from '@/components/AppShell';
 import { m } from '@/i18n/en';
-import { blockActual, coveredIn, overlaps } from '@/lib/actual';
+import { blockActual, coveredIn, openOverlaps } from '@/lib/actual';
 import { track } from '@/lib/analytics';
 import { NEW_BLOCK_MIN } from '@/lib/config';
 import { useClock, useIsMobile } from '@/lib/hooks';
@@ -75,26 +75,29 @@ export function DayView({ dayId, live, title, sub, sideTop, sideBottom, headExtr
     requestAnimationFrame(() => {
       const el = document.querySelector('[data-now]');
       if (el && window.matchMedia('(min-width: 821px)').matches) {
-        const top = el.getBoundingClientRect().top + window.scrollY - window.innerHeight * 0.3;
-        window.scrollTo({ top: Math.max(0, top) });
+        // Desktop: the timeline scrolls in its own column (the page itself does not scroll).
+        const wrap = el.closest<HTMLElement>('.tl-wrap');
+        if (wrap) wrap.scrollTop += el.getBoundingClientRect().top - wrap.getBoundingClientRect().top - wrap.clientHeight * 0.3;
       }
     });
   }, [d.ready, live]);
 
-  const conflicts = useMemo(() => overlaps(d.blocks), [d.blocks]);
+  const conflicts = useMemo(() => openOverlaps(d.blocks, d.day?.keptOverlaps), [d.blocks, d.day?.keptOverlaps]);
 
   const columns: TLColumn[] = useMemo(() => {
     const showDiff = started && view !== 'plan';
     const planItems: TLItem[] = d.blocks.map(b => {
       const item: TLItem = { ...b };
       const myTasks = d.tasks.filter(t => t.blockId === b.id);
-      // Only recorded time is judged: an untracked block gets no badge (no record ≠ skipped).
-      const covered = showDiff && b.start < until ? coveredIn({ start: b.start, end: Math.min(b.end, until) }, d.records, until) : 0;
+      // Only recorded time is judged, and only once the block is over (no record ≠ skipped; a block
+      // under way is not skipped yet). Until then the corner shows its to-dos.
+      const covered = showDiff && b.end <= until ? coveredIn({ start: b.start, end: b.end }, d.records, until) : 0;
       if (covered >= 5) {
         const { same } = blockActual(b, d.records, until);
         if (same === 0) { item.badge = m.day.skipped; item.badgeTone = 'warn'; }
         else if (covered - same >= 15) { item.badge = `−${fmtDuration(covered - same)}`; item.badgeTone = 'warn'; }
-      } else if (myTasks.length) {
+      }
+      if (!item.badge && myTasks.length) {
         const est = myTasks.filter(t => t.status !== 'done').reduce((s, t) => s + (t.estimate ?? 0), 0);
         const done = myTasks.filter(t => t.status === 'done').length;
         item.badge = `${done}/${myTasks.length}`;
@@ -246,7 +249,7 @@ export function DayView({ dayId, live, title, sub, sideTop, sideBottom, headExtr
   );
 
   return (
-    <div className="page">
+    <div className="page day-page">
       <header className="page-head">
         <div>
           <h1>{title}</h1>
@@ -264,7 +267,8 @@ export function DayView({ dayId, live, title, sub, sideTop, sideBottom, headExtr
               <button key={v} type="button" aria-pressed={view === v} onClick={() => setMode(v)}>{m.day.views[v]}</button>
             ))}
           </div>
-          {live && d.status !== 'closed' && (
+          {/* Planning is for a day without a plan yet; once it has one (Baseline), changes go through Replan. */}
+          {live && d.status !== 'closed' && !d.day?.baseline && (
             <Link href={`/plan?d=${dayId}`} className="btn sm ghost" title={m.day.plan}><ListChecks size={14} /><span className="desk-only">{m.day.plan}</span></Link>
           )}
           {live && d.status === 'active' && (
@@ -301,7 +305,7 @@ export function DayView({ dayId, live, title, sub, sideTop, sideBottom, headExtr
             </section>
           )}
           {(started || d.records.length > 0) && <GapsCard dayId={dayId} blocks={d.blocks} records={d.records} areas={d.areas} until={until} />}
-          {conflicts.length > 0 && <ConflictsCard conflicts={conflicts} />}
+          {conflicts.length > 0 && <ConflictsCard dayId={dayId} conflicts={conflicts} />}
           {!isMobile && inspector}
           {!isMobile && after}
 

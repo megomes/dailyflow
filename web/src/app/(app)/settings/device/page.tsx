@@ -2,6 +2,7 @@
 import { useState } from 'react';
 import { LogOut, RefreshCw } from 'lucide-react';
 import { ThemeToggle } from '@/components/AppShell';
+import { PairDevice } from '@/components/PairDevice';
 import { m } from '@/i18n/en';
 import { deviceId, track } from '@/lib/analytics';
 import { useSyncState } from '@/lib/hooks';
@@ -37,6 +38,7 @@ export default function DevicePage() {
           </div>
         </div>
       </section>
+      <PairDevice />
       <section className="section">
         <h2>{m.device.install}</h2>
         <p className="hint" style={{ margin: 0 }}>{m.device.installHint}</p>

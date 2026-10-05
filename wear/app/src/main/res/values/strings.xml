@@ -1,0 +1,5 @@
+<resources>
+    <string name="app_name">DailyFlow</string>
+    <string name="tile_label">DailyFlow · Now</string>
+    <string name="complication_label">DailyFlow</string>
+</resources>

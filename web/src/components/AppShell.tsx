@@ -2,7 +2,7 @@
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { useEffect, useRef, useSyncExternalStore, type ReactNode } from 'react';
-import { BarChart3, CalendarDays, CheckSquare, History, MessageSquareText, Moon, Settings, Sun } from 'lucide-react';
+import { BarChart3, TreePine, CalendarDays, CheckSquare, History, MessageSquareText, Moon, Settings, Sun } from 'lucide-react';
 import { m } from '@/i18n/en';
 import { setScreen, track } from '@/lib/analytics';
 import { useSyncState } from '@/lib/hooks';
@@ -15,6 +15,7 @@ const NAV = [
   { href: '/tasks', label: m.nav.tasks, icon: CheckSquare, match: (p: string) => p.startsWith('/tasks') },
   { href: '/history', label: m.nav.history, icon: History, match: (p: string) => p.startsWith('/history') || p.startsWith('/day') },
   { href: '/insights', label: m.nav.insights, icon: BarChart3, match: (p: string) => p.startsWith('/insights') },
+  { href: '/forest', label: m.nav.forest, icon: TreePine, match: (p: string) => p.startsWith('/forest'), tab: false },
   { href: '/notes', label: m.nav.notes, icon: MessageSquareText, match: (p: string) => p.startsWith('/notes'), tab: false },
   { href: '/settings', label: m.nav.settings, icon: Settings, match: (p: string) => p.startsWith('/settings') },
 ];

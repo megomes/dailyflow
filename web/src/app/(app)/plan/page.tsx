@@ -7,8 +7,10 @@ import { AlertTriangle, Check, ChevronLeft, Play, Plus } from 'lucide-react';
 import { Timeline } from '@/components/Timeline';
 import { ConflictsCard } from '@/components/day/Cards';
 import { DayTasks } from '@/components/day/DayTasks';
+import { ExternalConflictsCard } from '@/components/day/CalendarCards';
 import { BlockInspector } from '@/components/day/Inspectors';
 import { useDay, useOpenTasks } from '@/components/day/useDay';
+import { useDayEvents } from '@/components/day/useCalendar';
 import { useDraggedTask } from '@/components/tasks/dragState';
 import { TaskRow } from '@/components/tasks/TaskRow';
 import { m } from '@/i18n/en';
@@ -18,7 +20,7 @@ import { getDB } from '@/lib/db';
 import { useClock, useIsMobile } from '@/lib/hooks';
 import { addBlock, deleteBlock, patchBlock, scheduleTask, startDay } from '@/lib/ops';
 import { ensureDay } from '@/lib/repo';
-import { addDays, dateFromIso, fmtDuration } from '@/lib/time';
+import { addDays, dateFromIso, fmtDuration, fmtMin } from '@/lib/time';
 
 /** Guided planning (E5): Context → Build the day → Conflicts → Start. Every step can be skipped. */
 function PlanInner() {
@@ -27,6 +29,7 @@ function PlanInner() {
   const dayId = params.get('d') || today;
   const router = useRouter();
   const d = useDay(dayId);
+  const cal = useDayEvents(dayId);
   const open = useOpenTasks();
   const isMobile = useIsMobile();
   const dragged = useDraggedTask();
@@ -102,6 +105,15 @@ function PlanInner() {
             ) : <span className="hint">—</span>}
           </section>
           <section className="card stack">
+            <span className="label">{m.calendars.commitments}</span>
+            {cal.timed.length + cal.allDay.length === 0 ? <span className="hint">—</span> : (
+              <ul className="cal-list">
+                {cal.allDay.map(e => <li key={e.id}><span className="pill" data-color="indigo">{e.title}</span></li>)}
+                {cal.timed.map(e => <li key={e.id} className={e.cls === 'commitment' && !e.free ? '' : 'aware'}><span className="tabular muted">{fmtMin(e.start)}–{fmtMin(e.end)}</span><span>{e.title}</span></li>)}
+              </ul>
+            )}
+          </section>
+          <section className="card stack">
             <span className="label">{m.tasks.continue}</span>
             {carried.length === 0 ? <span className="hint">—</span> : <div className="task-list">{carried.map(t => <TaskRow key={t.id} task={t} areaMap={areaMap} dayId={dayId} />)}</div>}
           </section>
@@ -127,7 +139,7 @@ function PlanInner() {
             <DayTasks dayId={dayId} tasks={d.tasks} areaMap={areaMap} title={m.planning.buildTitle} />
           </div>
           <Timeline
-            columns={[{ id: 'plan', items: d.blocks.map(b => ({ ...b, badge: d.tasks.some(t => t.blockId === b.id) ? `${d.tasks.filter(t => t.blockId === b.id).length}` : undefined, badgeTone: capacity(b, d.tasks).over ? 'warn' : 'muted' })), editable: true }]}
+            columns={[{ id: 'plan', items: [...cal.commitments.filter(e => !d.blocks.some(b => b.fromEvent === e.id)).map(e => ({ id: `ev:${e.id}`, start: e.start, end: e.end, title: e.title, areaId: '', variant: 'event' as const, color: 'indigo' })), ...d.blocks.map(b => ({ ...b, badge: d.tasks.some(t => t.blockId === b.id) ? `${d.tasks.filter(t => t.blockId === b.id).length}` : undefined, badgeTone: capacity(b, d.tasks).over ? 'warn' as const : 'muted' as const }))], editable: true }]}
             areas={areaMap}
             nowMin={isToday ? minute : null}
             selectedId={sel}
@@ -135,7 +147,7 @@ function PlanInner() {
             onCreate={async (_c, s, e) => { const { id } = await addBlock(dayId, { start: s, end: e, title: m.inspector.newBlock, areaId: 'area-personal' }); setSel(id); }}
             onChange={(_c, id, s, e, k) => void patchBlock(id, { start: s, end: e }, k === 'move' ? 'move' : 'resize')}
             onDropTask={async (taskId, _c, minute, blockId) => {
-              if (blockId) { await scheduleTask(taskId, dayId, blockId, 'planning'); return; }
+              if (blockId && !blockId.startsWith('ev:')) { await scheduleTask(taskId, dayId, blockId, 'planning'); return; }
               const t = await getDB().tasks.get(taskId);
               if (!t) return;
               const { id } = await addBlock(dayId, { start: minute, end: minute + (t.estimate && t.estimate >= 15 ? t.estimate : 60), title: t.title, areaId: t.areaId ?? 'area-personal' });
@@ -158,6 +170,7 @@ function PlanInner() {
         <div className="stack narrow">
           <b>{m.planning.conflictsTitle}</b>
           {conflicts.length === 0 && overCap.length === 0 && <span className="ok-line"><Check size={14} />{m.planning.noConflicts}</span>}
+          {cal.commitments.length > 0 && <ExternalConflictsCard events={cal.commitments} blocks={d.blocks} />}
           {conflicts.length > 0 && <ConflictsCard conflicts={conflicts} />}
           {overCap.map(({ b, c }) => (
             <section key={b.id} className="card conflicts">

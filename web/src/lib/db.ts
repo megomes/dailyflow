@@ -1,5 +1,5 @@
 import Dexie, { type Table } from 'dexie';
-import type { Area, Checkin, Day, DayBlock, Entity, FocusSession, OutboxItem, Prefs, ProductEvent, Revision, SyncFields, Task, TemplateBlock, TimeRecord } from './types';
+import type { Area, Calendar, CalEvent, CalOverride, Checkin, Day, DayBlock, Entity, FocusSession, OutboxItem, Prefs, ProductEvent, Revision, SyncFields, Task, TemplateBlock, TimeRecord } from './types';
 
 /** Local-first store. The UI reads and writes only here; sync.ts reconciles with the server. */
 export class DailyFlowDB extends Dexie {
@@ -13,6 +13,9 @@ export class DailyFlowDB extends Dexie {
   revisions!: Table<Revision, string>;
   focusSessions!: Table<FocusSession, string>;
   prefs!: Table<Prefs, string>;
+  calendars!: Table<Calendar, string>;
+  calEvents!: Table<CalEvent, string>;
+  calOverrides!: Table<CalOverride, string>;
   outbox!: Table<OutboxItem, number>;
   events!: Table<ProductEvent, string>;
   meta!: Table<{ key: string; value: unknown }, string>;
@@ -37,6 +40,12 @@ export class DailyFlowDB extends Dexie {
       focusSessions: 'id, dayId, taskId, state',
       prefs: 'id',
     });
+    // E9: external calendars.
+    this.version(3).stores({
+      calendars: 'id, accountId',
+      calEvents: 'id, dayId, calendarKey',
+      calOverrides: 'id',
+    });
   }
 }
 
@@ -48,7 +57,8 @@ export function getDB(): DailyFlowDB {
 /** Tests swap the database. */
 export function setDB(db: DailyFlowDB) { instance = db; }
 
-type SyncTable = 'areas' | 'templateBlocks' | 'days' | 'dayBlocks' | 'checkins' | 'timeRecords' | 'tasks' | 'revisions' | 'focusSessions' | 'prefs';
+type SyncTable = 'areas' | 'templateBlocks' | 'days' | 'dayBlocks' | 'checkins' | 'timeRecords' | 'tasks' | 'revisions' | 'focusSessions' | 'prefs'
+  | 'calendars' | 'calEvents' | 'calOverrides';
 export const ENTITY_TABLE: Record<Entity, SyncTable> = {
   area: 'areas',
   template_block: 'templateBlocks',
@@ -60,6 +70,9 @@ export const ENTITY_TABLE: Record<Entity, SyncTable> = {
   revision: 'revisions',
   focus_session: 'focusSessions',
   pref: 'prefs',
+  calendar: 'calendars',
+  cal_event: 'calEvents',
+  cal_override: 'calOverrides',
 };
 export const ENTITIES = Object.keys(ENTITY_TABLE) as Entity[];
 

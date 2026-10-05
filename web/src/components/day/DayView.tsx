@@ -21,6 +21,8 @@ import { BlockInspector, RecordInspector } from './Inspectors';
 import { NowCard } from './NowCard';
 import { Summary } from './Summary';
 import { useDay, useLive } from './useDay';
+import { useCalStatus, useDayEvents } from './useCalendar';
+import { CalendarDayCard, CalendarStatusBanner, CalendarWatcher, EventInspector, ExternalConflictsCard } from './CalendarCards';
 
 const DEFAULT_AREA = 'area-personal';
 export type DayViewMode = 'plan' | 'real' | 'compare';
@@ -43,6 +45,8 @@ function readMode(): DayViewMode | null {
 
 export function DayView({ dayId, live, title, sub, sideTop, sideBottom, headExtra }: Props) {
   const d = useDay(dayId);
+  const cal = useDayEvents(dayId);
+  const calStatus = useCalStatus();
   const { running, focus } = useLive();
   const { minute: clockMin } = useClock();
   const isMobile = useIsMobile();
@@ -102,6 +106,10 @@ export function DayView({ dayId, live, title, sub, sideTop, sideBottom, headExtr
       }
       return item;
     });
+    const eventItems: TLItem[] = cal.timed.filter(e => e.cls === 'commitment' && !d.blocks.some(b => b.fromEvent === e.id)).map(e => ({
+      id: `ev:${e.id}`, start: e.start, end: e.end, title: e.title, areaId: '', variant: 'event', color: e.free ? 'gray' : 'indigo',
+    }));
+    planItems.push(...eventItems);
     const realItems: TLItem[] = d.records.map(r => ({
       id: r.id, start: r.start, end: r.end ?? Math.max(r.start + 1, until), title: r.title, areaId: r.areaId,
       variant: r.end == null ? 'running' : 'real',
@@ -116,7 +124,7 @@ export function DayView({ dayId, live, title, sub, sideTop, sideBottom, headExtr
       { id: 'plan', label: m.day.cols.final, items: planItems, editable: true },
       { id: 'real', label: m.day.cols.real, items: realItems, editable: true },
     ];
-  }, [d.blocks, d.records, d.tasks, d.day?.baseline, view, started, until]);
+  }, [d.blocks, d.records, d.tasks, d.day?.baseline, view, started, until, cal.timed]);
 
   function afterRevision(revId: string | null, label: string) {
     if (revId) setReason({ revId, label });
@@ -167,7 +175,8 @@ export function DayView({ dayId, live, title, sub, sideTop, sideBottom, headExtr
     afterRevision(revId, `${m.day.revKinds.remove}: ${b.title}`);
   }
 
-  async function onDropTask(taskId: string, _col: string, minute: number, blockId?: string) {
+  async function onDropTask(taskId: string, _col: string, minute: number, dropOn?: string) {
+    const blockId = dropOn?.startsWith('ev:') ? undefined : dropOn;
     const task = await getDB().tasks.get(taskId);
     if (!task) return;
     if (blockId) {
@@ -214,11 +223,14 @@ export function DayView({ dayId, live, title, sub, sideTop, sideBottom, headExtr
   if (!d.ready) return <div className="page" />;
 
   const selBlock = sel?.col === 'plan' ? d.blocks.find(b => b.id === sel.id) : undefined;
+  const selEvent = sel?.id.startsWith('ev:') ? cal.timed.find(e => `ev:${e.id}` === sel.id) : undefined;
   const selRec = sel?.col === 'real' ? d.records.find(r => r.id === sel.id) : undefined;
   const inspector = selBlock ? (
     <BlockInspector key={selBlock.id} dayId={dayId} block={selBlock} areas={d.areas} areaMap={d.areaMap} tasks={d.tasks} revisions={d.revisions}
       live={live} started={started} running={running} onClose={() => setSel(null)}
       onPatch={(p, k) => void onPatchBlock(selBlock, p, k)} onDelete={() => void onDeleteBlock(selBlock)} />
+  ) : selEvent ? (
+    <EventInspector key={selEvent.id} dayId={dayId} ev={selEvent} areas={d.areas} onClose={() => setSel(null)} />
   ) : selRec ? (
     <RecordInspector key={selRec.id} record={selRec} areas={d.areas} closed={d.status === 'closed'} onClose={() => setSel(null)} />
   ) : null;
@@ -227,6 +239,7 @@ export function DayView({ dayId, live, title, sub, sideTop, sideBottom, headExtr
   const after = (
     <>
           {started && <ChangesCard baseline={d.day?.baseline} blocks={d.blocks} records={d.records} until={until} areaMap={d.areaMap} />}
+          <CalendarDayCard events={cal} />
           <DayTasks dayId={dayId} tasks={d.tasks} areaMap={d.areaMap} showBacklog={live} />
           {!live && (d.records.length > 0 || d.status === 'closed') && <Summary d={d} until={until} />}
           {!live && d.revisions.length > 0 && (
@@ -297,6 +310,8 @@ export function DayView({ dayId, live, title, sub, sideTop, sideBottom, headExtr
             </section>
           )}
           {(started || d.records.length > 0) && <GapsCard dayId={dayId} blocks={d.blocks} records={d.records} areas={d.areas} until={until} />}
+          {live && <CalendarStatusBanner problems={calStatus.results.filter(r => r.error)} />}
+          {cal.commitments.length > 0 && <ExternalConflictsCard events={cal.commitments} blocks={d.blocks} />}
           {conflicts.length > 0 && <ConflictsCard conflicts={conflicts} />}
           {!isMobile && inspector}
           {!isMobile && after}
@@ -322,6 +337,7 @@ export function DayView({ dayId, live, title, sub, sideTop, sideBottom, headExtr
           <div className="sheet" role="dialog" aria-label={m.inspector.title}>{inspector}</div>
         </>
       )}
+      <CalendarWatcher dayId={dayId} started={started} commitments={cal.commitments} />
       {saveTpl && <SaveTemplateModal dayId={dayId} count={d.blocks.length} onClose={() => setSaveTpl(false)} />}
       {replan && <ReplanModal dayId={dayId} blocks={d.blocks} records={d.records} minute={clockMin} onClose={() => setReplan(false)} />}
     </div>

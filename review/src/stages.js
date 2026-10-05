@@ -289,7 +289,7 @@ const STAGES = [
     crit: ['Nenhuma perda de dado', '30% ou mais dos registros ao vivo feitos no celular', 'Menos de 1 conflito por semana'],
     fail: 'Perda de dado bloqueia tudo: corrigir antes de qualquer etapa seguinte.' },
 
-  { id: 'E9', name: 'Calendários (leitura)', short: 'Calendários', wave: 'w4', pri: 'P2', deps: ['E3', 'E5'], dur: '2 semanas', icon: 'calendar',
+  { id: 'E9', name: 'Calendários (leitura)', short: 'Calendários', wave: 'w4', pri: 'P2', deps: ['E3', 'E5'], dur: '2 semanas', icon: 'calendar', state: 'aprovada',
     nav: ['hoje', 'tarefas', 'historico', 'config'], hero: 'ctx', wf: ['calendars', 'ctx', 'conflict', 'cancelled'],
     q: 'Trazer a agenda para dentro do Hoje reduz surpresas?',
     why: 'Depende das revisões (E3) para tratar conflitos e do planejamento (E5) para mostrar compromissos no Contexto.',
@@ -319,7 +319,7 @@ const STAGES = [
     crit: ['No máximo 1 surpresa por semana', 'Reclassificações manuais caindo semana a semana', 'Nenhum sync falhando em silêncio'],
     fail: 'Se Awareness nunca é consultado, fundir com Oculto e simplificar a classificação.' },
 
-  { id: 'E10', name: 'Proteger o tempo', short: 'Proteger', wave: 'w4', pri: 'P2', deps: ['E9'], dur: '2 semanas', icon: 'shield',
+  { id: 'E10', name: 'Proteger o tempo', short: 'Proteger', wave: 'w4', pri: 'P2', deps: ['E9'], dur: '2 semanas', icon: 'shield', state: 'aprovada',
     nav: ['hoje', 'tarefas', 'historico', 'config'], hero: 'publish', wf: ['publish'],
     q: 'Publicar blocos como Busy protege o foco de verdade?',
     why: 'Escrever em calendário externo é a integração mais arriscada; só vem depois que a leitura (E9) está estável.',
@@ -341,7 +341,7 @@ const STAGES = [
     crit: ['Nenhum evento órfão no calendário externo', 'Menos de 1 invasão de reunião por semana em blocos protegidos'],
     fail: 'Se publicar não reduz invasões, manter só a leitura (E9).' },
 
-  { id: 'E11', name: 'Insights', short: 'Insights', wave: 'w5', pri: 'P2', deps: ['E6', 'E7'], dur: '3–4 semanas', icon: 'chart',
+  { id: 'E11', name: 'Insights', short: 'Insights', wave: 'w5', pri: 'P2', deps: ['E6', 'E7'], dur: '3–4 semanas', icon: 'chart', state: 'aprovada',
     nav: ['hoje', 'tarefas', 'historico', 'insights', 'config'], hero: 'insights', wf: ['insights', 'summary'],
     q: 'Quais estatísticas mudam meu comportamento e quais são só curiosidade?',
     why: 'Só vem depois de semanas de dados reais. A spec pede guardar dados ricos primeiro e construir estatísticas aos poucos.',
@@ -368,7 +368,7 @@ const STAGES = [
     crit: ['Gráfico sem visita em 3 semanas: remover', 'Pelo menos 1 mudança de comportamento relatada por mês'],
     fail: 'Manter só os gráficos que passaram; o resto sai.' },
 
-  { id: 'E12', name: 'Refinamento e dados', short: 'Refinamento', wave: 'w5', pri: 'P2', deps: ['E4', 'E7'], dur: 'contínuo', icon: 'gear',
+  { id: 'E12', name: 'Refinamento e dados', short: 'Refinamento', wave: 'w5', pri: 'P2', deps: ['E4', 'E7'], dur: 'contínuo', icon: 'gear', state: 'aprovada',
     nav: ['hoje', 'tarefas', 'historico', 'insights', 'config'], hero: 'template', wf: ['template', 'tasks'],
     q: 'O que ainda falta para o DailyFlow ser o único lugar do meu dia?',
     why: 'Só entra o que as etapas anteriores provaram que faz falta. Os campos avançados ficam por último para não pesar o núcleo.',
@@ -391,7 +391,7 @@ const STAGES = [
     crit: ['Nenhuma dependência de outro app para o fluxo diário'],
     fail: 'Cortar o que não for usado em 4 semanas.' },
 
-  { id: 'EH', name: 'Horizonte: Android, widgets, relógio, floresta', short: 'Horizonte', wave: 'wh', pri: 'P3', deps: ['E8', 'E11'], dur: 'depois da validação', icon: 'watch',
+  { id: 'EH', name: 'Horizonte: Android, widgets, relógio, floresta', short: 'Horizonte', wave: 'wh', pri: 'P3', deps: ['E8', 'E11'], dur: 'depois da validação', icon: 'watch', state: 'aprovada',
     nav: ['hoje', 'tarefas', 'historico', 'insights', 'config'], hero: 'widget', wf: ['widget'],
     q: 'Depois de validado na web, onde o DailyFlow precisa estar para eu nem precisar abrir o app?',
     why: 'A spec pede validar tudo na web/PWA antes de reproduzir no Android. Esta etapa só é planejada com os dados das anteriores.',
@@ -423,6 +423,7 @@ const STAGE_KIT = {
     { id: 'EQ-5', q: 'Os calendários deveriam vir antes?', rec: 'Se reuniões dominam seus dias de trabalho, a leitura (E9) pode vir logo depois da E3. Hoje está depois do planejamento guiado.' },
     { id: 'EQ-6', q: 'Os critérios de passagem bloqueiam o avanço ou só orientam?', rec: 'Orientam. A decisão é sua na retro, olhando números e respostas juntos.' },
     { id: 'EQ-7', q: 'Por quanto tempo guardar os logs de produto?', rec: 'Para sempre durante a validação (volume pequeno, single-user). Revisar depois do Horizonte.' },
+    { id: 'EQ-9', q: 'Onde fica o que depende de credenciais ou de aparelho?', rec: 'Decidido em 05/10: em branches sem merge, para testar com você. feat/e9-calendars (OAuth Google/Microsoft + migração), feat/e10-protect (empilhada na E9) e feat/eh-horizon (floresta no web, pareamento + snapshot, app Android com widgets, Wear OS). E11 e E12 foram direto para produção porque dava para testar tudo aqui.' },
     { id: 'EQ-8', q: 'Desenvolver etapa por etapa ou E2–E8 de uma vez?', rec: 'Decidido em 05/10: de uma vez. Etapa por etapa deixava o app pequeno demais para valer o uso diário. E2–E8 foram construídas numa noite e validadas juntas: um check-in combinado (4 perguntas) e eventos marcados com a etapa “E2-E8”. Os critérios de cada etapa continuam valendo na retro.' },
   ],
   schema: [

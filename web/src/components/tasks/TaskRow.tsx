@@ -16,11 +16,15 @@ interface Props {
   selected?: boolean;
   tracked?: { min: number; count: number };
   onOpen?: (t: Task) => void;
+  /** Replaces the plain “Today” action (Tasks board: asks where it fits). */
+  onToday?: (t: Task) => void;
+  /** HTML5 drag; off on touch screens, where the board uses long-press instead. */
+  nativeDrag?: boolean;
 }
 
 const fmtDue = (d: string) => new Date(`${d}T12:00:00`).toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
 
-export function TaskRow({ task: t, areaMap, dayId, compact, selected, tracked, onOpen }: Props) {
+export function TaskRow({ task: t, areaMap, dayId, compact, selected, tracked, onOpen, onToday, nativeDrag = true }: Props) {
   const area = t.areaId ? areaMap.get(t.areaId) : undefined;
   const done = t.status === 'done';
   const today = new Date().toISOString().slice(0, 10);
@@ -34,7 +38,7 @@ export function TaskRow({ task: t, areaMap, dayId, compact, selected, tracked, o
 
   return (
     <div className={`task-row${compact ? ' compact' : ''}${selected ? ' sel' : ''}${done ? ' is-done' : ''}`} data-color={area?.color ?? 'gray'}
-      draggable={!done} onDragStart={dragStart} onDragEnd={() => setDraggedTask(null)} data-task={t.id}>
+      draggable={!done && nativeDrag} onDragStart={dragStart} onDragEnd={() => setDraggedTask(null)} data-task={t.id}>
       {!compact && <GripVertical size={13} className="grip" aria-hidden />}
       <input type="checkbox" checked={done} onChange={() => void toggleTaskDone(t.id)} aria-label={t.title} />
       <button type="button" className="task-title" onClick={() => onOpen?.(t)} disabled={!onOpen}>
@@ -48,6 +52,9 @@ export function TaskRow({ task: t, areaMap, dayId, compact, selected, tracked, o
         {!compact && t.tags?.slice(0, 2).map(x => <span key={x} className="muted">#{x}</span>)}
         {t.status === 'today' && t.dayId && dayId && t.dayId > dayId && <span className="pill" data-color="blue">{m.tasks.onDay(fmtDue(t.dayId))}</span>}
         {area && !compact && <span className="pill" data-color={area.color}>{area.name}</span>}
+        {t.addedLate && t.status === 'today' && dayId && t.dayId === dayId && (
+          <span className="pill" data-color="yellow" title={m.tasks.board.addedLateTitle}>{m.tasks.board.addedLate(new Date(t.addedLate).toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', hour12: false }))}</span>
+        )}
         {(t.carried?.length ?? 0) > 0 && !done && <span className="pill" data-color="orange">{m.tasks.carried(t.carried!.length)}</span>}
         {t.due && <span className={`muted tabular${overdue ? ' overdue' : ''}`}>{overdue ? m.tasks.overdue : m.tasks.due(fmtDue(t.due))}</span>}
         {tracked && tracked.min > 0 ? <span className="muted tabular">{t.estimate ? m.tasks.estimateVs(fmtDuration(tracked.min), fmtDuration(t.estimate)) : fmtDuration(tracked.min)}</span>
@@ -55,7 +62,7 @@ export function TaskRow({ task: t, areaMap, dayId, compact, selected, tracked, o
       </span>
       {!done && dayId && (
         <span className="task-actions">
-          {t.status !== 'today' && <button type="button" className="btn icon sm ghost" title={m.tasks.toToday} aria-label={m.tasks.toToday} onClick={() => void scheduleTask(t.id, dayId, undefined, 'button')}><CalendarClock size={13} /></button>}
+          {t.status !== 'today' && <button type="button" className="btn icon sm ghost" title={m.tasks.toToday} aria-label={m.tasks.toToday} onClick={() => (onToday ? onToday(t) : void scheduleTask(t.id, dayId, undefined, 'button'))}><CalendarClock size={13} /></button>}
           {t.status === 'today' && !compact && <button type="button" className="btn icon sm ghost" title={m.tasks.toBacklog} aria-label={m.tasks.toBacklog} onClick={() => void unscheduleTask(t.id)}><CornerUpLeft size={13} /></button>}
           <button type="button" className="btn icon sm ghost" title={m.focus.start} aria-label={m.focus.start}
             onClick={() => void startFocus(dayId, { preset: PRESETS[0], taskId: t.id, blockId: t.blockId, areaId: t.areaId ?? 'area-personal', title: t.title })}><Timer size={13} /></button>

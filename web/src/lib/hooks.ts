@@ -32,3 +32,12 @@ export function useIsMobile() {
   }, []);
   return m;
 }
+
+/** Touch-first device (long-press instead of HTML5 drag). */
+export function useCoarsePointer() {
+  return useSyncExternalStore(
+    cb => { const q = window.matchMedia('(pointer: coarse)'); q.addEventListener('change', cb); return () => q.removeEventListener('change', cb); },
+    () => window.matchMedia('(pointer: coarse)').matches,
+    () => false,
+  );
+}

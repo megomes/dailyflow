@@ -115,6 +115,8 @@ export interface Task extends SyncFields {
   sort: number;
   /** Days the task was scheduled on and not finished (for “continue from previous days”). */
   carried?: string[];
+  /** When it was put on its day after that day had started (not in the plan made for it). */
+  addedLate?: string;
   // E12 — optional fields, all empty by default so the core stays light.
   category?: 'work' | 'personal';
   project?: string;

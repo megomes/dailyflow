@@ -4,6 +4,7 @@ import { getDB } from './db';
 import { liveBlocks, nowIso, remove, save, saveMany, uid, update } from './repo';
 import { minuteOfDay } from './time';
 import { nextDate } from './recurrence';
+import type { Column } from './taskBoard';
 import type { Day, DayBlock, DayKey, FocusSession, PlanBlock, Priority, Reflection, Revision, Task, TemplateBlock, TimeRecord } from './types';
 
 /**
@@ -257,13 +258,38 @@ export async function scheduleTask(id: string, dayId: string, blockId?: string, 
     const b = await getDB().dayBlocks.get(blockId);
     if (b) areaPatch = { areaId: b.areaId };
   }
-  await update<Task>('task', id, { status: t.status === 'done' ? 'done' : 'today', dayId, blockId, ...areaPatch });
-  track('task_scheduled', { target: blockId ? 'block' : 'day', surface, carried: (t.carried ?? []).length });
+  const already = t.status === 'today' && t.dayId === dayId;
+  const late = !already && (await getDB().days.get(dayId))?.status === 'active';
+  const addedLate = already ? t.addedLate : late ? new Date().toISOString() : undefined;
+  await update<Task>('task', id, { status: t.status === 'done' ? 'done' : 'today', dayId, blockId, addedLate, ...areaPatch });
+  track('task_scheduled', { target: blockId ? 'block' : 'day', surface, carried: (t.carried ?? []).length, after_start: late });
 }
 
 export async function unscheduleTask(id: string) {
-  await update<Task>('task', id, { status: 'backlog', dayId: undefined, blockId: undefined });
+  await update<Task>('task', id, { status: 'backlog', dayId: undefined, blockId: undefined, addedLate: undefined });
   track('task_unscheduled', { target: 'backlog' });
+}
+
+export type TaskPlace = Pick<Task, 'status' | 'dayId' | 'blockId' | 'addedLate' | 'doneAt'>;
+export const placeOf = (t: Task): TaskPlace => ({ status: t.status, dayId: t.dayId, blockId: t.blockId, addedLate: t.addedLate, doneAt: t.doneAt });
+
+/** Tasks board: move a task to a column (drag, long-press dock or keyboard). */
+export async function moveTask(t: Task, to: Column, dayId: string, surface: string) {
+  if (to === 'today') {
+    if (t.status === 'done') await update<Task>('task', t.id, { status: 'today', dayId, doneAt: undefined, ...(t.dayId === dayId ? {} : { blockId: undefined }) });
+    else await scheduleTask(t.id, dayId, t.dayId === dayId ? t.blockId : undefined, surface);
+  } else if (to === 'done') {
+    if (t.status !== 'done') await toggleTaskDone(t.id);
+  } else {
+    await update<Task>('task', t.id, { status: to, dayId: undefined, blockId: undefined, addedLate: undefined, doneAt: undefined });
+  }
+  track('task_moved', { from: t.status, to, surface });
+}
+
+/** Undo of a move: puts the task back where it was. */
+export async function restoreTask(id: string, place: TaskPlace) {
+  await update<Task>('task', id, place);
+  track('task_move_undone', {});
 }
 
 export async function toggleTaskDone(id: string) {

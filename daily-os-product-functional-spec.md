@@ -575,6 +575,19 @@ Tasks return to Backlog when:
 
 No task should automatically roll into tomorrow's plan.
 
+## Tasks board
+
+The Tasks screen is a board, so nothing hides behind tabs:
+
+```text
+Inbox → Backlog → Today → Done
+```
+
+- Desktop: columns side by side; drag a card between columns. While dragging, the Today column opens the blocks still ahead as drop zones (same area highlighted).
+- Phone: the same columns as a horizontal pager (the next column peeks), with counts on top. Long-press lifts a card and a dock with the four columns appears at the bottom; holding over Today opens the day's blocks.
+- A task that lands on Today without being planned asks "Where does it fit?": the blocks still ahead (same area first, with free time), a new block in the next free gap, start it now, or keep it without a block. Never required; Undo is always there.
+- Tasks put on a day after it started are marked with the time they were added.
+
 ---
 
 # 17. Unfinished Tasks

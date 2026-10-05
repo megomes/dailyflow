@@ -56,7 +56,7 @@ const STAGES = [
     crit: ['Hoje aberto em pelo menos 5 dos 7 dias', 'Média de 3 ou mais aberturas por dia', '“Sentiria falta” com nota 3 ou mais'],
     fail: 'Rever a densidade da timeline e testar um aviso na troca de bloco (Q-18) antes da E2.' },
 
-  { id: 'E2', name: 'Plano × Real', short: 'Plano × Real', wave: 'w1', pri: 'P0', deps: ['E1'], dur: '1–2 semanas', icon: 'layers',
+  { id: 'E2', name: 'Plano × Real', short: 'Plano × Real', wave: 'w1', pri: 'P0', deps: ['E1'], dur: '1–2 semanas', icon: 'layers', state: 'aprovada',
     nav: ['hoje', 'config'], hero: 's2Active', wf: ['s2Start', 's2Active', 's2Close', 'dayDiff', 'yesterday'],
     q: 'Registrar o que realmente aconteceu é leve o suficiente para eu fazer todo dia?',
     why: 'É o coração do framework: separar plano e realidade. Se registrar o real for pesado, as estatísticas, o histórico e os insights perdem o sentido.',
@@ -94,7 +94,7 @@ const STAGES = [
     crit: ['Dia fechado em 70% ou mais dos dias', 'Fechamento com p50 abaixo de 3 min', 'Real cobrindo 85% ou mais das horas acordadas', 'Nota de fidelidade 4 ou mais'],
     fail: 'Se o fechamento pesa, simplificar: o fechamento vira só “confirmar o plano” + 1 ajuste. Se ninguém usa o registro ao vivo, escondê-lo e apostar no retroativo.' },
 
-  { id: 'E3', name: 'Replanejar sem culpa', short: 'Replanejar', wave: 'w1', pri: 'P0', deps: ['E2'], dur: '1 semana', icon: 'refresh',
+  { id: 'E3', name: 'Replanejar sem culpa', short: 'Replanejar', wave: 'w1', pri: 'P0', deps: ['E2'], dur: '1 semana', icon: 'refresh', state: 'aprovada',
     nav: ['hoje', 'config'], hero: 's3Compare', wf: ['s3Conflict', 's3Compare', 'replan'],
     q: 'Mudar o plano durante o dia é simples, e entender o que mudou me ajuda?',
     why: 'A spec trata replanejar como funcionalidade central. As três camadas (Baseline, Final, Real) só mostram valor quando o dia muda.',
@@ -125,7 +125,7 @@ const STAGES = [
     crit: ['Toda mudança depois do início gera revisão (nenhuma perdida no log)', 'Replanejar com p50 de 3 cliques ou menos', 'Comparação aberta em pelo menos 2 dias'],
     fail: 'Se a comparação nunca é aberta, mover para o Histórico (E7) e deixar o Hoje só com o plano atual.' },
 
-  { id: 'E4', name: 'Tarefas dentro do dia', short: 'Tarefas', wave: 'w2', pri: 'P0', deps: ['E2'], dur: '1–2 semanas', icon: 'tasks',
+  { id: 'E4', name: 'Tarefas dentro do dia', short: 'Tarefas', wave: 'w2', pri: 'P0', deps: ['E2'], dur: '1–2 semanas', icon: 'tasks', state: 'aprovada',
     nav: ['hoje', 'tarefas', 'config'], hero: 's4Today', wf: ['s4Today', 'palette', 'tasks'],
     q: 'Ligar tarefas aos blocos melhora o que eu faço em cada bloco?',
     why: 'Tarefas alimentam o Hoje, não o substituem. Esta etapa testa a ligação tarefa ↔ bloco com o mínimo de campos.',
@@ -160,7 +160,7 @@ const STAGES = [
     crit: ['Captura com p50 abaixo de 5 s', '60% ou mais das tarefas concluídas estavam num bloco', 'Campos com menos de 10% de uso vão para a lista de corte'],
     fail: 'Se tarefas raramente entram em blocos, testar a variação “tarefas do dia” sem blocos antes de seguir para a E5.' },
 
-  { id: 'E5', name: 'Planejamento guiado', short: 'Planejamento', wave: 'w2', pri: 'P1', deps: ['E3', 'E4'], dur: '2 semanas', icon: 'listChecks',
+  { id: 'E5', name: 'Planejamento guiado', short: 'Planejamento', wave: 'w2', pri: 'P1', deps: ['E3', 'E4'], dur: '2 semanas', icon: 'listChecks', state: 'aprovada',
     nav: ['hoje', 'tarefas', 'config'], hero: 'allocate', wf: ['unplanned', 'ctx', 'skeleton', 'allocate', 'conflicts', 'quick', 'lateStart'],
     q: 'Um ritual de manhã em etapas deixa o dia melhor do que só aceitar o template?',
     why: 'Com tarefas (E4) e revisões (E3) prontas, dá para testar o planejamento completo contra o modo rápido de forma justa.',
@@ -194,7 +194,7 @@ const STAGES = [
     crit: ['Completo com p50 abaixo de 5 min; rápido abaixo de 1 min', 'Etapa pulada em mais de 70% das vezes: cortar ou fundir', 'Realismo 3,5 ou mais nos dois modos: modo rápido vira o padrão'],
     fail: 'Se o completo não bate o rápido em realismo, o completo vira opcional e escondido.' },
 
-  { id: 'E6', name: 'Foco', short: 'Foco', wave: 'w2', pri: 'P1', deps: ['E4'], dur: '1–2 semanas', icon: 'clock',
+  { id: 'E6', name: 'Foco', short: 'Foco', wave: 'w2', pri: 'P1', deps: ['E4'], dur: '1–2 semanas', icon: 'clock', state: 'aprovada',
     nav: ['hoje', 'tarefas', 'config'], hero: 'active', wf: ['active', 'focusEnd', 'forgot'],
     q: 'Sessões de foco valem o atrito, ou o Comecei/Terminei já basta?',
     why: 'A spec generaliza Pomodoro como Focus Session. A pergunta é se o timer muda o trabalho ou só gera mais dado.',
@@ -227,7 +227,7 @@ const STAGES = [
     crit: ['Foco usado em 50% ou mais dos dias de trabalho', 'Timer esquecido menos de 1 vez por semana depois dos ajustes', 'Nota “mudou como trabalho” 3 ou mais'],
     fail: 'Se não passar, o foco vira opcional e escondido; o Comecei/Terminei continua sendo o padrão.' },
 
-  { id: 'E7', name: 'Fechar o ciclo e Histórico', short: 'Histórico', wave: 'w3', pri: 'P1', deps: ['E2', 'E4'], dur: '2 semanas', icon: 'history',
+  { id: 'E7', name: 'Fechar o ciclo e Histórico', short: 'Histórico', wave: 'w3', pri: 'P1', deps: ['E2', 'E4'], dur: '2 semanas', icon: 'history', state: 'aprovada',
     nav: ['hoje', 'tarefas', 'historico', 'config'], hero: 'history', wf: ['closeRepair', 'closeTasks', 'summary', 'history', 'nextday', 'midnight'],
     q: 'Fechar o dia e olhar para trás muda o planejamento seguinte?',
     why: 'Fecha o ciclo Planejar → Executar → Revisar → Aprender. Depende de ter real (E2) e tarefas (E4) para ter o que revisar.',
@@ -259,7 +259,7 @@ const STAGES = [
     crit: ['Edições históricas nunca alteram o Baseline (verificado nos logs)', 'Reflexão preenchida em menos de 30% dos dias: vira opcional e escondida', 'Histórico aberto pelo menos 1 vez por semana'],
     fail: 'Se o histórico não é aberto, ele fica só como fonte de dados para Insights e sai da navegação principal.' },
 
-  { id: 'E8', name: 'Celular de verdade e offline', short: 'Celular', wave: 'w3', pri: 'P1', deps: ['E2', 'E4', 'E6'], dur: '1 semana', icon: 'phone',
+  { id: 'E8', name: 'Celular de verdade e offline', short: 'Celular', wave: 'w3', pri: 'P1', deps: ['E2', 'E4', 'E6'], dur: '1 semana', icon: 'phone', state: 'aprovada',
     nav: ['hoje', 'tarefas', 'historico', 'config'], hero: 'mobile', wf: ['mobile', 'offline'],
     q: 'Consigo viver o dia pelo celular quando estou longe do computador?',
     why: 'Grande parte do registro ao vivo acontece longe do desktop. Depois de E2, E4 e E6, o celular tem o que precisa para ser completo.',
@@ -423,6 +423,7 @@ const STAGE_KIT = {
     { id: 'EQ-5', q: 'Os calendários deveriam vir antes?', rec: 'Se reuniões dominam seus dias de trabalho, a leitura (E9) pode vir logo depois da E3. Hoje está depois do planejamento guiado.' },
     { id: 'EQ-6', q: 'Os critérios de passagem bloqueiam o avanço ou só orientam?', rec: 'Orientam. A decisão é sua na retro, olhando números e respostas juntos.' },
     { id: 'EQ-7', q: 'Por quanto tempo guardar os logs de produto?', rec: 'Para sempre durante a validação (volume pequeno, single-user). Revisar depois do Horizonte.' },
+    { id: 'EQ-8', q: 'Desenvolver etapa por etapa ou E2–E8 de uma vez?', rec: 'Decidido em 05/10: de uma vez. Etapa por etapa deixava o app pequeno demais para valer o uso diário. E2–E8 foram construídas numa noite e validadas juntas: um check-in combinado (4 perguntas) e eventos marcados com a etapa “E2-E8”. Os critérios de cada etapa continuam valendo na retro.' },
   ],
   schema: [
     ['id', 'uuid', 'Identificador do evento'],

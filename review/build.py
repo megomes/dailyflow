@@ -12,6 +12,13 @@ ICON = ROOT.parent / "design" / "assets" / "dailyflow-icon.webp"
 
 
 def icon_data_uri() -> str:
+    import re, shutil
+    if not shutil.which("sips"):
+        # Off macOS: reuse the icon already embedded in the last build.
+        built = ROOT / "dailyflow-review.html"
+        m = re.search(r"data:image/png;base64,[A-Za-z0-9+/=]+", built.read_text()) if built.exists() else None
+        if m:
+            return m.group(0)
     with tempfile.TemporaryDirectory() as tmp:
         out = pathlib.Path(tmp) / "icon.png"
         subprocess.run(["sips", "-s", "format", "png", "-z", "96", "96", str(ICON), "--out", str(out)],

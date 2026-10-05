@@ -1,6 +1,6 @@
 import 'server-only';
 import { neon } from '@neondatabase/serverless';
-import { cookies } from 'next/headers';
+import { cookies, headers } from 'next/headers';
 import { SESSION_COOKIE } from './config';
 import { verifySession } from './session';
 
@@ -17,7 +17,11 @@ export function sql() {
 /** Device id of the authenticated request, or null. Route handlers re-check (the proxy is only a first gate). */
 export async function requireDevice(): Promise<string | null> {
   const store = await cookies();
-  return verifySession(store.get(SESSION_COOKIE)?.value, process.env.SESSION_SECRET);
+  const fromCookie = await verifySession(store.get(SESSION_COOKIE)?.value, process.env.SESSION_SECRET);
+  if (fromCookie) return fromCookie;
+  // Paired native devices (Android app, widgets, Wear OS) send the same token as a Bearer header.
+  const auth = (await headers()).get('authorization');
+  return auth?.startsWith('Bearer ') ? verifySession(auth.slice(7).trim(), process.env.SESSION_SECRET) : null;
 }
 
 export const unauthorized = () => Response.json({ error: 'unauthorized' }, { status: 401 });

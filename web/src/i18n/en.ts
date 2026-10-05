@@ -436,6 +436,14 @@ export const m = {
     rules: '15 minutes in an area plants a tree; every 45 more plants another (up to 8 trees a day, every area gets at least one). Trees mature as an area shows up on more days in 4 weeks. Nothing dies, rest and family grow like anything else, and changing the plan never costs anything.',
     speciesNames: { oak: 'Oak', pine: 'Pine', birch: 'Birch', maple: 'Maple', cypress: 'Cypress', cherry: 'Cherry', palm: 'Palm', willow: 'Willow', bamboo: 'Bamboo', fern: 'Fern', flower: 'Wildflower' } as Record<string, string>,
   },
+  pair: {
+    title: 'Phone app and watch',
+    hint: 'Pair the Android app or a Wear OS watch once. They stay signed in with their own device key.',
+    create: 'Pair a device',
+    code: 'Code',
+    qrAlt: 'Pairing QR code',
+    expires: (mm: number, ss: number) => `Valid for ${mm}:${String(ss).padStart(2, '0')}. Scan it in the app, or type the code on the watch.`,
+  },
   prefs: {
     title: 'Preferences',
     hint: 'Day turnover, focus, display, notifications, export',

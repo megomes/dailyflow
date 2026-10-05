@@ -92,3 +92,12 @@ begin
           jsonb_strip_nulls(jsonb_build_object('status', p_status, 'resolution', nullif(p_resolution, '{}'::jsonb))));
   return n;
 end $$;
+
+-- EH: one-time pairing codes for native devices (see db/migrations/2026-10-05-eh-pairing.sql).
+create table if not exists pair_codes (
+  code_hash  text        primary key,
+  created_by text        not null,
+  expires_at timestamptz not null,
+  created_at timestamptz not null default now()
+);
+alter table devices add column if not exists kind text;

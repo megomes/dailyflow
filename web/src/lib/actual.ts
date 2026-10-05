@@ -190,7 +190,10 @@ export const overlapKey = (a: { id: string }, b: { id: string }) => [a.id, b.id]
 
 /** Overlaps still to decide: the ones kept on purpose (two things at once) are left alone. */
 export function openOverlaps(blocks: TimelineBlock[], kept: string[] = []): Conflict[] {
-  return overlaps(blocks).filter(c => !kept.includes(overlapKey(c.a, c.b)));
+  // A calendar event inside a block of the same area (a meeting in Work) is normal, not a conflict.
+  const isCal = (b: TimelineBlock) => !!(b as TimelineBlock & { calendar?: unknown }).calendar;
+  const inside = (e: TimelineBlock, b: TimelineBlock) => isCal(e) && !isCal(b) && e.areaId === b.areaId && e.start >= b.start && e.end <= b.end;
+  return overlaps(blocks).filter(c => !kept.includes(overlapKey(c.a, c.b)) && !inside(c.a, c.b) && !inside(c.b, c.a));
 }
 
 export interface ReplanResult {

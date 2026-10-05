@@ -3,6 +3,7 @@ import { useEffect, useState, type ReactNode } from 'react';
 import { endSession, installErrorLogging, track } from '@/lib/analytics';
 import { collectContext } from '@/lib/clientContext';
 import { SYNC_INTERVAL_MS } from '@/lib/config';
+import { startCalendarLoop } from '@/lib/calendar/client';
 import { applyPrefs } from '@/lib/prefs';
 import { migrateToDayTemplates, seedIfEmpty } from '@/lib/repo';
 import { getSyncState, pushEvents, startSyncLoop, syncNow } from '@/lib/sync';
@@ -18,6 +19,7 @@ export function Providers({ children }: { children: ReactNode }) {
 
   useEffect(() => {
     let stopSync: (() => void) | undefined;
+    let stopCal: (() => void) | undefined;
     const t0 = performance.now();
     (async () => {
       if (!booted) {
@@ -46,6 +48,7 @@ export function Providers({ children }: { children: ReactNode }) {
       }
       setReady(true);
       stopSync = startSyncLoop(SYNC_INTERVAL_MS);
+      stopCal = startCalendarLoop();
     })();
 
     const onHide = () => {
@@ -61,7 +64,7 @@ export function Providers({ children }: { children: ReactNode }) {
     if ('serviceWorker' in navigator && process.env.NODE_ENV === 'production') {
       navigator.serviceWorker.register('/sw.js', { scope: '/', updateViaCache: 'none' }).catch(() => {});
     }
-    return () => { stopSync?.(); document.removeEventListener('visibilitychange', onHide); };
+    return () => { stopSync?.(); stopCal?.(); document.removeEventListener('visibilitychange', onHide); };
   }, []);
 
   if (!ready) return <div className="boot" aria-busy="true" />;

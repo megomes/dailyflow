@@ -18,7 +18,7 @@ import { getDB } from '@/lib/db';
 import { useClock, useIsMobile } from '@/lib/hooks';
 import { addBlock, adoptPlan, deleteBlock, patchBlock, scheduleTask, startDay } from '@/lib/ops';
 import { ensureDay } from '@/lib/repo';
-import { addDays, dateFromIso, fmtDuration } from '@/lib/time';
+import { addDays, dateFromIso, fmtDuration, fmtMin } from '@/lib/time';
 
 /** Guided planning (E5): Context → Build the day → Conflicts → Start. Every step can be skipped. */
 function PlanInner() {
@@ -128,7 +128,7 @@ function PlanInner() {
             <DayTasks dayId={dayId} tasks={d.tasks} areaMap={areaMap} title={m.planning.buildTitle} />
           </div>
           <Timeline
-            columns={[{ id: 'plan', items: d.blocks.map(b => ({ ...b, badge: d.tasks.some(t => t.blockId === b.id) ? `${d.tasks.filter(t => t.blockId === b.id).length}` : undefined, badgeTone: capacity(b, d.tasks).over ? 'warn' : 'muted' })), editable: true }]}
+            columns={[{ id: 'plan', items: [...d.blocks.map(b => ({ ...b, badge: d.tasks.some(t => t.blockId === b.id) ? `${d.tasks.filter(t => t.blockId === b.id).length}` : undefined, badgeTone: capacity(b, d.tasks).over ? 'warn' as const : 'muted' as const }))], editable: true }]}
             areas={areaMap}
             nowMin={isToday ? minute : null}
             selectedId={sel}
@@ -136,7 +136,7 @@ function PlanInner() {
             onCreate={async (_c, s, e) => { const { id } = await addBlock(dayId, { start: s, end: e, title: d.areaMap.get('area-personal')?.name ?? m.inspector.newBlock, areaId: 'area-personal' }); setSel(id); }}
             onChange={(_c, id, s, e, k) => void patchBlock(id, { start: s, end: e }, k === 'move' ? 'move' : 'resize')}
             onDropTask={async (taskId, _c, minute, blockId) => {
-              if (blockId) { await scheduleTask(taskId, dayId, blockId, 'planning'); return; }
+              if (blockId && !blockId.startsWith('ev:')) { await scheduleTask(taskId, dayId, blockId, 'planning'); return; }
               const t = await getDB().tasks.get(taskId);
               if (!t) return;
               const { id } = await addBlock(dayId, { start: minute, end: minute + (t.estimate && t.estimate >= 15 ? t.estimate : 60), title: t.title, areaId: t.areaId ?? 'area-personal' });

@@ -21,6 +21,8 @@ import { BlockInspector, RecordInspector } from './Inspectors';
 import { NowCard } from './NowCard';
 import { Summary } from './Summary';
 import { useDay, useLive } from './useDay';
+import { useCalStatus } from './useCalendar';
+import { CalendarStatusBanner } from './CalendarCards';
 
 const DEFAULT_AREA = 'area-personal';
 export type DayViewMode = 'plan' | 'real' | 'compare';
@@ -43,6 +45,7 @@ function readMode(): DayViewMode | null {
 
 export function DayView({ dayId, live, title, sub, sideTop, sideBottom, headExtra }: Props) {
   const d = useDay(dayId);
+  const calStatus = useCalStatus();
   const { running, alongside, focus } = useLive();
   const { minute: clockMin } = useClock();
   const isMobile = useIsMobile();
@@ -172,7 +175,8 @@ export function DayView({ dayId, live, title, sub, sideTop, sideBottom, headExtr
     afterRevision(revId, `${m.day.revKinds.remove}: ${b.title}`);
   }
 
-  async function onDropTask(taskId: string, _col: string, minute: number, blockId?: string) {
+  async function onDropTask(taskId: string, _col: string, minute: number, dropOn?: string) {
+    const blockId = dropOn?.startsWith('ev:') ? undefined : dropOn;
     const task = await getDB().tasks.get(taskId);
     if (!task) return;
     if (blockId) {
@@ -307,6 +311,7 @@ export function DayView({ dayId, live, title, sub, sideTop, sideBottom, headExtr
             </section>
           )}
           {(started || d.records.length > 0) && <GapsCard dayId={dayId} blocks={d.blocks} records={d.records} areas={d.areas} until={until} />}
+          {live && <CalendarStatusBanner problems={calStatus.results.filter(r => r.error)} />}
           {conflicts.length > 0 && <ConflictsCard dayId={dayId} conflicts={conflicts} />}
           {!isMobile && inspector}
           {!isMobile && after}

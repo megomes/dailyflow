@@ -101,3 +101,18 @@ create table if not exists pair_codes (
   created_at timestamptz not null default now()
 );
 alter table devices add column if not exists kind text;
+-- E9: external calendar accounts (OAuth tokens, encrypted). See db/migrations/2026-10-05-e9-calendars.sql.
+create table if not exists calendar_accounts (
+  id            text        primary key,
+  provider      text        not null check (provider in ('google', 'microsoft')),
+  email         text,
+  access_token  text        not null,
+  refresh_token text,
+  expires_at    timestamptz not null,
+  scope         text,
+  status        text        not null default 'ok' check (status in ('ok', 'error', 'reauth')),
+  last_error    text,
+  last_sync_at  timestamptz,
+  created_at    timestamptz not null default now(),
+  updated_at    timestamptz not null default now()
+);

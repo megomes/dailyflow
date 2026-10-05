@@ -193,3 +193,15 @@ describe('two things at once (note #8) and edited starts', () => {
     expect((await getDB().timeRecords.toArray()).filter(r => r.end == null && !r.deleted).map(r => r.title).sort()).toEqual(['Guitar', 'Maker']);
   });
 });
+
+describe('calendar events inside blocks', () => {
+  it('a meeting inside a Work block is not an overlap to decide; one over another area is', async () => {
+    const { openOverlaps } = await import('./actual');
+    const work = blk('w', 600, 840, 'area-work');
+    const meeting = { ...blk('m', 660, 720, 'area-work'), calendar: { accountId: 'a', provider: 'microsoft', eventId: 'e', calendarKey: 'k', calArea: 'area-work' } };
+    const music = blk('g', 900, 960, 'area-music');
+    const late = { ...blk('m2', 930, 990, 'area-work'), calendar: { accountId: 'a', provider: 'microsoft', eventId: 'e2', calendarKey: 'k', calArea: 'area-work' } };
+    expect(openOverlaps([work, meeting])).toHaveLength(0);
+    expect(openOverlaps([music, late])).toHaveLength(1);
+  });
+});

@@ -1,8 +1,10 @@
+import { after } from 'next/server';
+import { maybeSyncCalendars } from '@/lib/calendar/server';
 import { z } from 'zod';
 import { requireDevice, sql, unauthorized } from '@/lib/server';
 
 const Op = z.object({
-  entity: z.enum(['area', 'template_block', 'day', 'day_block', 'checkin', 'time_record', 'task', 'revision', 'focus_session', 'pref']),
+  entity: z.enum(['area', 'template_block', 'day', 'day_block', 'checkin', 'time_record', 'task', 'revision', 'focus_session', 'pref', 'calendar', 'cal_event', 'cal_override']),
   id: z.string().min(1).max(200),
   updatedAt: z.string().datetime(),
   deleted: z.boolean(),
@@ -15,6 +17,8 @@ const Body = z.object({ ops: z.array(Op).max(2000), since: z.number().int().min(
  * Pull: return every record with seq > since. The cursor is the highest seq returned.
  */
 export async function POST(req: Request) {
+  // Calendars stay fresh as long as any device talks to us (no cron on the Hobby plan).
+  after(() => maybeSyncCalendars());
   const deviceId = await requireDevice();
   if (!deviceId) return unauthorized();
   const parsed = Body.safeParse(await req.json().catch(() => null));

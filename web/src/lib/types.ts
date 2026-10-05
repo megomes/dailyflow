@@ -76,6 +76,10 @@ export interface DayBlock extends SyncFields {
   fromTemplate?: string;
   /** Fixed blocks keep their time when the rest of the day is replanned (E3). */
   fixed?: boolean;
+  /** Block made from a calendar event (E9): the event is not a conflict with it. */
+  fromEvent?: string;
+  /** Placed by calendar sync (E9): the event's time is the source of truth; the area is yours to change. */
+  calendar?: { accountId: string; provider: CalProvider; eventId: string; calendarKey: string; email?: string; location?: string; free?: boolean; tentative?: boolean; calArea: string };
 }
 
 /** What actually happened (spec §25). Minutes are relative to the logical day's date, like blocks. */
@@ -153,7 +157,7 @@ export interface Recurrence {
 export interface Revision extends SyncFields {
   dayId: string;
   ts: string;
-  kind: 'move' | 'resize' | 'add' | 'remove' | 'rename' | 'area' | 'fixed' | 'replan' | 'late_start';
+  kind: 'move' | 'resize' | 'add' | 'remove' | 'rename' | 'area' | 'fixed' | 'replan' | 'late_start' | 'external';
   blockId?: string;
   title: string;
   before?: PlanBlock | null;
@@ -198,6 +202,10 @@ export interface Prefs extends SyncFields {
   density?: 'compact' | 'normal' | 'roomy';
   /** Recurring to-dos show up this many days before they are due (default 1: the day before). */
   recurLeadDays?: number;
+  /** Area a calendar account's events get by default (accountId → area id). Work for Microsoft, Personal for Google otherwise. */
+  calendarAreas?: Record<string, string>;
+  /** IANA zone used by the server to place calendar events on the timeline. */
+  timeZone?: string;
 }
 
 /** One answered (or skipped) daily check-in, keyed by the day it is about. */
@@ -207,7 +215,50 @@ export interface Checkin extends SyncFields {
   answers: Record<string, string>;
 }
 
-export type Entity = 'area' | 'template_block' | 'day' | 'day_block' | 'checkin' | 'time_record' | 'task' | 'revision' | 'focus_session' | 'pref';
+export type Entity = 'area' | 'template_block' | 'day' | 'day_block' | 'checkin' | 'time_record' | 'task' | 'revision' | 'focus_session' | 'pref'
+  | 'calendar' | 'cal_event' | 'cal_override';
+
+// ── E9: external calendars (read) ──────────────────────────────────────────
+
+export type CalProvider = 'google' | 'microsoft';
+/** Commitment: blocks time (timeline + conflicts). Awareness: shown faintly. Hidden: ignored (CAP-J2). */
+export type CalClass = 'commitment' | 'awareness' | 'hidden';
+
+/** One calendar of a connected account. Written by the server on connect; classification is the user's. */
+export interface Calendar extends SyncFields {
+  provider: CalProvider;
+  accountId: string;
+  calendarId: string;
+  name: string;
+  color?: string;
+  primary?: boolean;
+  /** The account may create events here (E10 publish targets). */
+  canWrite?: boolean;
+  classification: CalClass;
+}
+
+/** An event occurrence on one logical day, normalized by the server (minutes like blocks). */
+export interface CalEvent extends SyncFields {
+  calendarKey: string;
+  provider: CalProvider;
+  eventId: string;
+  dayId: string;
+  start: number;
+  end: number;
+  allDay?: boolean;
+  title: string;
+  location?: string;
+  /** Marked free (transparent / showAs free) in the source calendar. */
+  free?: boolean;
+  status: 'confirmed' | 'tentative' | 'cancelled';
+  /** E10: event created by DailyFlow from a published block. */
+  fromBlock?: string;
+}
+
+/** Per-event classification exception (CAP-J3), keyed by the CalEvent id. */
+export interface CalOverride extends SyncFields {
+  classification: CalClass;
+}
 
 export interface OutboxItem {
   seq?: number;

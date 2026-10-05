@@ -758,3 +758,15 @@ html.vt-close::view-transition-new(root) { z-index: 1; }
 .move-sheet .dock-row { grid-template-columns: repeat(3, minmax(0, 1fr)); }
 .move-sheet .dock-target { background: var(--bg-surface); border-style: solid; cursor: pointer; }
 .move-sheet .zone { width: 100%; min-height: 44px; cursor: pointer; font: inherit; text-align: left; }
+.blk.event { background: repeating-linear-gradient(-45deg, color-mix(in srgb, var(--c) 28%, var(--bg-surface)) 0 6px, color-mix(in srgb, var(--c) 18%, var(--bg-surface)) 6px 12px);
+  border: 1px solid color-mix(in srgb, var(--c) 70%, var(--bg-surface)); cursor: pointer; z-index: 2; }
+.allday { display: flex; flex-wrap: wrap; gap: 5px; }
+.cal-list { margin: 0; padding: 0; list-style: none; display: flex; flex-direction: column; gap: 4px; font-size: 13px; }
+.cal-list li { display: flex; gap: 8px; align-items: baseline; }
+.cal-list li.aware { color: var(--text-secondary); }
+.cal-banner { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; padding: 8px 12px; border-radius: 8px; font-size: 13px; background: color-mix(in srgb, var(--danger) 10%, var(--bg-surface)); border: 1px solid color-mix(in srgb, var(--danger) 35%, var(--border-default)); }
+.cal-swatch { width: 12px; height: 12px; border-radius: 3px; flex: none; }
+a.btn[aria-disabled='true'] { opacity: .5; pointer-events: none; }
+
+.cal-area { gap: 8px; font-size: 13px; color: var(--text-secondary); margin: 4px 0 8px; }
+.cal-area .input.sel { height: 30px; }

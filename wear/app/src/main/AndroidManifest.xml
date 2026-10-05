@@ -37,20 +37,8 @@
             <meta-data android:name="androidx.wear.tiles.PREVIEW" android:resource="@drawable/ic_dailyflow" />
         </service>
 
-        <!-- Complication: “Maker · 42m”, “Next 11:00 Music”, block progress ring -->
-        <service
-            android:name=".NowComplicationService"
-            android:exported="true"
-            android:icon="@drawable/ic_dailyflow"
-            android:label="@string/complication_label"
-            android:permission="com.google.android.wearable.permission.BIND_COMPLICATION_PROVIDER">
-            <intent-filter>
-                <action android:name="android.support.wearable.complications.ACTION_COMPLICATION_UPDATE_REQUEST" />
-            </intent-filter>
-            <meta-data android:name="android.support.wearable.complications.SUPPORTED_TYPES" android:value="SHORT_TEXT,LONG_TEXT,RANGED_VALUE" />
-            <meta-data android:name="android.support.wearable.complications.UPDATE_PERIOD_SECONDS" android:value="300" />
-        </service>
-        <!-- DailyFlow watch face (wear/watchface, Watch Face Format) reads the day from these -->
+
+        <!-- Complications: plug DailyFlow into any watch face (Customize › a slot › DailyFlow) -->
         <service
             android:name=".complications.NowSource"
             android:exported="true"
@@ -60,7 +48,7 @@
             <intent-filter>
                 <action android:name="android.support.wearable.complications.ACTION_COMPLICATION_UPDATE_REQUEST" />
             </intent-filter>
-            <meta-data android:name="android.support.wearable.complications.SUPPORTED_TYPES" android:value="RANGED_VALUE,SHORT_TEXT" />
+            <meta-data android:name="android.support.wearable.complications.SUPPORTED_TYPES" android:value="SHORT_TEXT,RANGED_VALUE,LONG_TEXT" />
             <meta-data android:name="android.support.wearable.complications.UPDATE_PERIOD_SECONDS" android:value="300" />
         </service>
         <service
@@ -84,7 +72,7 @@
             <intent-filter>
                 <action android:name="android.support.wearable.complications.ACTION_COMPLICATION_UPDATE_REQUEST" />
             </intent-filter>
-            <meta-data android:name="android.support.wearable.complications.SUPPORTED_TYPES" android:value="MONOCHROMATIC_IMAGE,SHORT_TEXT" />
+            <meta-data android:name="android.support.wearable.complications.SUPPORTED_TYPES" android:value="MONOCHROMATIC_IMAGE,SMALL_IMAGE,SHORT_TEXT" />
             <meta-data android:name="android.support.wearable.complications.UPDATE_PERIOD_SECONDS" android:value="300" />
         </service>
         <service
@@ -96,7 +84,7 @@
             <intent-filter>
                 <action android:name="android.support.wearable.complications.ACTION_COMPLICATION_UPDATE_REQUEST" />
             </intent-filter>
-            <meta-data android:name="android.support.wearable.complications.SUPPORTED_TYPES" android:value="MONOCHROMATIC_IMAGE,SHORT_TEXT" />
+            <meta-data android:name="android.support.wearable.complications.SUPPORTED_TYPES" android:value="MONOCHROMATIC_IMAGE,SMALL_IMAGE,SHORT_TEXT" />
             <meta-data android:name="android.support.wearable.complications.UPDATE_PERIOD_SECONDS" android:value="3600" />
         </service>
 

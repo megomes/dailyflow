@@ -1,7 +1,7 @@
 'use client';
 import { useLiveQuery } from 'dexie-react-hooks';
 import { useSearchParams } from 'next/navigation';
-import { Suspense, useEffect, useState } from 'react';
+import { Suspense, useEffect, useState, type FormEvent } from 'react';
 import { RefreshCw } from 'lucide-react';
 import { useCalStatus } from '@/components/day/useCalendar';
 import { m } from '@/i18n/en';
@@ -12,8 +12,44 @@ import { savePrefs } from '@/lib/prefs';
 import { activeAreas, update } from '@/lib/repo';
 import type { Calendar, CalClass } from '@/lib/types';
 
-interface AccountRow { id: string; provider: 'google' | 'microsoft'; email: string | null; status: string; lastError: string | null; lastSyncAt: string | null }
-interface Accounts { configured: { google: boolean; microsoft: boolean }; tableMissing: boolean; accounts: AccountRow[] }
+interface AccountRow { id: string; provider: 'google' | 'microsoft' | 'ics'; email: string | null; status: string; lastError: string | null; lastSyncAt: string | null }
+interface Accounts { configured: { google: boolean; microsoft: boolean; ics: boolean }; tableMissing: boolean; accounts: AccountRow[] }
+
+/** A published calendar link (Outlook without an Entra app). The server checks it before saving. */
+function IcsForm({ onAdded }: { onAdded: () => void }) {
+  const [url, setUrl] = useState('');
+  const [label, setLabel] = useState('');
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  async function add(e: FormEvent) {
+    e.preventDefault();
+    setBusy(true); setError(null);
+    try {
+      const res = await fetch('/api/calendars/ics', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ url, label }) });
+      const j = (await res.json()) as { id?: string; error?: string };
+      if (!res.ok || !j.id) throw new Error(j.error ?? String(res.status));
+      setUrl(''); setLabel('');
+      track('calendar_connected', { account: 'ics' });
+      onAdded();
+      void syncCalendars('connected', { force: true, refreshCalendars: true });
+    } catch (err) {
+      const msg = String((err as Error).message);
+      setError(m.calendars.icsErrors[msg] ?? msg);
+    } finally { setBusy(false); }
+  }
+  return (
+    <form className="section" onSubmit={e => void add(e)}>
+      <h2>{m.calendars.icsTitle}</h2>
+      <p className="hint" style={{ margin: 0 }}>{m.calendars.icsHint}</p>
+      <input className="input" type="url" required autoComplete="off" spellCheck={false} placeholder={m.calendars.icsUrl} value={url} onChange={e => setUrl(e.target.value)} />
+      <div className="row wrap">
+        <input className="input" style={{ flex: 1, minWidth: 160 }} placeholder={m.calendars.icsLabel} value={label} onChange={e => setLabel(e.target.value)} />
+        <button type="submit" className="btn sm" disabled={busy || !url.trim()}>{busy ? m.calendars.icsAdding : m.calendars.icsAdd}</button>
+      </div>
+      {error && <p className="error">{error}</p>}
+    </form>
+  );
+}
 
 /** Settings › Calendars (E9): connect accounts, classify calendars, see sync status. */
 function CalendarsInner() {
@@ -25,7 +61,7 @@ function CalendarsInner() {
   const areas = activeAreas(useLiveQuery(() => getDB().areas.toArray(), []) ?? []);
   const prefs = useLiveQuery(() => getDB().prefs.get('prefs'), []);
   /** Default area of an account's events: Work for Microsoft (Teams), Personal for Google, unless changed. */
-  const areaOf = (a: AccountRow) => prefs?.calendarAreas?.[a.id] ?? (a.provider === 'microsoft' ? 'area-work' : 'area-personal');
+  const areaOf = (a: AccountRow) => prefs?.calendarAreas?.[a.id] ?? (a.provider === 'google' ? 'area-personal' : 'area-work');
   async function setArea(a: AccountRow, areaId: string) {
     await savePrefs({ calendarAreas: { ...(prefs?.calendarAreas ?? {}), [a.id]: areaId } });
     track('calendar_area_set', { provider: a.provider, area: areaId });
@@ -78,6 +114,7 @@ function CalendarsInner() {
         {info && !info.configured.google && <span className="hint">{m.calendars.notConfigured('Google')}</span>}
         {info && !info.configured.microsoft && <span className="hint">{m.calendars.notConfigured('Microsoft')}</span>}
       </section>
+      {info?.configured.ics && <IcsForm onAdded={() => setReload(r => r + 1)} />}
       {(info?.accounts ?? []).length === 0 && calendars.length === 0 ? <p className="secondary">{m.calendars.none}</p> : (info?.accounts ?? []).map(a => {
         const result = status.results.find(r => r.account === a.id);
         return (
@@ -86,7 +123,7 @@ function CalendarsInner() {
               <h2>{a.email ?? a.id}</h2>
               <span className={`status-pill ${a.status === 'ok' ? 's-active' : ''}`}>{m.calendars.status[a.status] ?? a.status}</span>
               <span className="spacer" />
-              {a.status !== 'ok' && <a className="btn sm" href={`/api/calendars/connect?provider=${a.provider}`}>{m.calendars.reconnect}</a>}
+              {a.status !== 'ok' && a.provider !== 'ics' && <a className="btn sm" href={`/api/calendars/connect?provider=${a.provider}`}>{m.calendars.reconnect}</a>}
               <button type="button" className="btn sm danger" onClick={() => void remove(a.id)}>{m.calendars.remove}</button>
             </div>
             <span className="hint">

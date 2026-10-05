@@ -8,7 +8,7 @@ export async function GET() {
   let tableMissing = false;
   try { list = await accounts(); } catch (e) { tableMissing = /calendar_accounts/.test(String(e)); if (!tableMissing) throw e; }
   return Response.json({
-    configured: { google: providerConfigured('google'), microsoft: providerConfigured('microsoft') },
+    configured: { google: providerConfigured('google'), microsoft: providerConfigured('microsoft'), ics: providerConfigured('ics') },
     tableMissing,
     accounts: list.map(a => {
       const r = a as typeof a & { last_error: string | null; last_sync_at: string | null };

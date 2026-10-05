@@ -22,6 +22,8 @@ data class Snapshot(
     val nextTasks: List<String>,
     /** When the server built it (ms), to move the logical minute forward on the watch. */
     val generatedAt: Long = System.currentTimeMillis(),
+    /** Logical day (YYYY-MM-DD); block minutes are relative to its midnight. */
+    val day: String = "",
 ) {
     /** Logical minute right now, from the server minute plus the time since it was generated. */
     fun minuteAt(nowMs: Long): Float = minute + (nowMs - generatedAt) / 60000f
@@ -115,6 +117,7 @@ class Api(context: Context) {
             focusTitle = focus?.optString("title"), focusLeftSec = focus?.let { if (it.isNull("leftSec")) null else it.optInt("leftSec") },
             timeline = (0 until (tl?.length() ?: 0)).mapNotNull { block(tl!!.optJSONObject(it)) },
             nextTasks = (0 until (nt?.length() ?: 0)).map { nt!!.optString(it) },
+            day = j.optString("day"),
             generatedAt = runCatching { java.time.Instant.parse(j.optString("generatedAt")).toEpochMilli() }.getOrDefault(System.currentTimeMillis()),
         )
     }

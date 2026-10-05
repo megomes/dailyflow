@@ -33,6 +33,8 @@ wear-watchface-data = { group = "androidx.wear.watchface", name = "watchface-com
 wear-watchface-style = { group = "androidx.wear.watchface", name = "watchface-style", version.ref = "watchface" }
 wear-watchface-editor = { group = "androidx.wear.watchface", name = "watchface-editor", version.ref = "watchface" }
 
+wear-protolayout-expression = { group = "androidx.wear.protolayout", name = "protolayout-expression", version.ref = "protolayout" }
+
 [plugins]
 android-application = { id = "com.android.application", version.ref = "agp" }
 kotlin-android = { id = "org.jetbrains.kotlin.android", version.ref = "kotlin" }

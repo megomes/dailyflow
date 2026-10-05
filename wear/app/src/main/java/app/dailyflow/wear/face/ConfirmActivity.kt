@@ -73,6 +73,7 @@ class ConfirmActivity : ComponentActivity() {
     private suspend fun run(action: String): String {
         val msg = Api(this).quick(action)
         FaceData.refresh(applicationContext)
+        app.dailyflow.wear.complications.Sources.refreshAll(applicationContext)
         return msg
     }
 

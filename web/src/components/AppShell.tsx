@@ -7,6 +7,7 @@ import { m } from '@/i18n/en';
 import { setScreen, track } from '@/lib/analytics';
 import { useSyncState } from '@/lib/hooks';
 import { currentTheme, toggleTheme } from '@/lib/theme';
+import { ContextMenuHost } from './ContextMenu';
 import { LiveAgents } from './LiveAgents';
 import { Palette } from './Palette';
 
@@ -89,6 +90,7 @@ export function AppShell({ children }: { children: ReactNode }) {
       <main className="main"><OfflineBanner />{children}</main>
       <Palette />
       <LiveAgents />
+      <ContextMenuHost />
       <nav className="tabbar" aria-label="Main">
         {NAV.filter(n => n.tab !== false).map(n => (
           <Link key={n.href} href={n.href} aria-current={n.match(path) ? 'page' : undefined}>

@@ -8,6 +8,8 @@ import { m } from '@/i18n/en';
 import { deferTask, PRESETS, scheduleTask, startFocus, toggleTaskDone, unscheduleTask } from '@/lib/ops';
 import { fmtDuration } from '@/lib/time';
 import type { Area, Task } from '@/lib/types';
+import { contextForMenu, pressForMenu } from '../ContextMenu';
+import { taskMenu } from '../menus';
 import { setDraggedTask } from './dragState';
 
 interface Props {
@@ -23,11 +25,13 @@ interface Props {
   onToday?: (t: Task) => void;
   /** HTML5 drag; off on touch screens, where the board uses long-press instead. */
   nativeDrag?: boolean;
+  /** Right-click / press-and-hold menu (note #22). Off when a parent opens it (the board). */
+  menu?: boolean;
 }
 
 const fmtDue = (d: string) => new Date(`${d}T12:00:00`).toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
 
-export function TaskRow({ task: t, areaMap, dayId, compact, selected, tracked, onOpen, onToday, nativeDrag = true }: Props) {
+export function TaskRow({ task: t, areaMap, dayId, compact, selected, tracked, onOpen, onToday, nativeDrag = true, menu = true }: Props) {
   const area = t.areaId ? areaMap.get(t.areaId) : undefined;
   const done = t.status === 'done';
   const today = new Date().toISOString().slice(0, 10);
@@ -55,7 +59,8 @@ export function TaskRow({ task: t, areaMap, dayId, compact, selected, tracked, o
 
   return (
     <div className={`task-row${compact ? ' compact' : ''}${selected ? ' sel' : ''}${done ? ' is-done' : ''}`} data-color={area?.color ?? 'gray'}
-      draggable={!done && nativeDrag} onDragStart={dragStart} onDragEnd={() => setDraggedTask(null)} data-task={t.id}>
+      draggable={!done && nativeDrag} onDragStart={dragStart} onDragEnd={() => setDraggedTask(null)} data-task={t.id}
+      {...(menu ? { onContextMenu: e => contextForMenu(e, () => taskMenu(t, { dayId, onOpen })), onPointerDown: e => pressForMenu(e, () => taskMenu(t, { dayId, onOpen })) } : {})}>
       {!compact && <GripVertical size={13} className="grip" aria-hidden />}
       <input type="checkbox" checked={done} onChange={() => void toggleTaskDone(t.id)} aria-label={t.title} />
       <button type="button" className="task-title" onClick={() => onOpen?.(t)} disabled={!onOpen}>

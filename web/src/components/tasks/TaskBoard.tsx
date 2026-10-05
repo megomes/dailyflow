@@ -7,12 +7,13 @@ import { capacity } from '@/lib/actual';
 import { columnOf, COLUMNS, type Column } from '@/lib/taskBoard';
 import { fmtDuration, fmtMin } from '@/lib/time';
 import type { Area, DayBlock, Task } from '@/lib/types';
+import { contextForMenu, pressForMenu } from '../ContextMenu';
+import { taskMenu } from '../menus';
 import { useDraggedTask } from './dragState';
 import { TaskRow } from './TaskRow';
 
 export const COL_ICON: Record<Column, typeof Inbox> = { inbox: Inbox, backlog: Layers, today: CalendarClock, done: CircleCheck };
 const DONE_SHOWN = 25;
-const LONG_PRESS_MS = 380;
 const isTaskDrag = (e: DragEvent) => e.dataTransfer.types.includes('text/df-task');
 
 interface Props {
@@ -49,9 +50,8 @@ export function TaskBoard(p: Props) {
   const { day, minute, cols, blocks, dayTasks, areaMap, tracked, selId, coarse } = p;
   const dragged = useDraggedTask();
   const [over, setOver] = useState<string | null>(null);
-  // Phones: long-press a card → a “Move to…” sheet (no dragging, so scrolling stays fully native).
+  // “Move to…” sheet (phones), opened from the card's menu: no dragging, so scrolling stays fully native.
   const [sheet, setSheet] = useState<{ task: Task; from: Column } | null>(null);
-  const press = useRef<{ timer: number; x: number; y: number } | null>(null);
   const boardRef = useRef<HTMLDivElement>(null);
   const [active, setActive] = useState<Column>('inbox');
   const [allDone, setAllDone] = useState(false);
@@ -89,20 +89,8 @@ export function TaskBoard(p: Props) {
     },
   });
 
-  // ── Phones: long-press opens “Move to…” (passive pointer handlers only — nothing ever blocks scrolling) ──
-  function pressStart(e: React.PointerEvent, task: Task, col: Column) {
-    if (!coarse || e.pointerType === 'mouse') return;
-    if ((e.target as HTMLElement).closest('input, .task-actions')) return;
-    pressEnd();
-    const x = e.clientX, y = e.clientY;
-    const timer = window.setTimeout(() => { press.current = null; navigator.vibrate?.(12); setSheet({ task, from: col }); }, LONG_PRESS_MS);
-    press.current = { timer, x, y };
-  }
-  function pressMove(e: React.PointerEvent) {
-    const pr = press.current;
-    if (pr && Math.hypot(e.clientX - pr.x, e.clientY - pr.y) > 10) pressEnd();
-  }
-  function pressEnd() { if (press.current) { clearTimeout(press.current.timer); press.current = null; } }
+  // Right-click / press-and-hold: the to-do's menu (note #22); its Move to opens this board's sheet (with undo).
+  const menuFor = (task: Task, col: Column) => () => taskMenu(task, { dayId: day, onOpen: x => p.onOpen(x.id), move: () => setSheet({ task, from: col }) });
   function pick(target: string) {
     const st = sheet;
     setSheet(null);
@@ -111,10 +99,10 @@ export function TaskBoard(p: Props) {
 
   const row = (t: Task, col: Column) => (
     <div key={t.id} className={`board-card${sheet?.task.id === t.id ? ' lifted' : ''}`} role="presentation"
-      onClick={() => p.onSelect(t.id)} onPointerDown={e => pressStart(e, t, col)} onPointerMove={pressMove} onPointerUp={pressEnd} onPointerCancel={pressEnd}
-      onContextMenu={e => { if (coarse) e.preventDefault(); }}>
+      onClick={() => p.onSelect(t.id)} onPointerDown={e => { if (!(e.target as HTMLElement).closest('.task-actions')) pressForMenu(e, menuFor(t, col)); }}
+      onContextMenu={e => contextForMenu(e, menuFor(t, col))}>
       <TaskRow task={t} areaMap={areaMap} dayId={day} selected={t.id === selId} tracked={tracked.get(t.id)} nativeDrag={!coarse}
-        onOpen={x => p.onOpen(x.id)} onToday={p.onToday} />
+        onOpen={x => p.onOpen(x.id)} onToday={p.onToday} menu={false} />
     </div>
   );
 

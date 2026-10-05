@@ -6,6 +6,7 @@ import { layoutLanes, visibleRange } from '@/lib/dayLogic';
 import { AreaIcon } from '@/lib/icons';
 import { clamp, fmtMin, snap } from '@/lib/time';
 import type { Area, TimelineBlock } from '@/lib/types';
+import { contextForMenu, pressForMenu, type MenuSpec } from './ContextMenu';
 
 export type ChangeKind = 'move' | 'resize-start' | 'resize-end';
 
@@ -40,6 +41,8 @@ interface Props {
   /** While a task is dragged, blocks of this area stand out (DIA-04). */
   highlightArea?: string | null;
   pxPerMin?: number;
+  /** Right-click / press-and-hold menu for an item (note #22). */
+  onItemMenu?: (id: string, columnId: string) => MenuSpec | Promise<MenuSpec | null> | null;
 }
 
 interface Drag { id: string; col: string; kind: ChangeKind; y0: number; s0: number; e0: number; s: number; e: number; moved: boolean; pointerId: number }
@@ -48,7 +51,7 @@ const GUTTER = 54;
 const MAX_MIN = 28 * 60;
 const COL_GAP = 6;
 
-export function Timeline({ columns, areas, nowMin = null, selectedId, onSelect, onCreate, onChange, onDropTask, highlightArea, pxPerMin = 1.15 }: Props) {
+export function Timeline({ columns, areas, nowMin = null, selectedId, onSelect, onCreate, onChange, onDropTask, highlightArea, pxPerMin = 1.15, onItemMenu }: Props) {
   const [drag, setDrag] = useState<Drag | null>(null);
   const [dropAt, setDropAt] = useState<{ col: string; id?: string; min: number } | null>(null);
   const suppressClick = useRef(false);
@@ -199,7 +202,8 @@ export function Timeline({ columns, areas, nowMin = null, selectedId, onSelect, 
               className={cls}
               data-color={b.color ?? area?.color ?? 'gray'}
               style={{ top, height: h, left, width }}
-              onPointerDown={e => begin(e, b, col, 'move')}
+              onPointerDown={e => { if (onItemMenu && b.variant !== 'ghost') pressForMenu(e, () => onItemMenu(b.id, col.id)); begin(e, b, col, 'move'); }}
+              onContextMenu={onItemMenu && b.variant !== 'ghost' ? e => contextForMenu(e, () => onItemMenu(b.id, col.id)) : undefined}
               onClick={e => { e.stopPropagation(); if (suppressClick.current) { suppressClick.current = false; return; } if (b.variant !== 'ghost') onSelect(b.id, col.id); }}
               onDragOver={e => over(e, col, b.id)}
               onDrop={e => drop(e, col, b.id)}

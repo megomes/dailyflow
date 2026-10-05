@@ -14,6 +14,7 @@ import { getDB } from '@/lib/db';
 import { fmtDuration, fmtMin } from '@/lib/time';
 import type { DayBlock, Revision } from '@/lib/types';
 import { Timeline, type ChangeKind, type TLColumn, type TLItem } from '../Timeline';
+import { blockMenu, recordMenu } from '../menus';
 import { useDraggedTask } from '../tasks/dragState';
 import { ChangesCard, ConflictsCard, GapsCard, ReasonPrompt, NotPlannedCard, ReplanModal, SaveTemplateModal, StartDayCard } from './Cards';
 import { DayTasks } from './DayTasks';
@@ -323,6 +324,14 @@ export function DayView({ dayId, live, title, sub, sideTop, sideBottom, headExtr
           nowMin={nowMin}
           selectedId={sel?.id ?? null}
           onSelect={(id, col) => setSel(id ? { id, col: col ?? 'plan' } : null)}
+          onItemMenu={(id, col) => {
+            if (col === 'plan') {
+              const b = d.blocks.find(x => x.id === id);
+              return b ? blockMenu(b, { dayId, live, areas: d.areas, edit: () => setSel({ id, col }), patch: (p, k) => onPatchBlock(b, p, k), remove: () => onDeleteBlock(b) }) : null;
+            }
+            const r = d.records.find(x => x.id === id);
+            return r ? recordMenu(r, { dayId, live, areas: d.areas, blocks: d.blocks, edit: () => setSel({ id, col: 'real' }) }) : null;
+          }}
           onCreate={(c, s, e) => void onCreate(c, s, e)}
           onChange={(c, id, s, e, k) => void onChange(c, id, s, e, k)}
           onDropTask={(t, c, mi, b) => void onDropTask(t, c, mi, b)}

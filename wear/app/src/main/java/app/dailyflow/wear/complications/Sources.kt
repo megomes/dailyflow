@@ -7,10 +7,12 @@ import android.content.Intent
 import android.graphics.drawable.Icon
 import androidx.wear.protolayout.expression.DynamicBuilders.DynamicFloat
 import androidx.wear.protolayout.expression.DynamicBuilders.DynamicInstant
+import androidx.wear.protolayout.expression.DynamicBuilders.DynamicInt32
+import androidx.wear.protolayout.expression.DynamicBuilders.DynamicString
 import androidx.wear.watchface.complications.data.ComplicationData
 import androidx.wear.watchface.complications.data.ComplicationText
 import androidx.wear.watchface.complications.data.ComplicationType
-import androidx.wear.watchface.complications.data.CountDownTimeReference
+import androidx.wear.watchface.complications.data.DynamicComplicationText
 import androidx.wear.watchface.complications.data.LongTextComplicationData
 import androidx.wear.watchface.complications.data.MonochromaticImage
 import androidx.wear.watchface.complications.data.MonochromaticImageComplicationData
@@ -21,8 +23,6 @@ import androidx.wear.watchface.complications.data.ShortTextComplicationData
 import androidx.wear.watchface.complications.data.SmallImage
 import androidx.wear.watchface.complications.data.SmallImageComplicationData
 import androidx.wear.watchface.complications.data.SmallImageType
-import androidx.wear.watchface.complications.data.TimeDifferenceComplicationText
-import androidx.wear.watchface.complications.data.TimeDifferenceStyle
 import androidx.wear.watchface.complications.datasource.ComplicationDataSourceUpdateRequester
 import androidx.wear.watchface.complications.datasource.ComplicationDataTimeline
 import androidx.wear.watchface.complications.datasource.ComplicationRequest
@@ -40,7 +40,6 @@ import app.dailyflow.wear.face.FaceData
 import java.time.Instant
 import java.time.LocalDate
 import java.time.ZoneId
-import java.util.concurrent.TimeUnit
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
@@ -58,9 +57,22 @@ import kotlinx.coroutines.withTimeoutOrNull
  */
 private fun text(s: String) = PlainComplicationText.Builder(s).build()
 
-private fun countdownTo(end: Instant): ComplicationText =
-    TimeDifferenceComplicationText.Builder(TimeDifferenceStyle.SHORT_SINGLE_UNIT, CountDownTimeReference(end))
-        .setMinimumTimeUnit(TimeUnit.MINUTES).build()
+/**
+ * “37m” / “1h05”: compact time left for arcs (they fit ~4 characters, like “21%”).
+ * A dynamic string, so the watch recomputes it every minute on its own.
+ */
+private fun compactCountdownTo(end: Instant, suffix: String = ""): ComplicationText {
+    val left = DynamicInstant.platformTimeWithSecondsPrecision().durationUntil(DynamicInstant.withSecondsPrecision(end))
+    // Rounded up, like a countdown should be (at 0:30 left it still says 1m).
+    val mins = left.toIntSeconds().plus(59).div(60)
+    val twoDigits = DynamicInt32.IntFormatter.Builder().setMinIntegerDigits(2).build()
+    val dynamic = DynamicString.onCondition(mins.lt(60))
+        .use(mins.format().concat(DynamicString.constant("m")))
+        .elseUse(mins.div(60).format().concat(DynamicString.constant("h")).concat(mins.rem(60).format(twoDigits)))
+        .concat(DynamicString.constant(suffix))
+    val m = ((end.toEpochMilli() - System.currentTimeMillis() + 59_999) / 60_000).coerceAtLeast(0)
+    return DynamicComplicationText(dynamic, (if (m < 60) "${m}m" else "${m / 60}h%02d".format(m % 60)) + suffix)
+}
 
 private fun icon(context: Context, res: Int) = MonochromaticImage.Builder(Icon.createWithResource(context, res)).build()
 
@@ -127,24 +139,28 @@ class NowSource : SuspendingTimelineComplicationDataSourceService() {
         val until: Block? = now ?: next
         if (until == null) return simple(type, "—", name)
         val endsAt = s.instantOf((if (now != null) now.end else until.start).toFloat())
-        val count = countdownTo(endsAt)
+        // State is only known for the current interval (live); later timeline entries just count down.
+        val isRunning = live && s.runningTitle != null
+        val knownIdle = live && s.runningTitle == null && now != null
         val desc = text("$name until ${if (now != null) now.endLabel else until.startLabel}")
         return when (type) {
             ComplicationType.RANGED_VALUE -> {
                 // Free time: an empty ring, the countdown to the next block.
-                if (now == null) return RangedValueComplicationData.Builder(0f, 0f, 1f, desc).setMonochromaticImage(icon(this, R.drawable.ic_now)).setTapAction(open(this)).build()
+                if (now == null) return RangedValueComplicationData.Builder(0f, 0f, 1f, desc).setText(compactCountdownTo(endsAt)).setMonochromaticImage(icon(this, R.drawable.ic_now)).setTapAction(open(this)).build()
                 val start = s.instantOf(now.start.toFloat())
                 val total = (endsAt.epochSecond - start.epochSecond).coerceAtLeast(60).toFloat()
                 val elapsedNow = ((System.currentTimeMillis() / 1000 - start.epochSecond).toFloat()).coerceIn(0f, total)
                 // Seconds into the block, computed by the watch every frame: the ring moves without updates.
                 val remaining = DynamicInstant.platformTimeWithSecondsPrecision().durationUntil(DynamicInstant.withSecondsPrecision(endsAt)).toIntSeconds().asFloat()
-                // No text: on arcs it gets cut ("Make…"); the ring and the Now glyph say enough, the name lives in the inner slot.
+                // Only the time left (short, fits where “21%” goes); the block's name gets cut on arcs and lives in the inner slot.
                 RangedValueComplicationData.Builder(DynamicFloat.constant(total).minus(remaining), elapsedNow, 0f, total, desc)
-                    .setMonochromaticImage(icon(this, R.drawable.ic_now)).setTapAction(open(this)).build()
+                    .setText(compactCountdownTo(endsAt)).setMonochromaticImage(icon(this, R.drawable.ic_now)).setTapAction(open(this)).build()
             }
-            ComplicationType.LONG_TEXT -> LongTextComplicationData.Builder(text("$name · until ${if (now != null) now.endLabel else until.startLabel}"), desc)
-                .setTitle(text(if (now != null) "NOW" else "FREE")).setMonochromaticImage(icon(this, R.drawable.ic_now)).setTapAction(open(this)).build()
-            else -> ShortTextComplicationData.Builder(count, desc).setTitle(text(name)).setMonochromaticImage(icon(this, R.drawable.ic_now)).setTapAction(open(this)).build()
+            ComplicationType.LONG_TEXT -> LongTextComplicationData.Builder(text("${if (isRunning) "● " else ""}$name · until ${if (now != null) now.endLabel else until.startLabel}"), desc)
+                .setTitle(text(when { knownIdle -> "NOT STARTED"; now != null -> "NOW"; else -> "FREE" })).setMonochromaticImage(icon(this, R.drawable.ic_now)).setTapAction(open(this)).build()
+            // Running: “● Maker / 34m left”. Planned but nothing running: “Maker / not started”.
+            else -> ShortTextComplicationData.Builder(if (knownIdle) text("not started") else compactCountdownTo(endsAt, " left"), desc)
+                .setTitle(text(if (isRunning) "● $name" else name)).setMonochromaticImage(icon(this, R.drawable.ic_now)).setTapAction(open(this)).build()
         }
     }
 
@@ -162,9 +178,9 @@ class NowSource : SuspendingTimelineComplicationDataSourceService() {
     }
 
     override fun getPreviewData(type: ComplicationType): ComplicationData = when (type) {
-        ComplicationType.RANGED_VALUE -> RangedValueComplicationData.Builder(18f, 0f, 60f, text("Work")).setMonochromaticImage(icon(this, R.drawable.ic_now)).build()
+        ComplicationType.RANGED_VALUE -> RangedValueComplicationData.Builder(18f, 0f, 60f, text("Work")).setText(text("42m")).setMonochromaticImage(icon(this, R.drawable.ic_now)).build()
         ComplicationType.LONG_TEXT -> LongTextComplicationData.Builder(text("Work · until 11:00"), text("Now")).setTitle(text("NOW")).build()
-        else -> ShortTextComplicationData.Builder(text("42m"), text("Work")).setTitle(text("Work")).build()
+        else -> ShortTextComplicationData.Builder(text("−42min"), text("Work")).setTitle(text("Work")).build()
     }
 }
 

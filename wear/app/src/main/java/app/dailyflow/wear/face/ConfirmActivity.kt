@@ -23,6 +23,7 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
@@ -104,8 +105,8 @@ private fun Confirm(verb: String, title: String, sub: String, accent: Color, pos
                 else -> SlideToConfirm(accent) {
                     haptics.performHapticFeedback(HapticFeedbackType.LongPress)
                     scope.launch {
-                        result = "…"
-                        result = onConfirm()
+                        result = if (verb == "Stop") "Stopping…" else "Starting…"
+                        result = runCatching { onConfirm() }.getOrElse { "Could not reach DailyFlow" }
                         delay(900)
                         onCancel()
                     }
@@ -124,22 +125,26 @@ private fun SlideToConfirm(accent: Color, onDone: () -> Unit) {
     BoxWithConstraints(Modifier.fillMaxWidth().height(knob + 8.dp).background(Navy, RoundedCornerShape(50)).padding(4.dp)) {
         val density = LocalDensity.current
         val max = with(density) { (maxWidth - knob).toPx() }
-        val offset = remember { Animatable(0f) }
-        val scope = rememberCoroutineScope()
+        // The knob position is plain state updated synchronously while dragging, so the decision on
+        // release reads the real position (async updates used to race and leave it stuck at the end).
+        var pos by remember { mutableFloatStateOf(0f) }
+        val back = remember { Animatable(0f) }
         var done by remember { mutableStateOf(false) }
-        Text("slide  ›››", color = Light.copy(alpha = 0.55f + 0.45f * (offset.value / max.coerceAtLeast(1f))), fontSize = 13.sp,
+        Text("slide  ›››", color = Light.copy(alpha = 0.55f + 0.45f * (pos / max.coerceAtLeast(1f))), fontSize = 13.sp,
             modifier = Modifier.align(Alignment.Center).padding(start = 36.dp))
         Box(
             Modifier
-                .offset { IntOffset(offset.value.roundToInt(), 0) }
+                .offset { IntOffset(pos.roundToInt(), 0) }
                 .size(knob)
                 .background(accent, CircleShape)
                 .draggable(
                     orientation = Orientation.Horizontal,
-                    state = rememberDraggableState { d -> if (!done) scope.launch { offset.snapTo((offset.value + d).coerceIn(0f, max)) } },
+                    enabled = !done,
+                    state = rememberDraggableState { d -> pos = (pos + d).coerceIn(0f, max) },
+                    onDragStarted = { back.stop() },
                     onDragStopped = {
-                        if (offset.value >= max * 0.92f && !done) { done = true; offset.animateTo(max); onDone() }
-                        else offset.animateTo(0f)
+                        if (pos >= max * 0.85f) { done = true; pos = max; onDone() }
+                        else { back.snapTo(pos); back.animateTo(0f) { pos = value } }
                     },
                 ),
             contentAlignment = Alignment.Center,

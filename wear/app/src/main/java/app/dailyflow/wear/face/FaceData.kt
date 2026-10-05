@@ -42,6 +42,8 @@ object FaceData {
         context.getSharedPreferences("dailyflow", Context.MODE_PRIVATE).edit().putString(KEY, text).putLong(AT, fetchedAt).apply()
         raw = text
         snapshot = parsed
+        // Every fresh day re-arms the block-change alarm.
+        app.dailyflow.wear.notify.Transitions.schedule(context.applicationContext)
         changed
     }
 }

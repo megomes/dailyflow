@@ -16,7 +16,7 @@ import { capacity, overlaps, recEnd } from '@/lib/actual';
 import { track } from '@/lib/analytics';
 import { getDB } from '@/lib/db';
 import { useClock, useIsMobile } from '@/lib/hooks';
-import { addBlock, deleteBlock, patchBlock, scheduleTask, startDay } from '@/lib/ops';
+import { addBlock, adoptPlan, deleteBlock, patchBlock, scheduleTask, startDay } from '@/lib/ops';
 import { ensureDay } from '@/lib/repo';
 import { addDays, dateFromIso, fmtDuration } from '@/lib/time';
 
@@ -62,7 +62,8 @@ function PlanInner() {
   async function start() {
     started.current = true;
     if (isToday && d.status === 'unplanned') await startDay(dayId, 'guided', { planning_ms: Date.now() - t0, stage_reached: step });
-    else track('day_planned_ahead', { planning_ms: Date.now() - t0, blocks: d.blocks.length, tasks: d.tasks.length });
+    // First plan of a day that started implicitly (tracking before planning) becomes its Baseline.
+    else if (!(await adoptPlan(dayId, 'guided', { planning_ms: Date.now() - t0, stage_reached: step }))) track('day_planned_ahead', { planning_ms: Date.now() - t0, blocks: d.blocks.length, tasks: d.tasks.length });
     router.push(isToday ? '/' : '/');
   }
 

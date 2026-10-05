@@ -2,7 +2,7 @@ import 'fake-indexeddb/auto';
 import { beforeEach, describe, expect, it } from 'vitest';
 import { blockActual, capacity, dayGaps, mergeSpans, overlaps, planAsReal, planChanges, replanRemaining, uncovered, whatChanged } from './actual';
 import { DailyFlowDB, setDB } from './db';
-import { acceptPlanAsReal, addBlock, closeDay, createTask, deleteBlock, endFocus, focusElapsedSec, patchBlock, scheduleTask, startDay, startFocus, PRESETS } from './ops';
+import { acceptPlanAsReal, addBlock, adoptPlan, closeDay, createTask, deleteBlock, endFocus, focusElapsedSec, patchBlock, scheduleTask, startDay, startFocus, PRESETS } from './ops';
 import { ensureDay, save, seedIfEmpty } from './repo';
 import type { Task, TimeRecord } from './types';
 
@@ -117,6 +117,18 @@ describe('day operations', () => {
     await deleteBlock(id);
     expect(await db.revisions.count()).toBe(2);
     expect((await db.days.get('2026-09-28'))?.baseline).toHaveLength(10);
+  });
+
+  it('lets the first plan of an implicitly started day become its baseline', async () => {
+    await startDay('2026-09-28', 'implicit');
+    const { id } = await addBlock('2026-09-28', { start: 1300, end: 1320, title: 'x', areaId: 'area-work' });
+    expect((await db.days.get('2026-09-28'))?.baseline).toHaveLength(9);
+    expect(await adoptPlan('2026-09-28', 'guided')).toBe(true);
+    const day = await db.days.get('2026-09-28');
+    expect(day?.startMode).toBe('guided');
+    expect(day?.baseline?.some(b => b.id === id)).toBe(true);
+    // Only once: later plan changes are revisions against that baseline.
+    expect(await adoptPlan('2026-09-28', 'guided')).toBe(false);
   });
 
   it('accepts the plan as real and returns unfinished tasks to the backlog on close', async () => {

@@ -5,7 +5,7 @@ import { AlertTriangle, ListChecks, Moon, Play, RefreshCw, Sunrise, X } from 'lu
 import { m } from '@/i18n/en';
 import { dayGaps, recEnd, replanRemaining, whatChanged, type ChangeLine, type Conflict, type Span } from '@/lib/actual';
 import { track } from '@/lib/analytics';
-import { acceptPlanAsReal, addRecord, applyReplan, saveDayAsTemplate, closeDay, deleteBlock, lateStart, patchBlock, setRevisionReason, startDay } from '@/lib/ops';
+import { acceptPlanAsReal, addRecord, adoptPlan, applyReplan, saveDayAsTemplate, closeDay, deleteBlock, lateStart, patchBlock, setRevisionReason, startDay } from '@/lib/ops';
 import { DAY_KEYS, fmtDuration, fmtMin, templateIdForDate } from '@/lib/time';
 import type { Area, DayBlock, DayKey, PlanBlock, TimeRecord } from '@/lib/types';
 import { Modal } from '../Modal';
@@ -23,6 +23,24 @@ export function StartDayCard({ dayId, blocks, templateName, minute }: { dayId: s
         <button type="button" className="btn sm primary" onClick={() => void startDay(dayId, 'quick')}><Play size={13} />{m.day.start}</button>
         {late && <button type="button" className="btn sm" onClick={() => void lateStart(dayId)}>{m.day.lateStart}</button>}
         <Link href={`/plan?d=${dayId}`} className="btn sm ghost"><ListChecks size={13} />{m.day.plan}</Link>
+      </div>
+    </section>
+  );
+}
+
+/**
+ * The day started by itself (an activity was started before any plan): planning is still open.
+ * Planning now, or keeping the plan as it is, sets the Baseline the day is compared against.
+ */
+export function NotPlannedCard({ dayId, startedAt }: { dayId: string; startedAt?: string }) {
+  const at = startedAt ? new Date(startedAt).toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' }) : '';
+  return (
+    <section className="card startcard">
+      <span className="label row"><Sunrise size={13} />{m.day.notPlannedTitle}</span>
+      <span className="secondary">{m.day.notPlannedSub(at)}</span>
+      <div className="row wrap">
+        <Link href={`/plan?d=${dayId}`} className="btn sm primary"><ListChecks size={13} />{m.day.plan}</Link>
+        <button type="button" className="btn sm ghost" onClick={() => void adoptPlan(dayId, 'quick')}>{m.day.keepPlan}</button>
       </div>
     </section>
   );

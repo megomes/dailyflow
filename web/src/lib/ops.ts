@@ -32,6 +32,19 @@ export async function startDay(dayId: string, mode: NonNullable<Day['startMode']
   track('day_started', { implicit: mode === 'implicit', mode, blocks: blocks.length, ...extra });
 }
 
+/**
+ * A day started implicitly (tracking before any plan) has no real Baseline yet: the first plan the
+ * user makes for it — guided planning, or keeping the plan as it is — becomes the Baseline.
+ */
+export async function adoptPlan(dayId: string, mode: 'guided' | 'quick', extra: Record<string, unknown> = {}) {
+  const day = await getDB().days.get(dayId);
+  if (!day || day.status !== 'active' || day.startMode !== 'implicit') return false;
+  const blocks = await dayBlocks(dayId);
+  await update<Day>('day', dayId, { startMode: mode, baseline: blocks.map(snapshot) });
+  track('day_plan_adopted', { mode, blocks: blocks.length, ...extra });
+  return true;
+}
+
 /** Starting anything on an unplanned day starts it implicitly (no extra click). */
 async function ensureStarted(dayId: string) {
   const day = await getDB().days.get(dayId);

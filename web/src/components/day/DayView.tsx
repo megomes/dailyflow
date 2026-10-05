@@ -2,7 +2,7 @@
 import Link from 'next/link';
 import { useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 import { useLiveQuery } from 'dexie-react-hooks';
-import { LayoutTemplate, Moon, Plus, RefreshCw, RotateCcw } from 'lucide-react';
+import { LayoutTemplate, ListChecks, Moon, Plus, RefreshCw, RotateCcw } from 'lucide-react';
 import { SyncBadge } from '@/components/AppShell';
 import { m } from '@/i18n/en';
 import { blockActual, coveredIn, overlaps } from '@/lib/actual';
@@ -15,7 +15,7 @@ import { fmtDuration, fmtMin } from '@/lib/time';
 import type { DayBlock, Revision } from '@/lib/types';
 import { Timeline, type ChangeKind, type TLColumn, type TLItem } from '../Timeline';
 import { useDraggedTask } from '../tasks/dragState';
-import { ChangesCard, ConflictsCard, GapsCard, ReasonPrompt, ReplanModal, SaveTemplateModal, StartDayCard } from './Cards';
+import { ChangesCard, ConflictsCard, GapsCard, ReasonPrompt, NotPlannedCard, ReplanModal, SaveTemplateModal, StartDayCard } from './Cards';
 import { DayTasks } from './DayTasks';
 import { BlockInspector, RecordInspector } from './Inspectors';
 import { NowCard } from './NowCard';
@@ -264,6 +264,9 @@ export function DayView({ dayId, live, title, sub, sideTop, sideBottom, headExtr
               <button key={v} type="button" aria-pressed={view === v} onClick={() => setMode(v)}>{m.day.views[v]}</button>
             ))}
           </div>
+          {live && d.status !== 'closed' && (
+            <Link href={`/plan?d=${dayId}`} className="btn sm ghost" title={m.day.plan}><ListChecks size={14} /><span className="desk-only">{m.day.plan}</span></Link>
+          )}
           {live && d.status === 'active' && (
             <button type="button" className="btn sm" onClick={() => setReplan(true)} title={m.day.replan}><RefreshCw size={14} /><span className="desk-only">{m.day.replan}</span></button>
           )}
@@ -280,6 +283,7 @@ export function DayView({ dayId, live, title, sub, sideTop, sideBottom, headExtr
       <div className="today">
         <div className="today-side">
           {sideTop}
+          {live && d.status === 'active' && d.day?.startMode === 'implicit' && <NotPlannedCard dayId={dayId} startedAt={d.day.startedAt} />}
           {live && d.status === 'unplanned' && <StartDayCard dayId={dayId} blocks={d.blocks} templateName={templateName} minute={clockMin} />}
           {live && <NowCard dayId={dayId} minute={clockMin} blocks={d.blocks} tasks={d.tasks} areas={d.areas} areaMap={d.areaMap} running={running} focus={focus} />}
           {reason && <ReasonPrompt key={reason.revId} revId={reason.revId} label={reason.label} onDone={() => setReason(null)} />}

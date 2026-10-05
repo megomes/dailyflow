@@ -3,7 +3,7 @@ import { fmtDuration as fmtD } from '@/lib/time';
 /** UI copy. English per decision Q-02; keep every user-facing string here so it can be translated later. */
 export const m = {
   app: { name: 'DailyFlow' },
-  nav: { today: 'Today', tasks: 'Tasks', history: 'History', insights: 'Insights', notes: 'Notes', settings: 'Settings' },
+  nav: { today: 'Today', tasks: 'Tasks', history: 'History', insights: 'Insights', forest: 'Forest', notes: 'Notes', settings: 'Settings' },
   notes: {
     title: 'Notes',
     subtitle: 'Comments about the app. Each one gets a number; Claude works on them and records exactly what was done.',
@@ -424,6 +424,17 @@ export const m = {
     changes: 'Plan changes',
     changesHint: 'How much the days moved after starting.',
     started: 'days started', revisions: 'revisions',
+  },
+  forest: {
+    title: 'Forest',
+    subtitle: 'How the days were lived. Every area grows its own trees.',
+    trees: 'trees', mature: 'mature trees', species: 'species', days: 'days grown',
+    collection: 'Collection',
+    empty: 'Track some time and the first trees appear here.',
+    since: (d: string) => `since ${d}`,
+    matureSince: (d: string) => `mature since ${d}`,
+    rules: '15 minutes in an area plants a tree; every 45 more plants another (up to 8 trees a day, every area gets at least one). Trees mature as an area shows up on more days in 4 weeks. Nothing dies, rest and family grow like anything else, and changing the plan never costs anything.',
+    speciesNames: { oak: 'Oak', pine: 'Pine', birch: 'Birch', maple: 'Maple', cypress: 'Cypress', cherry: 'Cherry', palm: 'Palm', willow: 'Willow', bamboo: 'Bamboo', fern: 'Fern', flower: 'Wildflower' } as Record<string, string>,
   },
   prefs: {
     title: 'Preferences',

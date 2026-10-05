@@ -50,6 +50,12 @@ export function ThemeToggle({ withLabel = false }: { withLabel?: boolean }) {
   );
 }
 
+function OfflineBanner() {
+  const s = useSyncState();
+  if (s.status !== 'offline') return null;
+  return <div className="offline-banner" role="status">{m.offline.banner(s.pending)}</div>;
+}
+
 export function AppShell({ children }: { children: ReactNode }) {
   const path = usePathname();
   const prev = useRef<string | null>(null);
@@ -78,7 +84,7 @@ export function AppShell({ children }: { children: ReactNode }) {
           <div className="row"><SyncBadge /><span className="spacer" /><ThemeToggle /></div>
         </div>
       </aside>
-      <main className="main">{children}</main>
+      <main className="main"><OfflineBanner />{children}</main>
       <Palette />
       <LiveAgents />
       <nav className="tabbar" aria-label="Main">

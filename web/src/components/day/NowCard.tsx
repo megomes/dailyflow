@@ -38,6 +38,7 @@ export function NowCard({ dayId, minute, blocks, tasks, areas, areaMap, running,
   const [switching, setSwitching] = useState(false);
   const [presetId, setPresetId] = useState('25/5');
   const [choosing, setChoosing] = useState(false);
+  const [free, setFree] = useState('');
   const tick = useSecond(!!running || !!focus);
 
   useEffect(() => { void getMeta<string>('focusPreset', '25/5').then(setPresetId); }, []);
@@ -49,8 +50,7 @@ export function NowCard({ dayId, minute, blocks, tasks, areas, areaMap, running,
   const blockTasks = ctxBlock ? tasks.filter(t => t.blockId === ctxBlock.id) : [];
 
   async function focusOn(p: Preset, task?: Task) {
-    await setMeta('focusPreset', p.id);
-    setPresetId(p.id);
+    if (p.id !== 'free') { await setMeta('focusPreset', p.id); setPresetId(p.id); }
     setChoosing(false);
     const areaId = task?.areaId ?? running?.areaId ?? now?.areaId ?? 'area-personal';
     const title = task?.title ?? running?.title ?? now?.title ?? m.focus.title;
@@ -108,6 +108,9 @@ export function NowCard({ dayId, minute, blocks, tasks, areas, areaMap, running,
             {PRESETS.map(p => (
               <button key={p.id} type="button" className="chip" aria-pressed={p.id === preset.id} onClick={() => void focusOn(p)}>{p.label}</button>
             ))}
+            <form className="free" onSubmit={e => { e.preventDefault(); const n = Number(free); if (n >= 1 && n <= 240) void focusOn({ id: 'free', label: `${n}`, focus: n, brk: 0 }); }}>
+              <input className="input" inputMode="numeric" placeholder={m.focus.free} value={free} onChange={e => setFree(e.target.value.replace(/\D/g, ''))} aria-label={m.focus.free} />
+            </form>
           </div>
         )}
 

@@ -4,7 +4,7 @@ import { useState } from 'react';
 import { Trash2, X } from 'lucide-react';
 import { m } from '@/i18n/en';
 import { getDB } from '@/lib/db';
-import { deleteFocus, deleteTask, PRIORITIES, scheduleTask, unscheduleTask, updateTask } from '@/lib/ops';
+import { deleteFocus, deleteTask, editFocusMinutes, PRIORITIES, scheduleTask, unscheduleTask, updateTask } from '@/lib/ops';
 import { liveBlocks } from '@/lib/repo';
 import { fmtDuration, fmtMin } from '@/lib/time';
 import type { Area, Task } from '@/lib/types';
@@ -54,7 +54,11 @@ export function TaskDetail({ task, areas, day, onClose }: { task: Task; areas: A
             {sessions.map(s => (
               <li key={s.id} className="row">
                 <span className="tabular">{new Date(s.startedAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })} {new Date(s.startedAt).toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', hour12: false })}</span>
-                <span className="muted">{s.actualMin != null ? fmtDuration(s.actualMin) : s.state}{s.state === 'interrupted' ? ' · interrupted' : ''}</span>
+                {s.actualMin != null
+                  ? <input className="input sel tabular" style={{ width: 64 }} type="number" min={0} max={600} defaultValue={s.actualMin} aria-label="Minutes"
+                      onBlur={e => { const v = Math.max(0, Math.min(600, Number(e.target.value) || 0)); if (v !== s.actualMin) void editFocusMinutes(s.id, v); }} />
+                  : <span className="muted">{s.state}</span>}
+                <span className="muted">{s.actualMin != null ? 'min' : ''}{s.state === 'interrupted' ? ' · interrupted' : ''}</span>
                 <span className="spacer" />
                 {s.state !== 'running' && s.state !== 'paused' && <button type="button" className="btn icon sm ghost" aria-label="Delete session" onClick={() => void deleteFocus(s.id)}><Trash2 size={12} /></button>}
               </li>

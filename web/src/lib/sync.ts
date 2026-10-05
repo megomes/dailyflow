@@ -26,6 +26,9 @@ export async function applyRemote(changes: RemoteChange[]): Promise<number> {
     const table = tableFor(db, c.entity);
     const local = await table.get(c.id);
     if (local && local.updatedAt >= c.updatedAt) continue;
+    if (local && (await db.outbox.where('[entity+id]').equals([c.entity, c.id]).count()) > 0) {
+      track('sync_conflict', { entity: c.entity, resolution: 'remote_newer_wins' });
+    }
     await table.put({ ...(c.data as object), id: c.id, updatedAt: c.updatedAt, deleted: c.deleted } as SyncFields);
     applied++;
   }
@@ -81,7 +84,7 @@ async function run(reason: string) {
     await pushEvents();
     const pending = await db.outbox.count();
     set({ status: 'idle', lastSyncedAt: new Date().toISOString(), pending });
-    if (ops.length || applied) track('sync_completed', { reason, pushed: ops.length, pulled: applied, ms: Math.round(performance.now() - started) });
+    if (ops.length || applied) track(ops.length ? 'sync_queue_flushed' : 'sync_completed', { reason, pushed: ops.length, pulled: applied, ms: Math.round(performance.now() - started) });
   } catch (err) {
     set({ status: navigator.onLine ? 'error' : 'offline', pending: await db.outbox.count() });
     if (navigator.onLine) track('sync_failed', { reason, message: String((err as Error).message).slice(0, 200) });
@@ -111,8 +114,13 @@ export function startSyncLoop(intervalMs: number) {
     clearTimeout(debounce);
     debounce = setTimeout(() => void syncNow('write'), 1200);
   });
-  const onOnline = () => void syncNow('online');
-  const onOffline = () => set({ status: 'offline' });
+  let offlineSince = 0;
+  const onOnline = async () => {
+    if (offlineSince) track('offline_ended', { duration_s: Math.round((Date.now() - offlineSince) / 1000), ops_queued: await getDB().outbox.count() });
+    offlineSince = 0;
+    void syncNow('online');
+  };
+  const onOffline = () => { offlineSince = Date.now(); track('offline_started', {}); set({ status: 'offline' }); };
   window.addEventListener('online', onOnline);
   window.addEventListener('offline', onOffline);
   const timer = setInterval(() => { if (document.visibilityState === 'visible') void syncNow('interval'); }, intervalMs);

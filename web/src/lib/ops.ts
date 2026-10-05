@@ -360,6 +360,11 @@ export async function endBreak(id: string, skipped: boolean) {
   track(skipped ? 'focus_break_skipped' : 'focus_break_finished', {});
 }
 
+export async function editFocusMinutes(id: string, actualMin: number) {
+  await update<FocusSession>('focus_session', id, { actualMin });
+  track('session_edited', { reason: 'minutes', actual_min: actualMin });
+}
+
 export async function deleteFocus(id: string) {
   await remove('focus_session', id);
   track('session_deleted', {});

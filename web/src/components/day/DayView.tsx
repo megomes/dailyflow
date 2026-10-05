@@ -18,6 +18,7 @@ import { ChangesCard, ConflictsCard, GapsCard, ReasonPrompt, ReplanModal, StartD
 import { DayTasks } from './DayTasks';
 import { BlockInspector, RecordInspector } from './Inspectors';
 import { NowCard } from './NowCard';
+import { Summary } from './Summary';
 import { useDay, useLive } from './useDay';
 
 const DEFAULT_AREA = 'area-personal';
@@ -219,6 +220,26 @@ export function DayView({ dayId, live, title, sub, sideTop, sideBottom, headExtr
   ) : null;
 
   const templateName = m.templates.names[d.day?.templateId ?? ''] ?? '';
+  const after = (
+    <>
+          {started && <ChangesCard baseline={d.day?.baseline} blocks={d.blocks} records={d.records} until={until} areaMap={d.areaMap} />}
+          <DayTasks dayId={dayId} tasks={d.tasks} areaMap={d.areaMap} showBacklog={live} />
+          {!live && (d.records.length > 0 || d.status === 'closed') && <Summary d={d} until={until} />}
+          {!live && d.revisions.length > 0 && (
+            <section className="card stack">
+              <span className="label">{m.day.history} · {d.revisions.length}</span>
+              <ol className="rev-list">
+                {d.revisions.map(r => (
+                  <li key={r.id}><span className="tabular muted">{new Date(r.ts).toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', hour12: false })}</span>
+                    <span>{m.day.revKinds[r.kind]} · {r.title}{r.before && r.after && (r.before.start !== r.after.start || r.before.end !== r.after.end) ? ` ${fmtMin(r.before.start)}–${fmtMin(r.before.end)} → ${fmtMin(r.after.start)}–${fmtMin(r.after.end)}` : ''}</span>
+                    {r.reason && <span className="pill" data-color="blue">{r.reason}</span>}</li>
+                ))}
+              </ol>
+            </section>
+          )}
+          {sideBottom}
+    </>
+  );
 
   return (
     <div className="page">
@@ -268,12 +289,11 @@ export function DayView({ dayId, live, title, sub, sideTop, sideBottom, headExtr
               </div>
             </section>
           )}
+          {(started || d.records.length > 0) && <GapsCard dayId={dayId} blocks={d.blocks} records={d.records} areas={d.areas} until={until} />}
           {conflicts.length > 0 && <ConflictsCard conflicts={conflicts} />}
           {!isMobile && inspector}
-          {(started || d.records.length > 0) && <GapsCard dayId={dayId} blocks={d.blocks} records={d.records} areas={d.areas} until={until} />}
-          {started && <ChangesCard baseline={d.day?.baseline} blocks={d.blocks} records={d.records} until={until} areaMap={d.areaMap} />}
-          <DayTasks dayId={dayId} tasks={d.tasks} areaMap={d.areaMap} showBacklog={live} />
-          {sideBottom}
+          {!isMobile && after}
+
         </div>
         <Timeline
           columns={columns}
@@ -287,6 +307,7 @@ export function DayView({ dayId, live, title, sub, sideTop, sideBottom, headExtr
           highlightArea={dragged?.areaId ?? null}
           pxPerMin={isMobile ? 1 : 1.15}
         />
+        {isMobile && <div className="today-after">{after}</div>}
       </div>
       {isMobile && inspector && (
         <>

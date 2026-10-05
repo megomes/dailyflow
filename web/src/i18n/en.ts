@@ -265,6 +265,7 @@ export const m = {
     notifyEnd: (t: string) => `Focus done: ${t}`,
     notifyBreak: 'Break is over',
     stopwatch: 'Stopwatch',
+    free: 'min…',
   },
   tasks: {
     title: 'Tasks',

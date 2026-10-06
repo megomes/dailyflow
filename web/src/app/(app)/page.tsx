@@ -49,7 +49,6 @@ export default function TodayPage() {
   const yRecords = (yRecs ?? []).filter(r => !r.deleted);
   const showYesterday = yesterday && !yesterday.deleted && yesterday.status !== 'closed' && (yesterday.status === 'active' || yRecords.length > 0);
 
-  const today = useLiveQuery(() => getDB().days.get(day), [day]);
   const dateLabel = dateFromIso(day).toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric' });
 
   return (

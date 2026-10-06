@@ -4,7 +4,7 @@ import { useState } from 'react';
 import { Moon, Sunrise, Trash2, X } from 'lucide-react';
 import { m } from '@/i18n/en';
 import { getDB, getMeta, setMeta } from '@/lib/db';
-import { deleteSleep, endSleep, saveSleep } from '@/lib/ops';
+import { deleteSleep, endSleep, saveSleep, startSleep } from '@/lib/ops';
 import { DEFAULT_TARGET, mainSleeps, sleepMinutes, targetMinutes, type SleepTarget } from '@/lib/sleep';
 import { addDays, dateAtMinute, fmtClock, fmtDuration, pad2, parseHHMM } from '@/lib/time';
 import type { Sleep } from '@/lib/types';
@@ -58,19 +58,22 @@ export function NightCard({ sleep, tick, onFix }: { sleep: Sleep; tick: number; 
 }
 
 /** Add or fix a night by hand: bedtime and wake-up for that night. */
-export function SleepSheet({ sleep, night, onClose }: { sleep: Sleep | null; night: string; onClose: () => void }) {
+export function SleepSheet({ sleep, night, onClose, tonight = false }: { sleep: Sleep | null; night: string; onClose: () => void; /** Tonight's night: you have not woken up yet, so no wake-up time is asked (note #40). */ tonight?: boolean }) {
   const target = useSleepTarget();
   const start = sleep ? new Date(sleep.start) : null;
   const end = sleep?.end ? new Date(sleep.end) : null;
-  const [bed, setBed] = useState(start ? hhmm(start) : `${pad2(Math.floor(target.bed / 60))}:${pad2(target.bed % 60)}`);
-  const [wake, setWake] = useState(end ? hhmm(end) : sleep ? '' : hhmm(new Date()));
+  const [bed, setBed] = useState(start ? hhmm(start) : tonight ? hhmm(new Date()) : `${pad2(Math.floor(target.bed / 60))}:${pad2(target.bed % 60)}`);
+  const [wake, setWake] = useState(end ? hhmm(end) : sleep || tonight ? '' : hhmm(new Date()));
+  const askWake = !tonight || !!end;
   const b = parseHHMM(bed), w = wake ? parseHHMM(wake) : null;
   const moments = b != null ? nightMoments(sleep?.night ?? night, b, w ?? b + 1) : null;
   const length = moments && w != null ? (moments.end.getTime() - moments.start.getTime()) / 60000 : null;
 
   async function save() {
     if (!moments) return;
-    await saveSleep(sleep?.id ?? null, moments.start, w != null ? moments.end : null);
+    // A new night with no wake-up yet is “going to sleep”: stops what is running, then the night stays open.
+    if (!sleep && w == null) await startSleep(moments.start);
+    else await saveSleep(sleep?.id ?? null, moments.start, w != null ? moments.end : null);
     onClose();
   }
   return (
@@ -78,10 +81,10 @@ export function SleepSheet({ sleep, night, onClose }: { sleep: Sleep | null; nig
       <div className="head"><b><Moon size={14} /> {sleep ? m.sleep.sheetTitle : m.sleep.newTitle}</b><button type="button" className="btn icon sm ghost" onClick={onClose} aria-label="Close"><X size={15} /></button></div>
       <div className="sleep-form">
         <label className="field"><span>{m.sleep.bed}</span><input id="sleep-bed" className="input tabular" type="time" value={bed} onChange={e => setBed(e.target.value)} /></label>
-        <label className="field"><span>{m.sleep.wake}</span><input id="sleep-wake" className="input tabular" type="time" value={wake} onChange={e => setWake(e.target.value)} placeholder={m.sleep.stillAsleep} /></label>
+        {askWake && <label className="field"><span>{m.sleep.wake}</span><input id="sleep-wake" className="input tabular" type="time" value={wake} onChange={e => setWake(e.target.value)} placeholder={m.sleep.stillAsleep} /></label>}
       </div>
       <p className="hint">
-        {length != null ? m.sleep.duration(fmtDuration(Math.round(length)), fmtDuration(targetMinutes(target))) : m.sleep.stillAsleep}
+        {tonight && !end ? m.sleep.goingToSleepHint : length != null ? m.sleep.duration(fmtDuration(Math.round(length)), fmtDuration(targetMinutes(target))) : m.sleep.stillAsleep}
         {sleep ? ` · ${sleep.source === 'health' ? m.sleep.fromWatch : m.sleep.manual}` : ''}
       </p>
       {sleep?.stages && <StageBar stages={sleep.stages} />}
@@ -151,7 +154,7 @@ export function NightStrip({ dayId, side = false }: { dayId: string; side?: bool
           <span className="chip-edit">{s ? m.sleep.edit : m.sleep.add}</span>
         </button>
       ))}
-      {sheet && <SleepSheet key={sheet.sleep?.id ?? sheet.night} sleep={sheet.sleep} night={sheet.night} onClose={() => setSheet(null)} />}
+      {sheet && <SleepSheet key={sheet.sleep?.id ?? sheet.night} sleep={sheet.sleep} night={sheet.night} tonight={sheet.night === dayId} onClose={() => setSheet(null)} />}
     </div>
   );
 }

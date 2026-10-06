@@ -1,6 +1,7 @@
 'use client';
 import { sleepSpans } from '@/lib/sleep';
-import { useSleeps } from '@/components/day/Sleep';
+import { useSleeps, useSleepTarget } from '@/components/day/Sleep';
+import { buildNightLayers } from '@/components/day/nightLayers';
 import Link from 'next/link';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { Suspense, useEffect, useMemo, useState } from 'react';
@@ -36,6 +37,7 @@ function ClosePageInner() {
 
   const until = dayId === today ? minute : 28 * 60;
   const sleeps = useSleeps();
+  const sleepTarget = useSleepTarget();
   const gaps = useMemo(() => dayGaps(d.blocks, d.records, until, 5, sleepSpans(dayId, sleeps, until)), [d.blocks, d.records, until, sleeps, dayId]);
   const gapMin = gaps.reduce((s, g) => s + g.end - g.start, 0);
 
@@ -54,6 +56,7 @@ function ClosePageInner() {
 
   const realItems: TLItem[] = d.records.map(r => ({ id: r.id, start: r.start, end: r.end ?? Math.max(r.start + 1, until), title: r.title, areaId: r.areaId, variant: r.end == null ? 'running' : 'real' }));
   const selRec = d.records.find(r => r.id === sel);
+  const sky = buildNightLayers(dayId, sleeps, sleepTarget, d.day?.wakeAt, until);
 
   return (
     <div className="page close-page">
@@ -98,8 +101,8 @@ function ClosePageInner() {
           </div>
           <Timeline
             columns={[
-              { id: 'plan', label: m.day.cols.plan, items: d.blocks.map(b => ({ ...b, variant: 'ghost' as const })), editable: false },
-              { id: 'real', label: m.day.cols.real, items: realItems, editable: true },
+              { id: 'plan', label: m.day.cols.plan, items: d.blocks.map(b => ({ ...b, variant: 'ghost' as const })), editable: false, nights: sky.planNights, marks: sky.planMarks },
+              { id: 'real', label: m.day.cols.real, items: realItems, editable: true, nights: sky.realNights, marks: sky.realMarks },
             ]}
             areas={d.areaMap}
             nowMin={dayId === today ? minute : null}

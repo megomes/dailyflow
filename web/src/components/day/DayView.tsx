@@ -17,6 +17,7 @@ import { Timeline, type ChangeKind, type TLColumn, type TLItem } from '../Timeli
 import { blockMenu, recordMenu } from '../menus';
 import { cutoffHour } from '@/lib/time';
 import { MorningPrompt, NightStrip, SleepSheet, useSleeps, useSleepTarget } from './Sleep';
+import { buildNightLayers } from './nightLayers';
 import { clockOf, mainSleeps, targetSpan } from '@/lib/sleep';
 import { addDays } from '@/lib/time';
 import type { TLMark, TLNight } from '../Timeline';
@@ -129,30 +130,7 @@ export function DayView({ dayId, live, title, sub, sideTop, sideBottom, headExtr
       const holes = countedPauses(rec ?? {}, base + until * 60000).map(p => ({ start: Math.max(r.start, (p.from - base) / 60000), end: Math.min(r.end, ((p.to ?? base + until * 60000) - base) / 60000) })).filter(h => h.end > h.start);
       if (holes.length) r.holes = holes;
     }
-    // Sleep as sky behind the day: last night's end and tonight's start (real), the plan's wake and bed (dashed).
-    const dur = (min: number) => (min >= 60 ? `${Math.floor(min / 60)}h${min % 60 ? ` ${min % 60}m` : ''}` : `${min}m`);
-    const nightMap = mainSleeps(sleeps);
-    const lastN = nightMap.get(addDays(dayId, -1)), tonightN = nightMap.get(dayId);
-    const plannedWake = d.day?.wakeAt ?? sleepTarget.wake, plannedBed = targetSpan(sleepTarget).bed;
-    const realNights: TLNight[] = [], realMarks: TLMark[] = [];
-    if (lastN) {
-      const wake = lastN.end ? Math.round(minuteOfDay(dayId, new Date(lastN.end))) : Math.round(until);
-      realNights.push({ start: 0, end: wake, part: 'morning' });
-      if (lastN.end) {
-        const delta = wake - plannedWake;
-        realMarks.push({ at: wake, kind: 'wake', night: lastN.night, tone: Math.abs(delta) < 5 ? 'ok' : delta > 0 ? 'late' : 'early',
-          text: `Woke ${clockOf(wake)}${Math.abs(delta) >= 5 ? ` · ${dur(Math.abs(delta))} ${delta > 0 ? 'later' : 'earlier'}` : ''}` });
-      }
-    }
-    if (tonightN) {
-      const bed = Math.round(minuteOfDay(dayId, new Date(tonightN.start)));
-      const delta = bed - plannedBed;
-      realNights.push({ start: bed, end: 1800, part: 'night' });
-      realMarks.push({ at: bed, kind: 'bed', night: tonightN.night, tone: Math.abs(delta) < 5 ? 'ok' : delta > 0 ? 'late' : 'early',
-        text: `Bed ${clockOf(bed)}${Math.abs(delta) >= 5 ? ` · ${dur(Math.abs(delta))} ${delta > 0 ? 'later' : 'earlier'}` : ''}` });
-    }
-    const planNights: TLNight[] = [{ start: 0, end: plannedWake, part: 'morning', planned: true }, { start: plannedBed, end: 1800, part: 'night', planned: true }];
-    const planMarks: TLMark[] = [{ at: plannedWake, kind: 'wake', text: `Wake ${clockOf(plannedWake)}`, planned: true }, { at: plannedBed, kind: 'bed', text: `Bed ${clockOf(plannedBed)}`, planned: true }];
+    const { realNights, realMarks, planNights, planMarks } = buildNightLayers(dayId, sleeps, sleepTarget, d.day?.wakeAt, until);
     if (view === 'plan') return [{ id: 'plan', items: planItems, editable: true, nights: planNights, marks: planMarks }];
     if (view === 'real') return [
       { id: 'plan', label: m.day.cols.plan, items: planItems, editable: true, nights: planNights, marks: planMarks },
@@ -163,7 +141,7 @@ export function DayView({ dayId, live, title, sub, sideTop, sideBottom, headExtr
       { id: 'plan', label: m.day.cols.final, items: planItems, editable: true, nights: planNights, marks: planMarks },
       { id: 'real', label: m.day.cols.real, items: realItems, editable: true, nights: realNights, marks: realMarks },
     ];
-  }, [d.blocks, d.records, d.tasks, d.day?.baseline, view, started, until, sleeps, sleepTarget, dayId]);
+  }, [d.blocks, d.records, d.tasks, d.day?.baseline, view, started, until, sleeps, sleepTarget, dayId, d.day?.wakeAt]);
 
   function afterRevision(revId: string | null, label: string) {
     if (revId) setReason({ revId, label });
@@ -331,7 +309,7 @@ export function DayView({ dayId, live, title, sub, sideTop, sideBottom, headExtr
           </button>
         </div>
       </header>
-      {sleepNight && <SleepSheet key={sleepNight} sleep={mainSleeps(sleeps).get(sleepNight) ?? null} night={sleepNight} onClose={() => setSleepNight(null)} />}
+      {sleepNight && <SleepSheet key={sleepNight} sleep={mainSleeps(sleeps).get(sleepNight) ?? null} night={sleepNight} tonight={sleepNight === dayId} onClose={() => setSleepNight(null)} />}
       <div className="today">
         <div className="today-side">
           {sideTop}

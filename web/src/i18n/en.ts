@@ -575,6 +575,7 @@ export const m = {
     asleepAt: (t: string) => `Asleep ${t}`,
     planned: 'Sleep',
     lastNight: 'Last night',
+    goingToSleepHint: 'Saves that you went to bed; the wake-up comes tomorrow, when you say you are awake.',
     vsPlan: (kind: 'wake' | 'bed', min: number, later: boolean, actual: string, planned: string) => {
       const d = min >= 60 ? `${Math.floor(min / 60)}h${min % 60 ? ` ${min % 60}min` : ''}` : `${min} min`;
       return kind === 'wake'

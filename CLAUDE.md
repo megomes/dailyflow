@@ -31,6 +31,7 @@ A ferramenta de revisão (`review/`) e o artifact publicado (https://claude.ai/a
 - `mobile/app.json` → `version` é a versão **nativa** do APK (o runtime do OTA segue ela): não suba só para acompanhar o 1.X.X; só ao mudar algo nativo.
 - Histórico: 1.1.0 = notas #42–#47 (widget com dia fechado, horas depois das 22h, zoom, leave empty, What changed today, relógio atrasado).
 - 1.1.1 = ajuste visual: leave empty com o mesmo tracejado do Show later hours.
+- 1.1.2 = leave empty com o mesmo listrado escuro da noite planejada (.tl-night.planned).
 
 ## App Android (`mobile/`)
 

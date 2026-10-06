@@ -135,8 +135,10 @@ textarea.input { height: auto; min-height: 60px; padding: 8px 10px; resize: vert
 .tl-zoom button:not(:first-child) { margin-left: -1px; }
 .tl-zoom button:hover:not(:disabled) { color: var(--text-primary); opacity: 1; }
 .tl-zoom button:disabled { opacity: .4; cursor: default; }
-/* Same look as “Show later hours” (.tl-more): a quiet dashed outline, nothing inside. */
-.tl-empty { position: absolute; z-index: 1; box-sizing: border-box; border: 1px dashed var(--border-default); border-radius: 10px; background: transparent; pointer-events: none; }
+/* Same look as the planned night (.tl-night.planned): dark diagonal stripes inside a dashed outline. */
+.tl-empty { position: absolute; z-index: 1; box-sizing: border-box; border-radius: 6px; pointer-events: none; opacity: .28;
+  background: repeating-linear-gradient(135deg, color-mix(in srgb, var(--night-3) 45%, transparent) 0 6px, transparent 6px 12px);
+  border: 1px dashed color-mix(in srgb, var(--night-3) 60%, transparent); }
 .tl-more { display: block; margin: 8px auto 2px; padding: 6px 12px; border: 1px dashed var(--border-default); border-radius: 10px; background: transparent; color: var(--text-secondary); font-size: 12px; cursor: pointer; }
 .tl-more:hover { color: var(--text-primary); border-color: var(--text-tertiary, var(--border-default)); }
 .tl-hour { position: absolute; left: 0; right: 0; border-top: 1px solid var(--grid-line); }

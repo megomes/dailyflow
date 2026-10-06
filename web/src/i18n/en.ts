@@ -434,6 +434,7 @@ export const m = {
     startSummary: (blocks: number, tasks: number) => `${blocks} blocks · ${tasks} tasks scheduled`,
     quick: 'Quick start',
     tomorrow: 'Plan tomorrow',
+    tomorrowShort: 'Tomorrow',
     done: 'Done',
     forDay: (d: string) => `For ${d}`,
   },

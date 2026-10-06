@@ -16,6 +16,8 @@ export const viewport: Viewport = {
   width: 'device-width',
   initialScale: 1,
   viewportFit: 'cover',
+  // The keyboard shrinks the layout, so sheets and inputs stay above it (note #31).
+  interactiveWidget: 'resizes-content',
   themeColor: [
     { media: '(prefers-color-scheme: dark)', color: '#141416' },
     { media: '(prefers-color-scheme: light)', color: '#F6F6F7' },

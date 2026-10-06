@@ -50,7 +50,6 @@ export default function TodayPage() {
   const showYesterday = yesterday && !yesterday.deleted && yesterday.status !== 'closed' && (yesterday.status === 'active' || yRecords.length > 0);
 
   const today = useLiveQuery(() => getDB().days.get(day), [day]);
-  const showTomorrow = minute >= 18 * 60 || today?.status === 'closed';
   const dateLabel = dateFromIso(day).toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric' });
 
   return (
@@ -60,7 +59,7 @@ export default function TodayPage() {
       live
       title={m.today.title}
       sub={<span>{dateLabel}</span>}
-      headExtra={showTomorrow ? <Link href={`/plan?d=${addDays(day, 1)}`} className="btn sm"><CalendarPlus size={14} /><span className="desk-only">{m.planning.tomorrow}</span></Link> : null}
+      headExtra={<Link href={`/plan?d=${addDays(day, 1)}`} className="btn sm"><CalendarPlus size={14} /><span className="desk-only">{m.planning.tomorrow}</span><span className="phone-only">{m.planning.tomorrowShort}</span></Link>}
       sideTop={showYesterday ? <YesterdayCard dayId={yId} blocks={liveBlocks(yBlocks ?? [])} records={yRecords} /> : null}
       sideBottom={checkinFor && (
         <QuestionSet

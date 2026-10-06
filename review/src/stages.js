@@ -379,6 +379,7 @@ const STAGES = [
       ['gear', 'Categorias, presets, exibição e notificações', ['CAP-K3', 'CAP-K4', 'CAP-K6']],
       ['download', 'Exportação completa dos dados (JSON / CSV)', ['CAP-K7', 'US-SET-004']],
       ['tasks', 'Tarefas em quadro (Inbox → Backlog → Today → Done) no lugar das abas: arrastar entre colunas no desktop; no celular, colunas deslizáveis e segurar o card abre um dock com as colunas. Ao cair no Today sem estar planejada: “Onde ela cabe?” (blocos que restam, mesma área primeiro, tempo livre, bloco novo no próximo vão, começar agora ou deixar sem bloco) e marca “+hh:mm” se o dia já tinha começado', ['CAP-E1', 'US-PLAN-006', 'DIA-04']],
+      ['moon', 'Sono fora dos blocos (nota #29): noite própria vinda do Samsung Health (Health Connect, com fases) ou registrada à mão (“Going to sleep” / “I’m awake”, corrigir horários, “Bom dia” quando falta a noite); na timeline, o fim da noite como amanhecer e o começo como céu estrelado; Insights › Sleep com duração, regularidade de dormir/acordar, débito contra o alvo, fases e o dia seguinte às noites curtas', ['US-INS-001']],
     ],
     not: [],
     grow: ['Campos avançados de tarefa', 'Recorrência', 'Exportação completa'],

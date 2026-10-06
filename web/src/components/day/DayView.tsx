@@ -332,7 +332,7 @@ export function DayView({ dayId, live, title, sub, sideTop, sideBottom, headExtr
         </div>
       </header>
       {sleepNight && <SleepSheet key={sleepNight} sleep={mainSleeps(sleeps).get(sleepNight) ?? null} night={sleepNight} onClose={() => setSleepNight(null)} />}
-      <NightStrip dayId={dayId} />
+      {isMobile && <NightStrip dayId={dayId} />}
       <div className="today">
         <div className="today-side">
           {sideTop}

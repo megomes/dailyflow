@@ -125,7 +125,7 @@ export function bandTitle(s: Sleep, part: 'morning' | 'night', now = Date.now())
 }
 
 /** Last night and tonight as a thin sky strip above the day, outside the plan; always there to log or fix bed and wake times (note #29). */
-export function NightStrip({ dayId }: { dayId: string }) {
+export function NightStrip({ dayId, side = false }: { dayId: string; side?: boolean }) {
   const sleeps = useSleeps();
   const [sheet, setSheet] = useState<{ sleep: Sleep | null; night: string } | null>(null);
   const nights = mainSleeps(sleeps);
@@ -135,7 +135,7 @@ export function NightStrip({ dayId }: { dayId: string }) {
     { key: 'tonight', which: 'tonight', night: dayId, s: nights.get(dayId) ?? null },
   ];
   return (
-    <div className="night-strip">
+    <div className={`night-strip${side ? ' side' : ''}`}>
       {chips.map(({ key, which, night, s }) => (
         <button key={key} type="button" className={`night-chip ${which}${s ? '' : ' empty'}`} onClick={() => setSheet({ sleep: s, night })}>
           <span className="stars" aria-hidden />

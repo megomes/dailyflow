@@ -112,19 +112,20 @@ object Transitions {
     fun preview(context: Context) {
         val s = FaceData.snapshot ?: return
         val m = s.minuteAt(System.currentTimeMillis())
-        val next = s.timeline.flatMap { listOf(it.start, it.end) }.filter { it > m }.minOrNull() ?: return
+        // The next boundary today; at night (nothing left) show the end of the last block (“that's the day”).
+        val next = s.timeline.flatMap { listOf(it.start, it.end) }.filter { it > m }.minOrNull() ?: s.timeline.maxOfOrNull { it.end } ?: return
         // A brand-new post (not an update of an unseen one), so it pops up and buzzes like the real one.
         NotificationManagerCompat.from(context).cancel(ID)
-        show(context, s, reminder = false, atMinute = next + 0.05f)
+        show(context, s, reminder = false, atMinute = next + 0.05f, force = true)
     }
 
-    fun show(context: Context, s: Snapshot, reminder: Boolean, atMinute: Float? = null) {
+    fun show(context: Context, s: Snapshot, reminder: Boolean, atMinute: Float? = null, force: Boolean = false) {
         if (ContextCompat.checkSelfPermission(context, Manifest.permission.POST_NOTIFICATIONS) != PackageManager.PERMISSION_GRANTED) return
         val m = atMinute ?: s.minuteAt(System.currentTimeMillis())
         val c = changeAt(s, m)
         if (c.ended == null && c.starts == null) return
         // Already doing the new block (started it early): nothing to nudge.
-        if (!reminder && c.starts != null && s.runningTitle == c.starts.title) return
+        if (!force && !reminder && c.starts != null && s.runningTitle == c.starts.title) return
         ensureChannel(context)
         val running = s.runningTitle
         val title = if (reminder) "Still on ${running ?: c.ended?.title ?: "it"}? ⏳" else headline(c, (s.day + m.toInt()).hashCode())

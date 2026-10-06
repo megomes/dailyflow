@@ -1,5 +1,5 @@
 'use client';
-import { clockOf, sleepVsPlan } from '@/lib/sleep';
+import { clockOf, sleepSpans, sleepVsPlan } from '@/lib/sleep';
 import { useSleeps, useSleepTarget } from './Sleep';
 import Link from 'next/link';
 import { useEffect, useState } from 'react';
@@ -52,7 +52,8 @@ export function NotPlannedCard({ dayId, startedAt }: { dayId: string; startedAt?
 export function YesterdayCard({ dayId, blocks, records }: { dayId: string; blocks: DayBlock[]; records: TimeRecord[] }) {
   const [busy, setBusy] = useState(false);
   const tracked = records.reduce((s, r) => s + (recEnd(r, r.start) - r.start - pausedWithin(r)), 0);
-  const gaps = dayGaps(blocks, records, 28 * 60).reduce((s, g) => s + g.end - g.start, 0);
+  const sleeps = useSleeps();
+  const gaps = dayGaps(blocks, records, 28 * 60, 10, sleepSpans(dayId, sleeps, 28 * 60)).reduce((s, g) => s + g.end - g.start, 0);
   async function quick() {
     setBusy(true);
     const t0 = Date.now();
@@ -193,7 +194,8 @@ export function ReplanModal({ dayId, blocks, records, minute, onClose }: { dayId
 export function GapsCard({ dayId, blocks, records, areas, until }: { dayId: string; blocks: DayBlock[]; records: TimeRecord[]; areas: Area[]; until: number }) {
   const [dismissed, setDismissed] = useState<string[]>([]);
   const [picking, setPicking] = useState<Span | null>(null);
-  const gaps = dayGaps(blocks, records, until, 15).filter(g => !dismissed.includes(`${g.start}`)).reverse();
+  const sleeps = useSleeps();
+  const gaps = dayGaps(blocks, records, until, 15, sleepSpans(dayId, sleeps, until)).filter(g => !dismissed.includes(`${g.start}`)).reverse();
   if (!gaps.length) return null;
   const total = gaps.reduce((s, g) => s + g.end - g.start, 0);
   const shown = gaps.slice(0, 2);

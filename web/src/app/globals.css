@@ -997,3 +997,8 @@ html.mw-root, html.mw-root body { background: transparent !important; overflow: 
 .tl-mark.late button { border-color: var(--c-orange); }
 .tl-mark.early button { border-color: var(--c-green); }
 .mw:not(.mw-ring-only) .mw-bar { width: 100%; }
+
+.night-strip.side { flex-direction: column; margin: 0; gap: 6px; }
+.night-strip.side .night-chip { min-width: 0; width: 100%; flex-wrap: wrap; gap: 4px 8px; padding: 6px 10px; font-size: 12px; }
+.night-strip.side .night-chip .stage-bar { display: none; }
+@media (max-width: 820px) { .night-strip.side { display: none; } }

@@ -132,7 +132,20 @@ class NowSource : SuspendingTimelineComplicationDataSourceService() {
         val running = if (live) s.runningTitle else null
         val name = running ?: now?.title ?: "Free"
         val until: Block? = now ?: next
-        if (until == null) return simple(type, "—", name)
+        if (until == null) {
+            // Nothing planned, but something is running: show how long, not a dash.
+            val since = s.runningSince?.split(":")?.let { (it[0].toInt() * 60 + it[1].toInt()) }
+            if (running != null && since != null) {
+                val el = ((m.toInt() % 1440) - since + 1440) % 1440
+                val e = if (el < 60) "${el}m" else "${el / 60}h%02d".format(el % 60)
+                return when (type) {
+                    ComplicationType.RANGED_VALUE -> RangedValueComplicationData.Builder(0f, 0f, 1f, text("$running · $e")).setText(text(e)).setMonochromaticImage(icon(this, R.drawable.ic_now)).setTapAction(open(this)).build()
+                    ComplicationType.LONG_TEXT -> LongTextComplicationData.Builder(text("● $running · $e"), text("$running for $e")).setTitle(text("NOW")).setMonochromaticImage(icon(this, R.drawable.ic_now)).setTapAction(open(this)).build()
+                    else -> ShortTextComplicationData.Builder(text(e), text("$running for $e")).setTitle(text("● $running")).setMonochromaticImage(icon(this, R.drawable.ic_now)).setTapAction(open(this)).build()
+                }
+            }
+            return simple(type, "—", name)
+        }
         val endsAt = s.instantOf((if (now != null) now.end else until.start).toFloat())
         // State is only known for the current interval (live); later timeline entries just count down.
         val isRunning = live && s.runningTitle != null
@@ -161,7 +174,8 @@ class NowSource : SuspendingTimelineComplicationDataSourceService() {
 
     private fun simple(type: ComplicationType, short: String, title: String): ComplicationData = when (type) {
         ComplicationType.LONG_TEXT -> LongTextComplicationData.Builder(text(title), text(title)).setTapAction(open(this)).build()
-        ComplicationType.RANGED_VALUE -> RangedValueComplicationData.Builder(0f, 0f, 1f, text(title)).setText(text(short)).setTitle(text(title)).setTapAction(open(this)).build()
+        // No title on the ring: it would be drawn as curved text and get cut (note #36).
+        ComplicationType.RANGED_VALUE -> RangedValueComplicationData.Builder(0f, 0f, 1f, text(title)).setText(text(short)).setTapAction(open(this)).build()
         else -> ShortTextComplicationData.Builder(text(short), text(title)).setTitle(text(title)).setTapAction(open(this)).build()
     }
 
@@ -184,6 +198,17 @@ class NextSource : SuspendingTimelineComplicationDataSourceService() {
     private fun data(s: Snapshot?, m: Float, type: ComplicationType): ComplicationData {
         if (s == null && Api.paired(this)) return loading(type)
         val next = s?.nextAt(m)
+        // Nothing next (or asleep): the Next slot becomes the bed — a moon to log going to sleep, a sun to log waking up (note #37).
+        if (s != null && (s.sleeping || next == null)) {
+            val asleep = s.sleeping
+            val res = if (asleep) R.drawable.ic_sun else R.drawable.ic_moon
+            val label = if (asleep) "Wake" else "Sleep"
+            val desc = text(if (asleep) "Log that you woke up" else "Log that you went to sleep")
+            val tap = confirm(this, if (asleep) "wake" else "sleep")
+            return if (type == ComplicationType.LONG_TEXT)
+                LongTextComplicationData.Builder(text(if (asleep) "I'm awake" else "Going to sleep"), desc).setTitle(text("NEXT · ${if (asleep) "☀" else "🌙"}")).setMonochromaticImage(icon(this, res)).setTapAction(tap).build()
+            else ShortTextComplicationData.Builder(text(label), desc).setTitle(text("NEXT")).setMonochromaticImage(icon(this, res)).setTapAction(tap).build()
+        }
         val name = when { s == null -> "Pair"; next == null -> "Done"; else -> next.title }
         val time = next?.startLabel ?: "—"
         val desc = text(if (next != null) "Next $name at $time" else "Nothing else today")

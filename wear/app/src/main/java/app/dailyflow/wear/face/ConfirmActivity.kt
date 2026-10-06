@@ -63,11 +63,13 @@ class ConfirmActivity : ComponentActivity() {
         val now = snap?.nowAt(m)
         val next = snap?.nextAt(m)
         val (verb, title, sub, color) = when (action) {
+            "sleep" -> Quad("Going to sleep", "Good night", "stops what is running", 0xFF8F94FF.toInt())
+            "wake" -> Quad("Wake up", "Good morning", snap?.sleeping?.let { if (it) "log that you are awake" else "you are not asleep" } ?: "", 0xFFF6C27A.toInt())
             "stop" -> Quad("Stop", snap?.runningTitle ?: "activity", snap?.runningSince?.let { "since $it" } ?: "", snap?.runningColor ?: 0xFF60AEFF.toInt())
             "next" -> Quad("Start now", next?.title ?: "next block", next?.let { "planned for ${it.startLabel}" } ?: "nothing next today", next?.color ?: 0xFF60AEFF.toInt())
             else -> Quad("Start", now?.title ?: "current block", now?.let { "until ${it.endLabel}" } ?: "nothing planned now", now?.color ?: 0xFF60AEFF.toInt())
         }
-        val possible = when (action) { "stop" -> snap?.runningTitle != null; "next" -> next != null; else -> now != null }
+        val possible = when (action) { "sleep" -> snap?.sleeping != true; "wake" -> snap?.sleeping == true; "stop" -> snap?.runningTitle != null; "next" -> next != null; else -> now != null }
         setContent { Confirm(verb, title, sub, Color(color), possible, onConfirm = { run(action) }, onCancel = { finish() }) }
     }
 

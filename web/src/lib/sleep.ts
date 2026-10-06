@@ -172,3 +172,16 @@ export function sleepVsPlan(dayId: string, sleeps: Sleep[], target: SleepTarget,
   }
   return out;
 }
+
+/** The nights as spans of the logical day [dayId], in its minutes (an open night runs until `nowMin`). Gaps never count them. */
+export function sleepSpans(dayId: string, sleeps: Sleep[], nowMin: number): { start: number; end: number }[] {
+  const out: { start: number; end: number }[] = [];
+  for (const night of [addDays(dayId, -1), dayId]) {
+    const s = mainSleeps(sleeps).get(night);
+    if (!s) continue;
+    const start = minuteOfDay(dayId, new Date(s.start));
+    const end = s.end ? minuteOfDay(dayId, new Date(s.end)) : nowMin;
+    if (end > start) out.push({ start, end });
+  }
+  return out;
+}

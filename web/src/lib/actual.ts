@@ -86,14 +86,15 @@ export function recordSpans(records: TimeRecord[], nowMin: number): Span[] {
 }
 
 /** Gaps in the actual timeline between the start and end of the planned/tracked day, up to `until`. */
-export function dayGaps(plan: TimelineBlock[], records: TimeRecord[], until: number, min = 10): Span[] {
+export function dayGaps(plan: TimelineBlock[], records: TimeRecord[], until: number, min = 10, covered: Span[] = []): Span[] {
   const all = [...plan.map(b => b.start), ...records.map(r => r.start)];
   if (!all.length) return [];
   const from = Math.min(...all);
   const lastPlan = plan.length ? Math.max(...plan.map(b => b.end)) : from;
   const lastRec = records.length ? Math.max(...records.map(r => recEnd(r, until))) : from;
   const to = Math.min(until, Math.max(lastPlan, lastRec));
-  return uncovered(recordSpans(records, until), from, to, min);
+  // Sleeping is not an unrecorded gap (note #38): the nights count as covered.
+  return uncovered([...recordSpans(records, until), ...covered], from, to, min);
 }
 
 export interface RecordDraft { start: number; end: number; areaId: string; title: string; blockId?: string }

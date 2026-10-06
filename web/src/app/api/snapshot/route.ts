@@ -3,7 +3,7 @@ import { maybeSyncCalendars } from '@/lib/calendar/server';
 import { DAY_CUTOFF_HOUR } from '@/lib/config';
 import { requireDevice, sql, unauthorized } from '@/lib/server';
 import { buildSnapshot } from '@/lib/snapshot';
-import type { Area, DayBlock, FocusSession, Task, TimeRecord } from '@/lib/types';
+import type { Area, DayBlock, FocusSession, Task, TimeRecord, Sleep } from '@/lib/types';
 import { logicalAt } from '@/lib/zone';
 
 /**
@@ -27,6 +27,7 @@ export async function GET(req: Request) {
     `select entity, id, data from sync_records where not deleted and (
        (entity = 'day_block' and data->>'dayId' = $1)
        or entity = 'area'
+       or (entity = 'sleep' and data->>'end' is null)
        or (entity = 'time_record' and (data->>'dayId' = $1 or data->'end' = 'null'::jsonb))
        or (entity = 'task' and (data->>'status' not in ('done', 'archived') or data->>'dayId' = $1))
        or (entity = 'focus_session' and (data->>'state' in ('running', 'paused') or data->>'taskId' is not null))
@@ -38,6 +39,6 @@ export async function GET(req: Request) {
   const { SEED_AREAS } = await import('@/lib/seed');
   const areas = new Map(SEED_AREAS.map(a => [a.id, a]));
   for (const a of pick<Area>('area')) areas.set(a.id, a);
-  const snap = buildSnapshot({ blocks: pick<DayBlock>('day_block'), records: pick<TimeRecord>('time_record'), tasks: pick<Task>('task'), sessions: pick<FocusSession>('focus_session'), areas: [...areas.values()] }, now, tz, cutoff);
+  const snap = buildSnapshot({ blocks: pick<DayBlock>('day_block'), records: pick<TimeRecord>('time_record'), tasks: pick<Task>('task'), sessions: pick<FocusSession>('focus_session'), sleeps: pick<Sleep>('sleep'), areas: [...areas.values()] }, now, tz, cutoff);
   return Response.json(snap, { headers: { 'cache-control': 'no-store' } });
 }

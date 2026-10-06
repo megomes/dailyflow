@@ -1,14 +1,14 @@
 import { nextDate, revealOn } from './recurrence';
-import type { DayBlock, Task, TimeRecord } from './types';
+import type { DayBlock, Sleep, Task, TimeRecord } from './types';
 import { logicalAt } from './zone';
 
 /**
  * Quick actions for surfaces that cannot run the full app (Wear OS, widget buttons): start the
  * current block or stop the running activity, as sync ops (pure; the route writes them).
  */
-export interface QuickOp { entity: 'time_record'; id: string; updatedAt: string; deleted: boolean; data: Record<string, unknown> }
+export interface QuickOp { entity: 'time_record' | 'sleep'; id: string; updatedAt: string; deleted: boolean; data: Record<string, unknown> }
 
-export function quickOps(action: 'start' | 'stop' | 'next' | 'pause' | 'resume', rows: { blocks: DayBlock[]; records: TimeRecord[] }, at: Date, tz: string, cutoff: number, newId: () => string): { ops: QuickOp[]; message: string } {
+export function quickOps(action: 'start' | 'stop' | 'next' | 'pause' | 'resume' | 'sleep' | 'wake', rows: { blocks: DayBlock[]; records: TimeRecord[]; sleeps?: Sleep[] }, at: Date, tz: string, cutoff: number, newId: () => string): { ops: QuickOp[]; message: string } {
   const { day, min } = logicalAt(at, tz, cutoff);
   const ts = at.toISOString();
   const ops: QuickOp[] = [];
@@ -27,6 +27,22 @@ export function quickOps(action: 'start' | 'stop' | 'next' | 'pause' | 'resume',
     const { id, updatedAt: _u, deleted: _d, ...rest } = r;
     ops.push({ entity: 'time_record', id, updatedAt: new Date(at.getTime() + 1).toISOString(), deleted: false, data: { ...rest, alongside: false } });
   };
+  if (action === 'sleep' || action === 'wake') {
+    const openSleep = (rows.sleeps ?? []).find(s => !s.deleted && !s.end);
+    if (action === 'wake') {
+      if (!openSleep) return { ops, message: 'Not asleep' };
+      const { id, updatedAt: _u, deleted: _d, ...rest } = openSleep;
+      ops.push({ entity: 'sleep', id, updatedAt: ts, deleted: false, data: { ...rest, end: ts } } as unknown as QuickOp);
+      return { ops, message: 'Good morning ☀️' };
+    }
+    if (openSleep) return { ops, message: 'Already asleep' };
+    // Going to sleep stops whatever is running, at the same moment.
+    for (const r of open) stop(r);
+    // The night is named after the evening it belongs to: the calendar day twelve hours earlier, in the user's zone.
+    const night = logicalAt(new Date(at.getTime() - 12 * 3600_000), tz, 0).day;
+    ops.push({ entity: 'sleep', id: newId(), updatedAt: new Date(at.getTime() + 1).toISOString(), deleted: false, data: { night, start: ts, source: 'manual', createdAt: ts } } as unknown as QuickOp);
+    return { ops, message: 'Good night 🌙' };
+  }
   if (action === 'pause' || action === 'resume') {
     if (!running) return { ops, message: 'Nothing running' };
     const ps = running.pauses ?? [];

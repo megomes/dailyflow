@@ -4,10 +4,10 @@ import { announceChange } from '@/lib/push';
 import { DAY_CUTOFF_HOUR } from '@/lib/config';
 import { doneOps, quickOps } from '@/lib/quick';
 import { requireDevice, sql, unauthorized } from '@/lib/server';
-import type { DayBlock, Task, TimeRecord } from '@/lib/types';
+import type { DayBlock, Sleep, Task, TimeRecord } from '@/lib/types';
 import { logicalAt } from '@/lib/zone';
 
-const Body = z.object({ action: z.enum(['start', 'stop', 'next', 'pause', 'resume', 'done']), taskId: z.string().max(100).optional(), tz: z.string().max(64).default('America/Sao_Paulo') });
+const Body = z.object({ action: z.enum(['start', 'stop', 'next', 'pause', 'resume', 'sleep', 'wake', 'done']), taskId: z.string().max(100).optional(), tz: z.string().max(64).default('America/Sao_Paulo') });
 
 /** POST /api/quick {action:'start'|'stop'|'next'|'pause'|'resume'|'done', taskId?} — Wear OS and widget buttons (EH). Same LWW write as /api/sync. */
 export async function POST(req: Request) {
@@ -35,11 +35,11 @@ export async function POST(req: Request) {
   type Row = { entity: string; id: string; data: Record<string, unknown>; updated_at: string };
   const rows = (await db.query(
     `select entity, id, data, updated_at from sync_records where not deleted and (
-       (entity = 'day_block' and data->>'dayId' = $1) or (entity = 'time_record' and data->'end' = 'null'::jsonb))`,
+       (entity = 'day_block' and data->>'dayId' = $1) or (entity = 'time_record' and data->'end' = 'null'::jsonb) or (entity = 'sleep' and data->>'end' is null))`,
     [day],
   )) as Row[];
   const as = <T,>(e: string) => rows.filter(r => r.entity === e).map(r => ({ ...r.data, id: r.id, updatedAt: new Date(r.updated_at).toISOString() }) as unknown as T);
-  const { ops, message } = quickOps(action, { blocks: as<DayBlock>('day_block'), records: as<TimeRecord>('time_record') }, now, tz, cutoff, () => crypto.randomUUID());
+  const { ops, message } = quickOps(action, { blocks: as<DayBlock>('day_block'), records: as<TimeRecord>('time_record'), sleeps: as<Sleep>('sleep') }, now, tz, cutoff, () => crypto.randomUUID());
   await write(ops, deviceId);
   return Response.json({ ok: true, message, changed: ops.length });
 }

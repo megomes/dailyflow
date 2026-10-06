@@ -1,6 +1,6 @@
 import { activeSec, coverage, isPaused, leftInBlock, recEnd } from './actual';
 import { logicalAt } from './zone';
-import type { Area, ColorKey, DayBlock, FocusSession, Task, TimeRecord } from './types';
+import type { Area, ColorKey, DayBlock, FocusSession, Sleep, Task, TimeRecord } from './types';
 
 /**
  * “Now” snapshot for glanceable surfaces (EH): Android widgets, lock screen notification,
@@ -36,6 +36,8 @@ export interface Snapshot {
   alsoRunning: { title: string; color: string; sinceLabel: string }[];
   /** Every block on now (more than one when blocks overlap on purpose, e.g. a meeting + guitar). */
   nowAll: SnapItem[];
+  /** Asleep right now (an open night): the watch offers “I'm awake” instead of “going to sleep”. */
+  sleeping: { since: string } | null;
   focus: { title: string; leftSec: number | null; elapsedSec: number; paused: boolean; endsAt: string | null } | null;
   tasks: { inProgress: string[]; high: string[]; today: string[]; next: string[] };
   /** Today's open to-dos with ids (widget check-off): the current block's first, then high priority, then the rest. */
@@ -47,7 +49,7 @@ export interface Snapshot {
 
 const hhmm = (min: number) => { const m = ((Math.round(min) % 1440) + 1440) % 1440; return `${String(Math.floor(m / 60)).padStart(2, '0')}:${String(m % 60).padStart(2, '0')}`; };
 
-export function buildSnapshot(input: { blocks: DayBlock[]; records: TimeRecord[]; tasks: Task[]; sessions: FocusSession[]; areas: Area[] }, at: Date, tz: string, cutoff: number): Snapshot {
+export function buildSnapshot(input: { blocks: DayBlock[]; records: TimeRecord[]; tasks: Task[]; sessions: FocusSession[]; areas: Area[]; sleeps?: Sleep[] }, at: Date, tz: string, cutoff: number): Snapshot {
   const { day, min } = logicalAt(at, tz, cutoff);
   const minute = min + at.getUTCSeconds() / 60;
   const areaMap = new Map(input.areas.map(a => [a.id, a]));
@@ -122,6 +124,7 @@ export function buildSnapshot(input: { blocks: DayBlock[]; records: TimeRecord[]
     })() : null,
     alsoRunning: also.map(r => ({ title: r.title || areaMap.get(r.areaId)?.name || '', color: AREA_HEX[areaMap.get(r.areaId)?.color ?? 'gray'], sinceLabel: hhmm(r.start) })),
     nowAll: covering.map(item),
+    sleeping: (() => { const o = (input.sleeps ?? []).find(s => !s.deleted && !s.end); return o ? { since: o.start } : null; })(),
     focus: focusOut,
     tasks: {
       inProgress: open.filter(t => tracked.has(t.id)).map(t => t.title).slice(0, 8),

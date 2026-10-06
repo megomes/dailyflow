@@ -1,4 +1,6 @@
 'use client';
+import { sleepSpans } from '@/lib/sleep';
+import { useSleeps } from '@/components/day/Sleep';
 import Link from 'next/link';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { Suspense, useEffect, useMemo, useState } from 'react';
@@ -33,7 +35,8 @@ function ClosePageInner() {
   useEffect(() => { track('day_close_started', { day: dayId, days_ago: dayId === today ? 0 : 1 }); }, [dayId, today]);
 
   const until = dayId === today ? minute : 28 * 60;
-  const gaps = useMemo(() => dayGaps(d.blocks, d.records, until, 5), [d.blocks, d.records, until]);
+  const sleeps = useSleeps();
+  const gaps = useMemo(() => dayGaps(d.blocks, d.records, until, 5, sleepSpans(dayId, sleeps, until)), [d.blocks, d.records, until, sleeps, dayId]);
   const gapMin = gaps.reduce((s, g) => s + g.end - g.start, 0);
 
   if (!d.ready) return <div className="page" />;

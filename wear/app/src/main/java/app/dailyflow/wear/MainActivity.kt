@@ -52,6 +52,8 @@ class MainActivity : ComponentActivity() {
                 // adb shell am start -n app.dailyflow/.wear.MainActivity --es pair_code ABCD2345 (pairs without typing)
                 val autoCode = intent.getStringExtra("pair_code")
                 LaunchedEffect(autoCode) { if (autoCode != null && !paired) api.pair(api.creds.host, autoCode).onSuccess { paired = true; app.dailyflow.wear.face.FaceData.refresh(applicationContext); app.dailyflow.wear.complications.Sources.refreshAll(applicationContext) } }
+                // Paired: hand the FCM token to the server so changes elsewhere reach the watch in seconds.
+                LaunchedEffect(paired) { if (paired) Push.ensureRegistered(applicationContext) }
                 if (paired) NowScreen(api) { api.creds.clear(); paired = false }
                 else PairScreen(api) { paired = true }
             }

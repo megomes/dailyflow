@@ -6,6 +6,7 @@ import { SYNC_INTERVAL_MS } from '@/lib/config';
 import { startCalendarLoop } from '@/lib/calendar/client';
 import { applyPrefs } from '@/lib/prefs';
 import { migrateToDayTemplates, seedIfEmpty } from '@/lib/repo';
+import { startLive } from '@/lib/live';
 import { getSyncState, pushEvents, startSyncLoop, syncNow } from '@/lib/sync';
 
 let booted = false;
@@ -20,6 +21,7 @@ export function Providers({ children }: { children: ReactNode }) {
   useEffect(() => {
     let stopSync: (() => void) | undefined;
     let stopCal: (() => void) | undefined;
+    let stopLive: (() => void) | undefined;
     const t0 = performance.now();
     (async () => {
       if (!booted) {
@@ -49,6 +51,8 @@ export function Providers({ children }: { children: ReactNode }) {
       setReady(true);
       stopSync = startSyncLoop(SYNC_INTERVAL_MS);
       stopCal = startCalendarLoop();
+      // Another device changed something: sync now instead of on the next tick.
+      stopLive = startLive(reason => void syncNow(`live:${reason}`));
     })();
 
     const onHide = () => {
@@ -64,7 +68,7 @@ export function Providers({ children }: { children: ReactNode }) {
     if ('serviceWorker' in navigator && process.env.NODE_ENV === 'production') {
       navigator.serviceWorker.register('/sw.js', { scope: '/', updateViaCache: 'none' }).catch(() => {});
     }
-    return () => { stopSync?.(); stopCal?.(); document.removeEventListener('visibilitychange', onHide); };
+    return () => { stopSync?.(); stopCal?.(); stopLive?.(); document.removeEventListener('visibilitychange', onHide); };
   }, []);
 
   if (!ready) return <div className="boot" aria-busy="true" />;

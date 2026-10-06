@@ -1,5 +1,6 @@
 import * as Notifications from 'expo-notifications';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import { isSilentSync } from './push';
 import type { Snapshot, SnapItem } from '@shared/snapshot';
 
 /**
@@ -26,7 +27,10 @@ export async function setupNotifications() {
     name: 'Block changes', importance: Notifications.AndroidImportance.HIGH, lockscreenVisibility: Notifications.AndroidNotificationVisibility.PUBLIC,
     showBadge: false, enableVibrate: true, vibrationPattern: [0, 90, 120, 90, 120, 260],
   });
-  Notifications.setNotificationHandler({ handleNotification: async () => ({ shouldShowBanner: true, shouldShowList: true, shouldPlaySound: true, shouldSetBadge: false }) });
+  // Sync signals (FCM data from the server) are silent; block-change notifications show.
+  Notifications.setNotificationHandler({ handleNotification: async n => (isSilentSync(n)
+    ? { shouldShowBanner: false, shouldShowList: false, shouldPlaySound: false, shouldSetBadge: false }
+    : { shouldShowBanner: true, shouldShowList: true, shouldPlaySound: true, shouldSetBadge: false }) });
   const { status } = await Notifications.getPermissionsAsync();
   if (status !== 'granted') await Notifications.requestPermissionsAsync();
 }

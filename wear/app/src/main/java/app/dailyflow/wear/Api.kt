@@ -85,6 +85,11 @@ class Api(context: Context) {
         }
     }
 
+    /** FCM token → server, so changes made elsewhere reach the watch in seconds. */
+    suspend fun registerPush(token: String): Boolean = withContext(Dispatchers.IO) {
+        runCatching { request("/api/push/register", "POST", JSONObject().put("token", token).put("platform", "wear")).first == 200 }.getOrDefault(false)
+    }
+
     suspend fun snapshot(): Snapshot? = snapshotRaw()?.let { parseJson(it) }
 
     /** The raw JSON (the watch face caches it to draw without the network). */

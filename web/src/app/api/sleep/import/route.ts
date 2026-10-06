@@ -1,4 +1,6 @@
+import { after } from 'next/server';
 import { z } from 'zod';
+import { announceChange } from '@/lib/push';
 import { fromHealth, supersededManual } from '@/lib/sleepImport';
 import { requireDevice, sql, unauthorized } from '@/lib/server';
 
@@ -43,5 +45,6 @@ export async function POST(req: Request) {
   if (gone.length) {
     await db.query(`update sync_records set deleted = true, updated_at = now(), seq = nextval('sync_seq'), device_id = 'server' where entity = 'sleep' and id = any($1::text[])`, [gone]);
   }
+  after(() => announceChange(deviceId, 'sleep'));
   return Response.json({ ok: true, imported: rows.length, replaced: gone.length });
 }

@@ -2,6 +2,7 @@ plugins {
     alias(libs.plugins.android.application)
     alias(libs.plugins.kotlin.android)
     alias(libs.plugins.kotlin.compose)
+    alias(libs.plugins.google.services)
 }
 
 android {
@@ -11,8 +12,8 @@ android {
         applicationId = "app.dailyflow"   // same id as the phone app: Wear pairs them in the Play/sideload flow
         minSdk = 30                        // Wear OS 3+
         targetSdk = 35
-        versionCode = 1
-        versionName = "0.1.0"
+        versionCode = 2
+        versionName = "0.2.0"
     }
     buildTypes {
         // Release is what goes on the watch: R8 + the libraries' startup profiles (debug Compose is very slow).
@@ -48,4 +49,7 @@ dependencies {
     implementation(libs.concurrent.futures)
     implementation(libs.coroutines.android)
     implementation(libs.coroutines.guava)
+    // Live sync: FCM “something changed” from the server (no polling for complications and the tile).
+    implementation(platform(libs.firebase.bom))
+    implementation(libs.firebase.messaging)
 }

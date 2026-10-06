@@ -32,6 +32,13 @@
             </intent-filter>
         </activity>
 
+        <!-- Live sync: FCM “something changed” → refresh complications and the tile now -->
+        <service android:name=".PushService" android:exported="false">
+            <intent-filter>
+                <action android:name="com.google.firebase.MESSAGING_EVENT" />
+            </intent-filter>
+        </service>
+
         <!-- Tile: NOW / NEXT (spec §83) -->
         <service
             android:name=".NowTileService"

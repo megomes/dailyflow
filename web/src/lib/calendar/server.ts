@@ -1,5 +1,6 @@
 import 'server-only';
 import { createHash } from 'node:crypto';
+import { announceChange } from '../push';
 import { sql } from '../server';
 import type { CalClass, CalProvider } from '../types';
 import { defaultClass, fromGoogle, fromGraph, fromIcs, logicalAt, toRows, type GoogleEvent, type GraphEvent, type RawEvent } from './normalize';
@@ -317,8 +318,9 @@ export async function writeBlocks(a: Account, calendarId: string, events: RawEve
       },
     }));
   const db = sql();
+  let changed = 0;
   if (rows.length) {
-    await db.query(
+    changed = ((await db.query(
       `insert into sync_records (entity, id, data, deleted, updated_at, device_id)
        select 'day_block', x.id, x.data, false, now(), 'server' from jsonb_to_recordset($1::jsonb) as x(id text, data jsonb)
        on conflict (entity, id) do update
@@ -326,9 +328,10 @@ export async function writeBlocks(a: Account, calendarId: string, events: RawEve
                                           then jsonb_build_object('areaId', sync_records.data->'areaId') else '{}'::jsonb end,
              deleted = false, updated_at = now(), seq = nextval('sync_seq'), device_id = 'server'
          where (not sync_records.deleted or sync_records.device_id = 'server')
-           and ((sync_records.data - 'areaId') is distinct from (excluded.data - 'areaId') or sync_records.deleted)`,
+           and ((sync_records.data - 'areaId') is distinct from (excluded.data - 'areaId') or sync_records.deleted)
+       returning 1`,
       [JSON.stringify(rows)],
-    );
+    )) as unknown[]).length;
   }
   const gone = (await db.query(
     `update sync_records set deleted = true, updated_at = now(), seq = nextval('sync_seq'), device_id = 'server'
@@ -336,7 +339,7 @@ export async function writeBlocks(a: Account, calendarId: string, events: RawEve
      returning id`,
     [key, fromDay, toDay, rows.map(r => r.id)],
   )) as { id: string }[];
-  return { upserted: rows.length, removed: gone.length };
+  return { upserted: rows.length, removed: gone.length, changed: changed + gone.length };
 }
 
 export interface SyncResult { account: string; provider: CalProvider; email?: string | null; events?: number; removed?: number; ms: number; error?: string }
@@ -353,6 +356,7 @@ export async function syncAll(opts: { tz: string; cutoff: number; from: string; 
   const end = new Date(`${to}T00:00:00Z`); end.setUTCDate(end.getUTCDate() + 2);
   const areas = (await prefs()).calendarAreas ?? {};
   const results: SyncResult[] = [];
+  let changedAny = 0;
   for (const a of await accounts()) {
     const t0 = Date.now();
     try {
@@ -362,7 +366,7 @@ export async function syncAll(opts: { tz: string; cutoff: number; from: string; 
       let events = 0, removed = 0;
       for (const c of (await enabledCalendarIds(a.id)).filter(c => c.classification === 'commitment')) {
         const w = await writeBlocks(a, c.calendarId, await listEvents(a, token, c.calendarId, start, end), tz, cutoff, from, to, area);
-        events += w.upserted; removed += w.removed;
+        events += w.upserted; removed += w.removed; changedAny += w.changed;
       }
       await setAccountStatus(a.id, 'ok', null);
       await sql().query(`update calendar_accounts set last_sync_at = now() where id = $1`, [a.id]);
@@ -374,6 +378,8 @@ export async function syncAll(opts: { tz: string; cutoff: number; from: string; 
       results.push({ account: a.id, provider: a.provider, email: a.email, error: reauth ? 'reauth' : message, ms: Date.now() - t0 });
     }
   }
+  // A meeting added, moved or cancelled shows up on every device in seconds.
+  if (changedAny) await announceChange(null, 'calendar');
   return results;
 }
 

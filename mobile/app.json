@@ -3,7 +3,7 @@
     "name": "DailyFlow",
     "slug": "dailyflow",
     "scheme": "dailyflow",
-    "version": "0.3.0",
+    "version": "0.4.0",
     "orientation": "portrait",
     "icon": "./assets/icon.png",
     "userInterfaceStyle": "dark",
@@ -21,7 +21,8 @@
       ],
       "blockedPermissions": [
         "android.permission.RECORD_AUDIO"
-      ]
+      ],
+      "googleServicesFile": "./google-services.json"
     },
     "plugins": [
       "expo-secure-store",

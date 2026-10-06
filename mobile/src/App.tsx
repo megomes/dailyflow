@@ -5,6 +5,7 @@ import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { clearCredential, getCredential, parsePairUrl, type Credential } from './auth';
 import { refreshSurfaces } from './background';
 import { setupNotifications } from './notify';
+import { setupPush } from './push';
 import { applyOta } from './ota';
 import { Pair } from './Pair';
 import { C } from './theme';
@@ -33,7 +34,7 @@ export default function App() {
       if (link) setPairLink(link);
       const c = await getCredential();
       setCred(link ? null : c);
-      if (c) { await setupNotifications().catch(() => {}); void refreshSurfaces().catch(() => {}); }
+      if (c) { await setupNotifications().catch(() => {}); void setupPush().catch(() => {}); void refreshSurfaces().catch(() => {}); }
     })();
     const sub = Linking.addEventListener('url', ({ url }) => {
       const link = parsePairUrl(url);
@@ -51,7 +52,7 @@ export default function App() {
         {cred === undefined ? null : cred ? (
           <WebShell cred={cred} path={path} onUnauthorized={() => { void clearCredential(); setCred(null); }} />
         ) : (
-          <Pair link={pairLink} onPaired={c => { setPairLink(null); setCred(c); void setupNotifications().catch(() => {}); void refreshSurfaces().catch(() => {}); }} />
+          <Pair link={pairLink} onPaired={c => { setPairLink(null); setCred(c); void setupNotifications().catch(() => {}); void setupPush().catch(() => {}); void refreshSurfaces().catch(() => {}); }} />
         )}
       </View>
     </SafeAreaProvider>

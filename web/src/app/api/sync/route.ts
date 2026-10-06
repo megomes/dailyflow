@@ -1,5 +1,6 @@
 import { after } from 'next/server';
 import { maybeSyncCalendars } from '@/lib/calendar/server';
+import { announceChange } from '@/lib/push';
 import { z } from 'zod';
 import { requireDevice, sql, unauthorized } from '@/lib/server';
 
@@ -27,16 +28,19 @@ export async function POST(req: Request) {
   const db = sql();
 
   if (ops.length) {
-    await db.query(
+    const applied = (await db.query(
       `insert into sync_records (entity, id, data, deleted, updated_at, device_id)
        select x.entity, x.id, x.data, x.deleted, x.updated_at, $2
        from jsonb_to_recordset($1::jsonb) as x(entity text, id text, data jsonb, deleted boolean, updated_at timestamptz)
        on conflict (entity, id) do update
          set data = excluded.data, deleted = excluded.deleted, updated_at = excluded.updated_at,
              device_id = excluded.device_id, seq = nextval('sync_seq')
-         where sync_records.updated_at < excluded.updated_at`,
+         where sync_records.updated_at < excluded.updated_at
+       returning 1`,
       [JSON.stringify(ops.map(o => ({ entity: o.entity, id: o.id, data: o.data, deleted: o.deleted, updated_at: o.updatedAt }))), deviceId],
-    );
+    )) as unknown[];
+    // Other devices hear about it in seconds (live head + FCM), not on their next poll.
+    if (applied.length) after(() => announceChange(deviceId, 'sync'));
   }
 
   const rows = (await db.query(

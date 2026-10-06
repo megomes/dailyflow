@@ -8,3 +8,6 @@ dist/
 # Local Expo modules keep their native sources in git (not their build output)
 !modules/*/android/
 modules/*/android/build/
+
+# Firebase config (kept local; copied from .secrets)
+google-services.json

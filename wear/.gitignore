@@ -3,3 +3,6 @@ build/
 app/build/
 local.properties
 .kotlin/
+
+# Firebase config (copied from .secrets)
+app/google-services.json

@@ -1,4 +1,6 @@
+import { after } from 'next/server';
 import { z } from 'zod';
+import { announceChange } from '@/lib/push';
 import { DAY_CUTOFF_HOUR } from '@/lib/config';
 import { doneOps, quickOps } from '@/lib/quick';
 import { requireDevice, sql, unauthorized } from '@/lib/server';
@@ -54,5 +56,7 @@ async function write(ops: { entity: string; id: string; updatedAt: string; delet
          where sync_records.updated_at < excluded.updated_at`,
       [JSON.stringify(ops.map(o => ({ entity: o.entity, id: o.id, data: o.data, deleted: o.deleted, updated_at: o.updatedAt }))), deviceId],
     );
+    // A tap on the watch or a widget reaches every other screen in seconds.
+    after(() => announceChange(deviceId, 'quick'));
   }
 }

@@ -114,7 +114,7 @@ let debounce: ReturnType<typeof setTimeout> | undefined;
 export function startSyncLoop(intervalMs: number) {
   const unsub = onLocalWrite(() => {
     clearTimeout(debounce);
-    debounce = setTimeout(() => void syncNow('write'), 1200);
+    debounce = setTimeout(() => void syncNow('write'), 500);
   });
   let offlineSince = 0;
   const onOnline = async () => {

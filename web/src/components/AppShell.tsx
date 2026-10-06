@@ -5,7 +5,7 @@ import { useEffect, useRef, useSyncExternalStore, type ReactNode } from 'react';
 import { BarChart3, CalendarDays, CheckSquare, History, MessageSquareText, Moon, Settings, Sun } from 'lucide-react';
 import { m } from '@/i18n/en';
 import { setScreen, track } from '@/lib/analytics';
-import { APP_VERSION, apkVersion } from '@/lib/clientContext';
+import { APP_SEMVER, APP_VERSION, apkVersion } from '@/lib/clientContext';
 import { useSyncState } from '@/lib/hooks';
 import { currentTheme, toggleTheme } from '@/lib/theme';
 import { ContextMenuHost } from './ContextMenu';
@@ -36,7 +36,7 @@ export function SyncBadge() {
   return (
     <div className="sync" data-s={s.status} title={s.lastSyncedAt ? m.device.lastSync(new Date(s.lastSyncedAt).toLocaleTimeString()) : m.device.never}>
       <i />{label}{s.pending > 0 && s.status !== 'syncing' ? ` · ${s.pending}` : ''}
-      <span className="ver tabular">web {APP_VERSION}{apk ? ` · apk ${apk}` : ''}</span>
+      <span className="ver tabular" title={`build ${APP_VERSION}${apk ? ` · apk ${apk}` : ''}`}>v{APP_SEMVER}</span>
     </div>
   );
 }

@@ -20,6 +20,8 @@ export interface ClientContext {
 }
 
 export const APP_VERSION = process.env.NEXT_PUBLIC_APP_VERSION || 'local';
+/** The product version the user sees (1.X.X, from web/package.json). */
+export const APP_SEMVER = process.env.NEXT_PUBLIC_APP_SEMVER || '1.0.0';
 
 /** Version of the Android app (its WebView says it in the user agent: DailyFlowAndroid/0.4.0); null outside the app or on an old APK that only said “/1”. */
 export function apkVersion(): string | null {

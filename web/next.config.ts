@@ -1,8 +1,12 @@
+import { readFileSync } from 'node:fs';
 import type { NextConfig } from 'next';
+
+// The product version (1.X.X, bumped by hand at every release): shown next to “Synced”.
+const { version } = JSON.parse(readFileSync(new URL('./package.json', import.meta.url), 'utf8')) as { version: string };
 
 const nextConfig: NextConfig = {
   // Build identity shown in notes and events (Vercel provides the commit sha at build time).
-  env: { NEXT_PUBLIC_APP_VERSION: process.env.VERCEL_GIT_COMMIT_SHA?.slice(0, 7) ?? 'local' },
+  env: { NEXT_PUBLIC_APP_VERSION: process.env.VERCEL_GIT_COMMIT_SHA?.slice(0, 7) ?? 'local', NEXT_PUBLIC_APP_SEMVER: version },
   async headers() {
     return [
       {

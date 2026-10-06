@@ -25,8 +25,11 @@ A ferramenta de revisão (`review/`) e o artifact publicado (https://claude.ai/a
 
 ## Versão (sempre informar)
 
-- O app mostra a versão ao lado de “Synced” (`SyncBadge` em `web/src/components/AppShell.tsx`): `web <sha de 7 caracteres do commit>` e, dentro do app Android, `apk <version do mobile/app.json>` (o WebView manda no user agent, `DailyFlowAndroid/<version>`).
-- **Ao terminar qualquer entrega, diga ao usuário qual versão acabou de lançar:** o sha curto do commit publicado (`web …`) e, se mexeu no `mobile/`, a `version` do APK e se foi OTA ou APK novo (e o relógio, se instalou). Sem isso a entrega não está completa.
+- A versão do produto é um número **1.X.X** (nunca sha/código), em `web/package.json` → `version`. Aparece ao lado de “Synced” (`SyncBadge` em `web/src/components/AppShell.tsx`, como `v1.X.X`); o sha do commit e a versão nativa do APK ficam só no tooltip.
+- **Atualize a versão a cada entrega, antes de commitar:** sobe o **minor** (1.2.0 → 1.3.0) quando entrega notas/funcionalidades novas e o **patch** (1.3.0 → 1.3.1) para correção pequena de algo já entregue. Mesma versão em web, Android (OTA) e relógio: é uma só.
+- **Ao terminar, diga ao usuário a versão lançada (`v1.X.X`)**, e onde chegou: web (produção), Android (OTA ou APK novo) e relógio (se instalou). Registre-a também no `deployed` da nota (`v1.X.X · production`). Sem isso a entrega não está completa.
+- `mobile/app.json` → `version` é a versão **nativa** do APK (o runtime do OTA segue ela): não suba só para acompanhar o 1.X.X; só ao mudar algo nativo.
+- Histórico: 1.1.0 = notas #42–#47 (widget com dia fechado, horas depois das 22h, zoom, leave empty, What changed today, relógio atrasado).
 
 ## App Android (`mobile/`)
 

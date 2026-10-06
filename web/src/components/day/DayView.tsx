@@ -15,6 +15,9 @@ import { fmtDuration, fmtMin } from '@/lib/time';
 import type { DayBlock, Revision } from '@/lib/types';
 import { Timeline, type ChangeKind, type TLColumn, type TLItem } from '../Timeline';
 import { blockMenu, recordMenu } from '../menus';
+import { sleepBands } from '@/lib/sleep';
+import { cutoffHour } from '@/lib/time';
+import { MorningPrompt, SleepSheet, bandTitle, useSleeps } from './Sleep';
 import { useDraggedTask } from '../tasks/dragState';
 import { ChangesCard, ConflictsCard, GapsCard, ReasonPrompt, NotPlannedCard, ReplanModal, SaveTemplateModal, StartDayCard } from './Cards';
 import { DayTasks } from './DayTasks';
@@ -53,6 +56,8 @@ export function DayView({ dayId, live, title, sub, sideTop, sideBottom, headExtr
   const dragged = useDraggedTask();
   const [mode, setModeState] = useState<DayViewMode | null>(readMode);
   const [sel, setSel] = useState<{ id: string; col: string } | null>(null);
+  const sleeps = useSleeps();
+  const [sleepSel, setSleepSel] = useState<string | null>(null);
   const [reason, setReason] = useState<{ revId: string; label: string } | null>(null);
   const [mismatch, setMismatch] = useState<{ taskId: string; title: string; target?: DayBlock; blockId: string; taskArea: string; blockArea: string } | null>(null);
   const [replan, setReplan] = useState(false);
@@ -91,7 +96,8 @@ export function DayView({ dayId, live, title, sub, sideTop, sideBottom, headExtr
   const columns: TLColumn[] = useMemo(() => {
     const showDiff = started && view !== 'plan';
     const planItems: TLItem[] = d.blocks.map(b => {
-      const item: TLItem = { ...b };
+      // A planned Sleep block reads as the night it is, not as one more block (note #29).
+      const item: TLItem = { ...b, ...(b.areaId === 'area-sleep' ? { variant: 'night' as const } : {}) };
       const myTasks = d.tasks.filter(t => t.blockId === b.id);
       // Only recorded time is judged, and only once the block is over (no record ≠ skipped; a block
       // under way is not skipped yet). Until then the corner shows its to-dos.
@@ -113,17 +119,21 @@ export function DayView({ dayId, live, title, sub, sideTop, sideBottom, headExtr
       id: r.id, start: r.start, end: r.end ?? Math.max(r.start + 1, until), title: r.title, areaId: r.areaId,
       variant: r.end == null ? 'running' : 'real',
     }));
-    if (view === 'plan') return [{ id: 'plan', items: planItems, editable: true }];
+    // Last night's end and tonight's start, from the sleep records (not blocks).
+    const sleepItems: TLItem[] = sleepBands(dayId, sleeps, cutoffHour()).map(b => ({
+      id: b.id, start: b.start, end: b.end, title: bandTitle(b.sleep, b.part), areaId: 'area-sleep', variant: 'sleep', cls: b.part, ...(b.sleep.stages ? { stages: b.sleep.stages } : {}),
+    }));
+    if (view === 'plan') return [{ id: 'plan', items: [...planItems, ...sleepItems], editable: true }];
     if (view === 'real') return [
       { id: 'plan', label: m.day.cols.plan, items: planItems, editable: true },
-      { id: 'real', label: m.day.cols.real, items: realItems, editable: true },
+      { id: 'real', label: m.day.cols.real, items: [...realItems, ...sleepItems], editable: true },
     ];
     return [
       { id: 'baseline', label: m.day.cols.baseline, items: (d.day?.baseline ?? []).map(b => ({ ...b, variant: 'ghost' as const })), editable: false },
       { id: 'plan', label: m.day.cols.final, items: planItems, editable: true },
-      { id: 'real', label: m.day.cols.real, items: realItems, editable: true },
+      { id: 'real', label: m.day.cols.real, items: [...realItems, ...sleepItems], editable: true },
     ];
-  }, [d.blocks, d.records, d.tasks, d.day?.baseline, view, started, until]);
+  }, [d.blocks, d.records, d.tasks, d.day?.baseline, view, started, until, sleeps, dayId]);
 
   function afterRevision(revId: string | null, label: string) {
     if (revId) setReason({ revId, label });
@@ -233,6 +243,8 @@ export function DayView({ dayId, live, title, sub, sideTop, sideBottom, headExtr
     <RecordInspector key={selRec.id} record={selRec} areas={d.areas} closed={d.status === 'closed'} onClose={() => setSel(null)} />
   ) : null;
 
+  const selSleep = sleepSel ? sleeps.find(s => s.id === sleepSel) : undefined;
+  const sleepSheet = selSleep ? <SleepSheet key={selSleep.id} sleep={selSleep} night={selSleep.night} onClose={() => setSleepSel(null)} /> : null;
   const templateName = m.templates.names[d.day?.templateId ?? ''] ?? '';
   const after = (
     <>
@@ -257,6 +269,7 @@ export function DayView({ dayId, live, title, sub, sideTop, sideBottom, headExtr
 
   return (
     <div className="page day-page">
+      {sleepSheet}
       <header className="page-head">
         <div>
           <h1>{title}</h1>
@@ -296,6 +309,7 @@ export function DayView({ dayId, live, title, sub, sideTop, sideBottom, headExtr
           {sideTop}
           {live && d.status === 'active' && d.day?.startMode === 'implicit' && <NotPlannedCard dayId={dayId} startedAt={d.day.startedAt} />}
           {live && d.status === 'unplanned' && <StartDayCard dayId={dayId} blocks={d.blocks} templateName={templateName} minute={clockMin} />}
+          {live && <MorningPrompt dayId={dayId} minute={clockMin} />}
           {live && <NowCard dayId={dayId} minute={clockMin} blocks={d.blocks} tasks={d.tasks} areas={d.areas} areaMap={d.areaMap} running={running} alongside={alongside} focus={focus} />}
           {reason && <ReasonPrompt key={reason.revId} revId={reason.revId} label={reason.label} onDone={() => setReason(null)} />}
           {mismatch && (
@@ -323,8 +337,9 @@ export function DayView({ dayId, live, title, sub, sideTop, sideBottom, headExtr
           areas={d.areaMap}
           nowMin={nowMin}
           selectedId={sel?.id ?? null}
-          onSelect={(id, col) => setSel(id ? { id, col: col ?? 'plan' } : null)}
+          onSelect={(id, col) => { if (id?.startsWith('sleep:')) { setSleepSel(id.split(':')[1]); return; } setSel(id ? { id, col: col ?? 'plan' } : null); }}
           onItemMenu={(id, col) => {
+            if (id.startsWith('sleep:')) return null;
             if (col === 'plan') {
               const b = d.blocks.find(x => x.id === id);
               return b ? blockMenu(b, { dayId, live, areas: d.areas, edit: () => setSel({ id, col }), patch: (p, k) => onPatchBlock(b, p, k), remove: () => onDeleteBlock(b) }) : null;

@@ -5,7 +5,8 @@ import { liveBlocks, nowIso, remove, save, saveMany, uid, update } from './repo'
 import { dateAtMinute, minuteOfDay } from './time';
 import { nextDate, revealOn } from './recurrence';
 import type { Column } from './taskBoard';
-import type { Day, DayBlock, DayKey, FocusSession, PlanBlock, Priority, Reflection, Revision, Task, TemplateBlock, TimeRecord } from './types';
+import { nightOf, sleepMinutes } from './sleep';
+import type { Day, DayBlock, DayKey, FocusSession, PlanBlock, Priority, Reflection, Revision, Sleep, Task, TemplateBlock, TimeRecord } from './types';
 
 /**
  * Domain operations for E2–E8. Pages call these; each one writes through repo (local first,
@@ -516,3 +517,50 @@ export function trackedByTask(sessions: FocusSession[]): Map<string, { min: numb
   return m;
 }
 
+
+// ── Sleep (note #29) ─────────────────────────────────────────────────────────
+
+export async function openSleep(): Promise<Sleep | undefined> {
+  return (await getDB().sleeps.toArray()).find(s => !s.deleted && !s.end);
+}
+
+/** “Going to sleep”: stops whatever runs (and focus) at the same moment, then the night starts. */
+export async function startSleep(at = new Date()) {
+  const db = getDB();
+  const open = (await db.timeRecords.toArray()).filter(r => r.end == null && !r.deleted);
+  for (const r of open) await stopActivity(r.id, at, false);
+  const f = await activeFocus();
+  if (f) await endFocus(f.id, 'interrupted', at);
+  const s: Sleep = { id: uid(), night: nightOf(at), start: at.toISOString(), source: 'manual', updatedAt: '' };
+  await save('sleep', s);
+  track('sleep_started', { source: 'manual', stopped: open.length });
+  return s;
+}
+
+/** “I'm awake”. */
+export async function endSleep(id: string, at = new Date()) {
+  const s = await getDB().sleeps.get(id);
+  if (!s || s.end) return;
+  await update<Sleep>('sleep', id, { end: at.toISOString() });
+  track('sleep_ended', { source: s.source, minutes: Math.round(sleepMinutes({ start: s.start, end: at.toISOString() })) });
+}
+
+/** Adds or fixes a night by hand (the watch was off, or the times were wrong). */
+export async function saveSleep(id: string | null, start: Date, end: Date | null) {
+  const patch = { night: nightOf(start), start: start.toISOString(), ...(end ? { end: end.toISOString() } : {}) };
+  if (id) {
+    const before = await getDB().sleeps.get(id);
+    await update<Sleep>('sleep', id, { ...patch, ...(end ? {} : { end: undefined }) });
+    track('sleep_edited', { source: before?.source ?? 'manual' });
+    return id;
+  }
+  const s: Sleep = { id: uid(), ...patch, source: 'manual', updatedAt: '' };
+  await save('sleep', s);
+  track('sleep_added', { minutes: end ? Math.round(sleepMinutes(s)) : null });
+  return s.id;
+}
+
+export async function deleteSleep(id: string) {
+  await remove('sleep', id);
+  track('sleep_deleted', {});
+}

@@ -1,6 +1,6 @@
 'use client';
 import { useMemo, useRef, useState, type DragEvent, type PointerEvent as RPointerEvent } from 'react';
-import { CalendarDays, Lock } from 'lucide-react';
+import { CalendarDays, Lock, Moon, Sunrise } from 'lucide-react';
 import { MIN_BLOCK_MIN, SNAP_MIN, TIMELINE_END_MIN, TIMELINE_START_MIN } from '@/lib/config';
 import { layoutLanes, visibleRange } from '@/lib/dayLogic';
 import { AreaIcon } from '@/lib/icons';
@@ -11,8 +11,13 @@ import { contextForMenu, pressForMenu, type MenuSpec } from './ContextMenu';
 export type ChangeKind = 'move' | 'resize-start' | 'resize-end';
 
 export interface TLItem extends TimelineBlock {
-  /** plan = block, real = time record, ghost = baseline/reference (read-only), running = live record. */
-  variant?: 'plan' | 'real' | 'ghost' | 'running' | 'event';
+  /** plan = block, real = time record, ghost = baseline/reference (read-only), running = live record,
+   *  sleep = a night (note #29, not a block), night = a planned Sleep block. */
+  variant?: 'plan' | 'real' | 'ghost' | 'running' | 'event' | 'sleep' | 'night';
+  /** Extra class (sleep: 'morning' | 'night'). */
+  cls?: string;
+  /** Sleep stages in minutes, drawn as a thin bar. */
+  stages?: { deep: number; light: number; rem: number; awake: number };
   /** Color key when the item has no area (calendar events). */
   color?: string;
   fixed?: boolean;
@@ -75,7 +80,7 @@ export function Timeline({ columns, areas, nowMin = null, selectedId, onSelect, 
   for (let h = lo; h <= hi; h += 30) hours.push(h);
 
   function begin(e: RPointerEvent, b: TLItem, col: TLColumn, kind: ChangeKind) {
-    if (e.button !== 0 || !col.editable || b.variant === 'ghost' || b.variant === 'event') return;
+    if (e.button !== 0 || !col.editable || b.variant === 'ghost' || b.variant === 'event' || b.variant === 'sleep') return;
     const selected = b.id === selectedId;
     if (e.pointerType !== 'mouse' && !selected) return; // touch: first tap selects, then drag
     if (b.variant === 'running' && kind === 'resize-end') return;
@@ -195,7 +200,7 @@ export function Timeline({ columns, areas, nowMin = null, selectedId, onSelect, 
           const dropping = dropAt?.id === b.id;
           const left = `calc(${colLeft(ci)} + (${colWidth}) * ${lane / lanes} + 2px)`;
           const width = `calc((${colWidth}) / ${lanes} - 4px)`;
-          const cls = ['blk', b.variant ?? 'plan', sel && 'sel', dragging && 'dragging', past && !sel && 'past', current && 'current', compact && 'compact', dim && 'dim', lit && 'lit', dropping && 'drop'].filter(Boolean).join(' ');
+          const cls = ['blk', b.variant ?? 'plan', b.cls, sel && 'sel', dragging && 'dragging', past && !sel && 'past', current && 'current', compact && 'compact', dim && 'dim', lit && 'lit', dropping && 'drop'].filter(Boolean).join(' ');
           return (
             <div
               key={`${col.id}-${b.id}`}
@@ -215,11 +220,12 @@ export function Timeline({ columns, areas, nowMin = null, selectedId, onSelect, 
             >
               {sel && col.editable && !evt && <div className="blk-handle top" onPointerDown={e => begin(e, b, col, 'resize-start')} />}
               <div className="blk-title">
-                {b.variant === 'event' ? <CalendarDays size={12} /> : area && <AreaIcon name={area.icon} size={13} />}<span>{b.title || area?.name || '—'}</span>
+                {b.variant === 'event' ? <CalendarDays size={12} /> : b.variant === 'sleep' ? (b.cls === 'morning' ? <Sunrise size={13} /> : <Moon size={13} />) : area && <AreaIcon name={area.icon} size={13} />}<span>{b.title || area?.name || '—'}</span>
                 {b.fixed && <Lock size={11} className="blk-lock" aria-label="Fixed" />}
               </div>
               <div className="blk-time">{fmtMin(b.start)}–{b.variant === 'running' ? 'now' : fmtMin(b.end)}</div>
               {b.badge && <span className={`blk-badge ${b.badgeTone ?? 'muted'}`}>{b.badge}</span>}
+              {b.stages && h >= 30 && <span className="stage-bar">{(['deep', 'rem', 'light', 'awake'] as const).map(k => <i key={k} className={`st-${k}`} style={{ flexGrow: b.stages![k] }} />)}</span>}
               {sel && col.editable && !evt && b.variant !== 'running' && <div className="blk-handle bottom" onPointerDown={e => begin(e, b, col, 'resize-end')} />}
             </div>
           );

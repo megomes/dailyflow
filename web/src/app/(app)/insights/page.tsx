@@ -1,4 +1,6 @@
 'use client';
+import { SleepInsights } from '@/components/SleepInsights';
+import { DEFAULT_TARGET } from '@/lib/sleep';
 import Link from 'next/link';
 import { useLiveQuery } from 'dexie-react-hooks';
 import { useEffect, useMemo, useState, type MouseEvent, type ReactNode } from 'react';
@@ -32,6 +34,7 @@ export default function InsightsPage() {
   const revisions = useLiveQuery(() => db.revisions.toArray(), []);
   const areasRaw = useLiveQuery(() => db.areas.toArray(), []);
   const prefs = useLiveQuery(() => db.prefs.get('prefs'), []);
+  const sleeps = (useLiveQuery(() => db.sleeps.toArray(), []) ?? []).filter(x => !x.deleted);
 
   const period: Period = span === 'day' ? { from: anchor, to: anchor, label: 'day' } : span === '7d' ? last7(anchor) : span === 'week' ? weekOf(anchor) : monthOf(anchor);
   const prev = previous(period);
@@ -93,7 +96,7 @@ export default function InsightsPage() {
         <div><b>{fmtDuration(data.focus.minutes)}</b><span>{m.insights.focus}</span></div>
       </div>
 
-      {empty ? <p className="secondary">{m.insights.empty}</p> : (
+      {empty ? <><p className="secondary">{m.insights.empty}</p><SleepInsights sleeps={sleeps} period={period} target={prefs?.sleepTarget ?? DEFAULT_TARGET} blocks={blocks ?? []} records={records ?? []} hover={hover} leave={leave} /></> : (
         <div className="ins-grid">
           <Card title={m.insights.distribution} hint={m.insights.distributionHint}>
             <div className="daybars">
@@ -172,6 +175,8 @@ export default function InsightsPage() {
               </>
             )}
           </Card>
+
+          <SleepInsights sleeps={sleeps} period={period} target={prefs?.sleepTarget ?? DEFAULT_TARGET} blocks={blocks ?? []} records={records ?? []} hover={hover} leave={leave} />
 
           <Card title={m.insights.shape} hint={m.insights.shapeHint}>
             <DayShapes period={period} records={records ?? []} areaMap={areaMap} hover={hover} leave={leave} />

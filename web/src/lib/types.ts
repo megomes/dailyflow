@@ -206,6 +206,25 @@ export interface Prefs extends SyncFields {
   calendarAreas?: Record<string, string>;
   /** IANA zone used by the server to place calendar events on the timeline. */
   timeZone?: string;
+  /** Sleep target (note #29): bedtime and wake-up as minutes of the clock day (22:00 → 1320, 06:00 → 360). */
+  sleepTarget?: { bed: number; wake: number };
+}
+
+/**
+ * A night of sleep (note #29). Not a block: its own record, from the watch (Samsung Health via
+ * Health Connect) or entered by hand (“Going to sleep” / “I'm awake”, or fixed later).
+ */
+export interface Sleep extends SyncFields {
+  /** Logical day of the bedtime (going to bed at 03:00 still belongs to the evening before). */
+  night: string;
+  start: string;
+  /** Wake-up; missing while asleep. */
+  end?: string;
+  source: 'manual' | 'health';
+  /** Minutes per stage, when the watch recorded them. */
+  stages?: { deep: number; light: number; rem: number; awake: number };
+  /** Health Connect record id (imports are idempotent). */
+  hcId?: string;
 }
 
 /** One answered (or skipped) daily check-in, keyed by the day it is about. */
@@ -216,7 +235,7 @@ export interface Checkin extends SyncFields {
 }
 
 export type Entity = 'area' | 'template_block' | 'day' | 'day_block' | 'checkin' | 'time_record' | 'task' | 'revision' | 'focus_session' | 'pref'
-  | 'calendar' | 'cal_event' | 'cal_override';
+  | 'calendar' | 'cal_event' | 'cal_override' | 'sleep';
 
 // ── E9: external calendars (read) ──────────────────────────────────────────
 

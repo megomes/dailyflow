@@ -1,5 +1,5 @@
 import Dexie, { type Table } from 'dexie';
-import type { Area, Calendar, CalEvent, CalOverride, Checkin, Day, DayBlock, Entity, FocusSession, OutboxItem, Prefs, ProductEvent, Revision, SyncFields, Task, TemplateBlock, TimeRecord } from './types';
+import type { Area, Calendar, CalEvent, CalOverride, Checkin, Day, DayBlock, Entity, FocusSession, OutboxItem, Prefs, ProductEvent, Revision, Sleep, SyncFields, Task, TemplateBlock, TimeRecord } from './types';
 
 /** Local-first store. The UI reads and writes only here; sync.ts reconciles with the server. */
 export class DailyFlowDB extends Dexie {
@@ -16,6 +16,7 @@ export class DailyFlowDB extends Dexie {
   calendars!: Table<Calendar, string>;
   calEvents!: Table<CalEvent, string>;
   calOverrides!: Table<CalOverride, string>;
+  sleeps!: Table<Sleep, string>;
   outbox!: Table<OutboxItem, number>;
   events!: Table<ProductEvent, string>;
   meta!: Table<{ key: string; value: unknown }, string>;
@@ -46,6 +47,10 @@ export class DailyFlowDB extends Dexie {
       calEvents: 'id, dayId, calendarKey',
       calOverrides: 'id',
     });
+    // Note #29: sleep, apart from blocks.
+    this.version(4).stores({
+      sleeps: 'id, night',
+    });
   }
 }
 
@@ -58,7 +63,7 @@ export function getDB(): DailyFlowDB {
 export function setDB(db: DailyFlowDB) { instance = db; }
 
 type SyncTable = 'areas' | 'templateBlocks' | 'days' | 'dayBlocks' | 'checkins' | 'timeRecords' | 'tasks' | 'revisions' | 'focusSessions' | 'prefs'
-  | 'calendars' | 'calEvents' | 'calOverrides';
+  | 'calendars' | 'calEvents' | 'calOverrides' | 'sleeps';
 export const ENTITY_TABLE: Record<Entity, SyncTable> = {
   area: 'areas',
   template_block: 'templateBlocks',
@@ -73,6 +78,7 @@ export const ENTITY_TABLE: Record<Entity, SyncTable> = {
   calendar: 'calendars',
   cal_event: 'calEvents',
   cal_override: 'calOverrides',
+  sleep: 'sleeps',
 };
 export const ENTITIES = Object.keys(ENTITY_TABLE) as Entity[];
 

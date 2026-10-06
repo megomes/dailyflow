@@ -890,3 +890,50 @@ html.mw-root, html.mw-root body { background: transparent !important; overflow: 
   .modal.wide > .composer-form { flex: 1; min-height: 0; overflow-y: auto; overscroll-behavior: contain; padding-bottom: 12px; }
   .modal.wide > .composer-foot { position: static; flex: none; flex-wrap: wrap; margin: 0 -16px; padding: 10px 16px calc(10px + env(safe-area-inset-bottom)); }
 }
+
+/* ── Sleep (note #29): nights are sky, not blocks ── */
+:root { --night-1: #12143a; --night-2: #1d2160; --night-3: #3a2f6e; --dawn-1: #6a4a8c; --dawn-2: #e08a6a; --dawn-3: #f6c27a; --star: rgba(255, 255, 255, .75); --night-fg: #e9e9ff; }
+.stars, .blk.sleep::before, .blk.night::before { content: ''; position: absolute; inset: 0; pointer-events: none;
+  background-image: radial-gradient(1.2px 1.2px at 12% 22%, var(--star) 50%, transparent 51%), radial-gradient(1px 1px at 38% 64%, var(--star) 50%, transparent 51%),
+    radial-gradient(1.6px 1.6px at 71% 30%, var(--star) 50%, transparent 51%), radial-gradient(1px 1px at 86% 78%, var(--star) 50%, transparent 51%),
+    radial-gradient(1.2px 1.2px at 55% 12%, var(--star) 50%, transparent 51%), radial-gradient(1px 1px at 24% 88%, var(--star) 50%, transparent 51%);
+  background-size: 90px 70px; animation: twinkle 6s ease-in-out infinite alternate; }
+@keyframes twinkle { to { opacity: .45; } }
+.blk.sleep { color: var(--night-fg); border-color: color-mix(in srgb, var(--night-3) 80%, #fff 0%); cursor: pointer; }
+.blk.sleep.night { background: linear-gradient(180deg, var(--night-3) 0%, var(--night-2) 28%, var(--night-1) 100%); }
+.blk.sleep.morning { background: linear-gradient(180deg, var(--night-1) 0%, var(--night-2) 45%, var(--dawn-1) 78%, var(--dawn-2) 94%, var(--dawn-3) 100%); }
+.blk.sleep.morning::before { mask-image: linear-gradient(180deg, #000 55%, transparent 85%); }
+.blk.sleep .blk-title, .blk.sleep .blk-time { position: relative; color: var(--night-fg); }
+.blk.sleep .blk-time { opacity: .75; }
+.blk.night { background: color-mix(in srgb, var(--night-2) 55%, var(--bg-surface)); border: 1px dashed color-mix(in srgb, var(--night-3) 70%, var(--text-muted)); color: var(--night-fg); }
+.blk.night::before { opacity: .55; }
+.blk.night .blk-title, .blk.night .blk-time { position: relative; }
+.stage-bar { display: flex; height: 6px; border-radius: 3px; overflow: hidden; gap: 1px; }
+.blk .stage-bar { position: absolute; left: 6px; right: 6px; bottom: 5px; }
+.stage-bar i { display: block; min-width: 2px; }
+.st-deep { background: #5b5ff0; } .st-rem { background: #b08cff; } .st-light { background: #7fb2ff; } .st-awake { background: #f6c27a; }
+.night-card { position: relative; overflow: hidden; color: var(--night-fg); border-color: var(--night-3); background: linear-gradient(160deg, var(--night-1), var(--night-2) 60%, var(--night-3)); }
+.night-card .stars { opacity: .9; }
+.night-card > *:not(.stars) { position: relative; }
+.night-card .label { color: color-mix(in srgb, var(--night-fg) 75%, transparent); }
+.night-card .hint { color: color-mix(in srgb, var(--night-fg) 65%, transparent); margin: 0; }
+.night-clock { font-size: 34px; font-weight: 650; letter-spacing: -.02em; }
+.btn.wake-btn { height: 40px; padding: 0 16px; background: linear-gradient(90deg, var(--dawn-2), var(--dawn-3)); border: 0; color: #3a2210; font-weight: 650; }
+.btn.wake-btn:hover { filter: brightness(1.06); }
+.morning-card { background: linear-gradient(160deg, color-mix(in srgb, var(--dawn-2) 18%, var(--bg-surface)), var(--bg-surface) 70%); }
+.sleep-form { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+.sleep-btn { color: color-mix(in srgb, #8f94ff 85%, var(--text-primary)); }
+@media (prefers-reduced-motion: reduce) { .stars, .blk.sleep::before, .blk.night::before { animation: none; } }
+/* Insights › Sleep */
+.sleep-kpis { display: flex; flex-wrap: wrap; gap: 6px 18px; font-size: 13px; color: var(--text-secondary); }
+.sleep-kpis b { color: var(--text-primary); font-size: 16px; margin-right: 2px; }
+.night-chart { position: relative; display: flex; flex-direction: column; gap: 6px; padding-left: 0; }
+.night-row { display: grid; grid-template-columns: 52px minmax(0, 1fr) 52px; gap: 10px; align-items: center; font-size: 12px; }
+.night-track { position: relative; height: 16px; border-radius: 8px; background: color-mix(in srgb, var(--night-2) 14%, var(--bg-surface-hover)); }
+.night-bar { position: absolute; top: 0; bottom: 0; border-radius: 8px; background: linear-gradient(90deg, var(--night-3), var(--night-2) 40%, var(--dawn-1) 85%, var(--dawn-2)); display: flex; align-items: center; padding: 0 5px; min-width: 6px; }
+.night-bar.short { box-shadow: inset 0 0 0 1.5px var(--dawn-3); }
+.night-bar .stage-bar { flex: 1; height: 5px; opacity: .9; }
+.night-target { position: absolute; top: -3px; bottom: -3px; width: 0; border-left: 1.5px dashed color-mix(in srgb, #8f94ff 70%, transparent); pointer-events: none; z-index: 1; }
+.night-axis { display: flex; justify-content: space-between; margin-left: 62px; margin-right: 62px; font-size: 10.5px; }
+.stage-legend { display: flex; flex-wrap: wrap; gap: 6px 14px; font-size: 12px; color: var(--text-secondary); }
+.stage-legend i { display: inline-block; width: 9px; height: 9px; border-radius: 3px; margin-right: 5px; vertical-align: -1px; }

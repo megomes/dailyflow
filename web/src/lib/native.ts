@@ -1,5 +1,5 @@
 /** Inside the Android app the web runs in a WebView; these messages keep its widgets and lock-screen notification in step. */
-type NativeMsg = { type: 'changed' } | { type: 'haptic'; kind?: 'light' | 'success' };
+type NativeMsg = { type: 'changed' } | { type: 'haptic'; kind?: 'light' | 'success' } | { type: 'health-connect' };
 
 declare global { interface Window { ReactNativeWebView?: { postMessage(data: string): void } } }
 

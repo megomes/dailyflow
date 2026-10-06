@@ -4,7 +4,7 @@ import { z } from 'zod';
 import { requireDevice, sql, unauthorized } from '@/lib/server';
 
 const Op = z.object({
-  entity: z.enum(['area', 'template_block', 'day', 'day_block', 'checkin', 'time_record', 'task', 'revision', 'focus_session', 'pref', 'calendar', 'cal_event', 'cal_override']),
+  entity: z.enum(['area', 'template_block', 'day', 'day_block', 'checkin', 'time_record', 'task', 'revision', 'focus_session', 'pref', 'calendar', 'cal_event', 'cal_override', 'sleep']),
   id: z.string().min(1).max(200),
   updatedAt: z.string().datetime(),
   deleted: z.boolean(),

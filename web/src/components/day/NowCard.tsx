@@ -1,11 +1,12 @@
 'use client';
 import { startedMs } from '@/lib/actual';
 import { useEffect, useState } from 'react';
-import { Coffee, Pause, Play, Plus, Square, Timer, Zap } from 'lucide-react';
+import { Coffee, Moon, Pause, Play, Plus, Square, Timer, Zap } from 'lucide-react';
 import { m } from '@/i18n/en';
 import { nowNext } from '@/lib/dayLogic';
 import { AreaIcon } from '@/lib/icons';
-import { endBreak, endFocus, scheduleTask, extendFocus, focusElapsedSec, pauseFocus, PRESETS, resumeFocus, startActivity, startFocus, startAlongside, stopActivity, toggleTaskDone, type Preset } from '@/lib/ops';
+import { endBreak, endFocus, scheduleTask, extendFocus, focusElapsedSec, pauseFocus, PRESETS, resumeFocus, startActivity, startFocus, startAlongside, startSleep, stopActivity, toggleTaskDone, type Preset } from '@/lib/ops';
+import { NightCard, SleepSheet } from './Sleep';
 import { dateAtMinute, fmtClock, fmtDuration, fmtMin } from '@/lib/time';
 import { track } from '@/lib/analytics';
 import type { Area, DayBlock, FocusSession, Task, TimeRecord } from '@/lib/types';
@@ -48,7 +49,10 @@ export function NowCard({ dayId, minute, blocks, tasks, areas, areaMap, running,
   const [presetId, setPresetId] = useState('25/5');
   const [choosing, setChoosing] = useState(false);
   const [free, setFree] = useState('');
-  const tick = useSecond(!!running || !!focus || alongside.length > 0);
+  // Asleep (note #29): the card becomes the night, with one big “I'm awake”.
+  const sleeping = useLiveQuery(async () => (await getDB().sleeps.toArray()).find(s => !s.deleted && !s.end), []);
+  const [fixSleep, setFixSleep] = useState(false);
+  const tick = useSecond(!!running || !!focus || alongside.length > 0 || !!sleeping);
 
   useEffect(() => { void getMeta<string>('focusPreset', '25/5').then(setPresetId); }, []);
   const prefs = useLiveQuery(() => getDB().prefs.get('prefs'), []);
@@ -82,6 +86,14 @@ export function NowCard({ dayId, minute, blocks, tasks, areas, areaMap, running,
   const parallel = blocks.filter(b => b.start <= minute && minute < b.end && b.id !== mainBlockId && !alongside.some(r => r.blockId === b.id));
   const xa = next ? areaMap.get(next.areaId) : undefined;
   const onBreak = focus && focus.state === 'done' && focus.breakStartedAt && !focus.breakEndedAt;
+  const evening = minute >= 18 * 60 || now?.areaId === 'area-sleep';
+
+  if (sleeping) return (
+    <>
+      <NightCard sleep={sleeping} tick={tick} onFix={() => setFixSleep(true)} />
+      {fixSleep && <SleepSheet sleep={sleeping} night={sleeping.night} onClose={() => setFixSleep(false)} />}
+    </>
+  );
 
   return (
     <>
@@ -156,6 +168,7 @@ export function NowCard({ dayId, minute, blocks, tasks, areas, areaMap, running,
             ) : null}
             <button type="button" className="btn sm" onClick={() => setChoosing(c => !c)} aria-expanded={choosing}><Timer size={13} />{m.activity.focus}</button>
             <button type="button" className="btn sm ghost" onClick={() => setSwitching(true)}><Zap size={13} />{m.activity.switch}</button>
+            {evening && <button type="button" className="btn sm ghost sleep-btn" onClick={() => void startSleep()}><Moon size={13} />{m.sleep.goingToSleep}</button>}
             {running && <button type="button" className="btn sm ghost" onClick={() => setAdding(true)} title={m.activity.alsoHint}><Plus size={13} />{m.activity.alsoDoing}</button>}
           </div>
         )}

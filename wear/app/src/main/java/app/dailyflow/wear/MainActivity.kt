@@ -88,6 +88,7 @@ private fun NowScreen(api: Api, onUnpair: () -> Unit) {
             item {
                 val line = when {
                     s?.focusTitle != null && s.focusLeftSec != null -> "Focus · ${maxOf(0, s.focusLeftSec / 60)} min left"
+                    s?.runningLine != null -> s.runningLine
                     s?.runningSince != null -> "since ${s.runningSince}"
                     s?.now != null -> "until ${s.now.endLabel} · ${s.remainingMin} min"
                     else -> ""
@@ -97,6 +98,7 @@ private fun NowScreen(api: Api, onUnpair: () -> Unit) {
             item {
                 Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
                     CompactChip(onClick = { scope.launch { message = api.quick("start"); refresh() } }, label = { Text("Start") }, colors = ChipDefaults.primaryChipColors())
+                    if (s?.runningTitle != null) CompactChip(onClick = { scope.launch { message = api.quick(if (s.runningPaused) "resume" else "pause"); refresh() } }, label = { Text(if (s.runningPaused) "Resume" else "Pause") }, colors = ChipDefaults.secondaryChipColors())
                     CompactChip(onClick = { scope.launch { message = api.quick("stop"); refresh() } }, label = { Text("Stop") }, colors = ChipDefaults.secondaryChipColors())
                 }
             }

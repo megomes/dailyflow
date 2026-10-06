@@ -17,7 +17,7 @@ import { useAllSessions, useOpenTasks } from './useDay';
 export function DayTasks({ dayId, tasks, areaMap, showBacklog = true, title = m.tasks.title }: {
   dayId: string; tasks: Task[]; areaMap: Map<string, Area>; showBacklog?: boolean; title?: string;
 }) {
-  const openTasks = useOpenTasks();
+  const openTasks = useOpenTasks(dayId);
   const sessions = useAllSessions();
   const [open, setOpen] = useState<string | null>(null);
   const areas = useLiveQuery(() => getDB().areas.toArray(), []) ?? [];

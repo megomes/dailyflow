@@ -20,6 +20,24 @@ export function startedMs(r: Pick<TimeRecord, 'dayId' | 'start' | 'startedAt'>):
 
 export const recEnd = (r: Pick<TimeRecord, 'end'>, nowMin: number) => (r.end == null ? nowMin : r.end);
 
+type Pausable = Pick<TimeRecord, 'dayId' | 'pauses'>;
+export const isPaused = (r: Pick<TimeRecord, 'pauses'>) => { const p = r.pauses?.[r.pauses.length - 1]; return !!p && p.to == null; };
+
+/** Milliseconds spent paused (an open pause counts until `nowMs`). */
+export function pausedMs(r: Pick<TimeRecord, 'pauses'>, nowMs = Date.now()): number {
+  return (r.pauses ?? []).reduce((s, p) => s + Math.max(0, (p.to ?? nowMs) - p.from), 0);
+}
+
+/** Paused minutes that fall inside [win.start, win.end] (minutes of the record's day); the whole record when no window. */
+export function pausedWithin(r: Pausable, win?: Span, nowMs = Date.now()): number {
+  if (!r.pauses?.length) return 0;
+  const base = dateAtMinute(r.dayId, 0).getTime();
+  return r.pauses.reduce((s, p) => {
+    const a = (p.from - base) / 60000, b = ((p.to ?? nowMs) - base) / 60000;
+    return s + (win ? Math.max(0, Math.min(b, win.end) - Math.max(a, win.start)) : Math.max(0, b - a));
+  }, 0);
+}
+
 /** Merges overlapping spans into a sorted, disjoint list. */
 /**
  * Time actually covered vs. time spent on two things at once. Per-area totals count each activity
@@ -96,10 +114,10 @@ export function planAsReal(plan: TimelineBlock[], records: TimeRecord[], until: 
 }
 
 /** Minutes per area. A running item (end null) counts up to `nowMin`. */
-export function areaTotals(items: { start: number; end: number | null; areaId: string }[], nowMin = 0): Map<string, number> {
+export function areaTotals(items: { start: number; end: number | null; areaId: string; paused?: number }[], nowMin = 0): Map<string, number> {
   const m = new Map<string, number>();
   for (const it of items) {
-    const d = (it.end == null ? nowMin : it.end) - it.start;
+    const d = (it.end == null ? nowMin : it.end) - it.start - (it.paused ?? 0);
     if (d > 0) m.set(it.areaId, (m.get(it.areaId) ?? 0) + d);
   }
   return m;
@@ -109,7 +127,8 @@ export function areaTotals(items: { start: number; end: number | null; areaId: s
 export function blockActual(b: TimelineBlock, records: TimeRecord[], nowMin: number) {
   let any = 0, same = 0;
   for (const r of records) {
-    const o = overlap(b, { start: r.start, end: recEnd(r, nowMin) });
+    const win = { start: r.start, end: recEnd(r, nowMin) };
+    const o = Math.max(0, overlap(b, win) - pausedWithin(r, { start: Math.max(b.start, win.start), end: Math.min(b.end, win.end) }));
     any += o;
     if (r.areaId === b.areaId || r.blockId === b.id) same += o;
   }
@@ -151,7 +170,7 @@ export function whatChanged(baseline: PlanBlock[] | undefined, current: Timeline
     const o = covered.reduce((s, c) => s + overlap(b, c), 0);
     if (o > 0) planned.set(b.areaId, (planned.get(b.areaId) ?? 0) + o);
   }
-  const actual = areaTotals(records.filter(r => r.start < until).map(r => ({ start: r.start, end: Math.min(recEnd(r, until), until), areaId: r.areaId })), until);
+  const actual = areaTotals(records.filter(r => r.start < until).map(r => ({ start: r.start, end: Math.min(recEnd(r, until), until), areaId: r.areaId, paused: pausedWithin(r, { start: r.start, end: until }) })), until);
   const lines: ChangeLine[] = [];
   // An area with a block still under way is not “skipped” yet: that only holds once the block is over.
   const ongoing = new Set(current.filter(b => b.start < until && until < b.end).map(b => b.areaId));
@@ -247,6 +266,21 @@ export function capacity(block: TimelineBlock, tasks: Task[]) {
 
 /** Day "shape" for history: real minutes per area, sorted by size. */
 export function dayShape(records: TimeRecord[], nowMin = Infinity) {
-  const t = areaTotals(records.map(r => ({ start: r.start, end: r.end ?? (Number.isFinite(nowMin) ? nowMin : r.start), areaId: r.areaId })));
+  const t = areaTotals(records.map(r => ({ start: r.start, end: r.end ?? (Number.isFinite(nowMin) ? nowMin : r.start), areaId: r.areaId, paused: pausedWithin(r) })));
   return [...t.entries()].sort((a, b) => b[1] - a[1]);
+}
+
+/** Seconds of real activity: elapsed since the start minus paused time (note #33). */
+export function activeSec(r: Pick<TimeRecord, 'dayId' | 'start' | 'startedAt' | 'pauses'>, nowMs: number): number {
+  return Math.max(0, (nowMs - startedMs(r) - pausedMs(r, nowMs)) / 1000);
+}
+
+/**
+ * The same two facts everywhere (pill, tray, watch, widgets, Now card — note #34): how long you have
+ * been at it, and how long is left in the block the activity belongs to (or +over once it ran past).
+ * `leftMin` is positive while time remains, negative past the planned end, null when there is no block.
+ */
+export function leftInBlock(r: Pick<TimeRecord, 'blockId'>, blocks: { id: string; start: number; end: number }[], nowMin: number, current?: { start: number; end: number } | null): number | null {
+  const b = (r.blockId ? blocks.find(x => x.id === r.blockId) : undefined) ?? current ?? null;
+  return b ? b.end - nowMin : null;
 }

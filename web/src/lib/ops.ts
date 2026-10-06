@@ -1,4 +1,4 @@
-import { planAsReal, recEnd, type RecordDraft, type ReplanResult, type Span } from './actual';
+import { isPaused, pausedMs, planAsReal, recEnd, type RecordDraft, type ReplanResult, type Span } from './actual';
 import { track } from './analytics';
 import { getDB } from './db';
 import { liveBlocks, nowIso, remove, save, saveMany, uid, update } from './repo';
@@ -131,6 +131,22 @@ export async function startActivity(dayId: string, a: { areaId: string; title: s
   return rec;
 }
 
+/** Pause / resume a running activity (note #33): the clock and the statistics skip the paused stretch. */
+export async function pauseActivity(id: string) {
+  const r = await getDB().timeRecords.get(id);
+  if (!r || r.end != null || isPaused(r)) return;
+  await update<TimeRecord>('time_record', id, { pauses: [...(r.pauses ?? []), { from: Date.now() }] });
+  track('activity_paused', { area: r.areaId });
+}
+
+export async function resumeActivity(id: string) {
+  const r = await getDB().timeRecords.get(id);
+  if (!r || r.end != null || !isPaused(r)) return;
+  const pauses = r.pauses!.map((p, i) => (i === r.pauses!.length - 1 ? { ...p, to: Date.now() } : p));
+  await update<TimeRecord>('time_record', id, { pauses });
+  track('activity_resumed', { area: r.areaId, paused_min: Math.round(pausedMs({ pauses }) / 60000) });
+}
+
 /** Stops one activity. When the main one stops, something still running alongside takes its place (note #23). */
 export async function stopActivity(id: string, at = new Date(), promote = true) {
   const r = await getDB().timeRecords.get(id);
@@ -141,7 +157,9 @@ export async function stopActivity(id: string, at = new Date(), promote = true) 
     if (next) await update<TimeRecord>('time_record', next.id, { alongside: false });
   }
   if (end - r.start < 1) { await remove('time_record', id); track('block_finished', { discarded: true }); return; }
-  await update<TimeRecord>('time_record', id, { end });
+  // Stopping while paused ends the pause at the same moment.
+  const pauses = isPaused(r) ? r.pauses!.map((p, i) => (i === r.pauses!.length - 1 ? { ...p, to: at.getTime() } : p)) : undefined;
+  await update<TimeRecord>('time_record', id, { end, ...(pauses ? { pauses } : {}) });
   const block = r.blockId ? await getDB().dayBlocks.get(r.blockId) : undefined;
   track('block_finished', { source: 'live', duration_min: end - r.start, area: r.areaId, delay_min: block ? end - block.end : null });
 }
@@ -252,6 +270,18 @@ export async function patchBlock(id: string, patch: Partial<DayBlock>, kind: Rev
   const after = await update<DayBlock>('day_block', id, patch);
   if (!after) return null;
   return recordRevision(before.dayId, kind, snapshot(before), snapshot(after));
+}
+
+/** The day starts when you wake up: every block moves together so the first one begins at [minute] (note #30). */
+export async function setWake(dayId: string, minute: number) {
+  const blocks = (await getDB().dayBlocks.where('dayId').equals(dayId).toArray()).filter(b => !b.deleted && !b.fixed);
+  await update<Day>('day', dayId, { wakeAt: minute });
+  if (!blocks.length) return;
+  const first = Math.min(...blocks.map(b => b.start));
+  const delta = Math.max(-first, Math.min(minute - first, 1440 - Math.max(...blocks.map(b => b.end))));
+  if (!delta) return;
+  for (const b of blocks) await update<DayBlock>('day_block', b.id, { start: b.start + delta, end: b.end + delta });
+  track('wake_time_set', { dayId, minute, shifted: blocks.length });
 }
 
 export async function deleteBlock(id: string) {

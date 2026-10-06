@@ -8,7 +8,7 @@ import { logicalAt } from './zone';
  */
 export interface QuickOp { entity: 'time_record'; id: string; updatedAt: string; deleted: boolean; data: Record<string, unknown> }
 
-export function quickOps(action: 'start' | 'stop' | 'next', rows: { blocks: DayBlock[]; records: TimeRecord[] }, at: Date, tz: string, cutoff: number, newId: () => string): { ops: QuickOp[]; message: string } {
+export function quickOps(action: 'start' | 'stop' | 'next' | 'pause' | 'resume', rows: { blocks: DayBlock[]; records: TimeRecord[] }, at: Date, tz: string, cutoff: number, newId: () => string): { ops: QuickOp[]; message: string } {
   const { day, min } = logicalAt(at, tz, cutoff);
   const ts = at.toISOString();
   const ops: QuickOp[] = [];
@@ -20,13 +20,24 @@ export function quickOps(action: 'start' | 'stop' | 'next', rows: { blocks: DayB
     const { id, updatedAt: _u, deleted: _d, ...rest } = r;
     ops.push(end - r.start < 1
       ? { entity: 'time_record', id, updatedAt: ts, deleted: true, data: rest }
-      : { entity: 'time_record', id, updatedAt: ts, deleted: false, data: { ...rest, end } });
+      : { entity: 'time_record', id, updatedAt: ts, deleted: false, data: { ...rest, end, ...(r.pauses?.length && r.pauses[r.pauses.length - 1].to == null ? { pauses: r.pauses.map((p, i) => (i === r.pauses!.length - 1 ? { ...p, to: at.getTime() } : p)) } : {}) } });
   };
   /** Something running alongside becomes the main activity (note #23: never two timers for one thing). */
   const promote = (r: TimeRecord) => {
     const { id, updatedAt: _u, deleted: _d, ...rest } = r;
     ops.push({ entity: 'time_record', id, updatedAt: new Date(at.getTime() + 1).toISOString(), deleted: false, data: { ...rest, alongside: false } });
   };
+  if (action === 'pause' || action === 'resume') {
+    if (!running) return { ops, message: 'Nothing running' };
+    const ps = running.pauses ?? [];
+    const paused = ps.length > 0 && ps[ps.length - 1].to == null;
+    if (action === 'pause' && paused) return { ops, message: 'Already paused' };
+    if (action === 'resume' && !paused) return { ops, message: 'Not paused' };
+    const pauses = action === 'pause' ? [...ps, { from: at.getTime() }] : ps.map((p, i) => (i === ps.length - 1 ? { ...p, to: at.getTime() } : p));
+    const { id, updatedAt: _u, deleted: _d, ...rest } = running;
+    ops.push({ entity: 'time_record', id, updatedAt: ts, deleted: false, data: { ...rest, pauses } });
+    return { ops, message: `${action === 'pause' ? 'Paused' : 'Resumed'} ${running.title}` };
+  }
   if (action === 'stop') {
     if (!running) return { ops, message: 'Nothing running' };
     stop(running);

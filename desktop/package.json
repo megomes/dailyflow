@@ -1,7 +1,7 @@
 {
   "name": "dailyflow-desktop",
   "productName": "DailyFlow",
-  "version": "1.0.0",
+  "version": "1.1.0",
   "description": "DailyFlow on the computer: Now/Next floating in a corner, plus a tray / menu-bar icon (note #20).",
   "author": "Matheus Ervilha Gomes",
   "private": true,

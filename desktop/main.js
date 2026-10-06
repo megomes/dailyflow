@@ -103,8 +103,8 @@ function fitToPage() {
 /** The page asks for its size (pill ⇄ card). The window grows away from the screen edge it sits on. */
 function resizeMini(size) {
   if (!mini || onLogin()) return;
-  const w = Math.max(200, Math.min(600, Math.round(size.width)));
-  const h = Math.max(60, Math.min(800, Math.round(size.height)));
+  const w = Math.max(56, Math.min(600, Math.round(size.width)));
+  const h = Math.max(56, Math.min(800, Math.round(size.height)));
   const b = mini.getBounds();
   const wa = screen.getDisplayMatching(b).workArea;
   const bottomHalf = b.y + b.height / 2 > wa.y + wa.height / 2;
@@ -165,6 +165,19 @@ function createTray() {
   refreshMenu();
 }
 
+// Hover for the collapsed pill (note #32): a draggable window never gets mouse events in the page,
+// so the shell watches the cursor and tells the page when it is over the window.
+let hoverInside = false;
+function watchHover() {
+  setInterval(() => {
+    if (!mini || mini.isDestroyed() || !mini.isVisible() || onLogin()) return;
+    const p = screen.getCursorScreenPoint();
+    const b = mini.getBounds();
+    const inside = p.x >= b.x && p.x < b.x + b.width && p.y >= b.y && p.y < b.y + b.height;
+    if (inside !== hoverInside) { hoverInside = inside; mini.webContents.send('df:hover', inside); }
+  }, 60);
+}
+
 // ── IPC from the page ──────────────────────────────────────────────────────
 const fromApp = e => { try { return new URL(e.senderFrame.url).origin === ORIGIN; } catch { return false; } };
 ipcMain.on('df:setSize', (e, size) => { if (fromApp(e) && size) resizeMini(size); });
@@ -187,6 +200,7 @@ if (!app.requestSingleInstanceLock()) {
     app.setAppUserModelId('app.dailyflow.desktop');
     createTray();
     createMini();
+    watchHover();
     globalShortcut.register(SHORTCUT, () => setMiniVisible(!mini?.isVisible()));
     screen.on('display-removed', () => { if (mini) { const { width, height } = mini.getBounds(); mini.setBounds(initialBounds({ width, height })); } });
   });

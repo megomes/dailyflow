@@ -46,10 +46,11 @@ export function useDay(dayId: string): DayData {
 }
 
 /** Backlog/Inbox tasks not scheduled on any day, for the tray and planning. */
-export function useOpenTasks() {
+export function useOpenTasks(forDay?: string) {
   const rows = useLiveQuery(() => getDB().tasks.where('status').anyOf('inbox', 'backlog').toArray(), []);
   // Snoozed tasks stay out of sight until their day.
-  const today = logicalDay();
+  // Planning another day (tomorrow) sees what was snoozed until that day (note #30).
+  const today = forDay ?? logicalDay();
   return useMemo(() => (rows ?? []).filter(t => !t.deleted && !(t.deferUntil && t.deferUntil > today)).sort((a, b) => prioRank(a) - prioRank(b) || a.sort - b.sort), [rows, today]);
 }
 

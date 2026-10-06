@@ -1,11 +1,11 @@
 'use client';
-import { startedMs } from '@/lib/actual';
+import { activeSec, isPaused, leftInBlock, pausedMs, startedMs } from '@/lib/actual';
 import { useEffect, useState } from 'react';
 import { Coffee, Moon, Pause, Play, Plus, Square, Timer, Zap } from 'lucide-react';
 import { m } from '@/i18n/en';
 import { nowNext } from '@/lib/dayLogic';
 import { AreaIcon } from '@/lib/icons';
-import { endBreak, endFocus, scheduleTask, extendFocus, focusElapsedSec, pauseFocus, PRESETS, resumeFocus, startActivity, startFocus, startAlongside, startSleep, stopActivity, toggleTaskDone, type Preset } from '@/lib/ops';
+import { endBreak, endFocus, scheduleTask, extendFocus, focusElapsedSec, pauseFocus, PRESETS, resumeFocus, pauseActivity, resumeActivity, startActivity, startFocus, startAlongside, startSleep, stopActivity, toggleTaskDone, type Preset } from '@/lib/ops';
 import { NightCard, SleepSheet } from './Sleep';
 import { dateAtMinute, fmtClock, fmtDuration, fmtMin } from '@/lib/time';
 import { track } from '@/lib/analytics';
@@ -81,6 +81,7 @@ export function NowCard({ dayId, minute, blocks, tasks, areas, areaMap, running,
   }
 
   const na = areaMap.get((running ?? now)?.areaId ?? '');
+  const left = running ? leftInBlock(running, blocks, minute, now) : null;
   // Another block planned for right now (overlapping on purpose): offer to run it alongside.
   const mainBlockId = running?.blockId ?? now?.id;
   const parallel = blocks.filter(b => b.start <= minute && minute < b.end && b.id !== mainBlockId && !alongside.some(r => r.blockId === b.id));
@@ -108,7 +109,9 @@ export function NowCard({ dayId, minute, blocks, tasks, areas, areaMap, running,
             <div className="big"><span className="dot" />{na && <AreaIcon name={na.icon} size={16} />}<span>{running.title || na?.name}</span></div>
             <div className="meta tabular">
               <span>{m.activity.since(fmtMin(running.start))}</span>
-              <b className="elapsed">{fmtClock((tick - startedMs(running)) / 1000)}</b>
+              <b className="elapsed">{fmtClock(activeSec(running, tick))}</b>
+              {left != null && <span className={left < 0 ? 'over' : ''}>{left < 0 ? m.mini.over(fmtDuration(Math.round(-left))) : m.mini.left(fmtDuration(Math.max(1, Math.round(left))))}</span>}
+              {isPaused(running) && <span className="pill paused-pill" data-color="orange"><Pause size={11} />{m.activity.paused(fmtDuration(Math.max(1, Math.round(pausedMs(running, tick) / 60000))))}</span>}
             </div>
             {now && now.id !== running.blockId && now.start > running.start && (
               <div className="handoff" data-color={areaMap.get(now.areaId)?.color ?? 'gray'}>
@@ -160,7 +163,12 @@ export function NowCard({ dayId, minute, blocks, tasks, areas, areaMap, running,
         {!focus && !onBreak && (
           <div className="row wrap now-actions">
             {running ? (
-              <button type="button" className="btn sm" onClick={() => void stopActivity(running.id)}><Square size={13} />{m.activity.stop}</button>
+              <>
+                {isPaused(running)
+                  ? <button type="button" className="btn sm primary" onClick={() => void resumeActivity(running.id)}><Play size={13} />{m.activity.resume}</button>
+                  : <button type="button" className="btn sm" onClick={() => void pauseActivity(running.id)}><Pause size={13} />{m.activity.pause}</button>}
+                <button type="button" className="btn sm" onClick={() => void stopActivity(running.id)}><Square size={13} />{m.activity.stop}</button>
+              </>
             ) : now ? (
               <button type="button" className="btn sm primary" onClick={() => void startActivity(dayId, { areaId: now.areaId, title: now.title, blockId: now.id, source: 'live' })}>
                 <Play size={13} />{m.activity.start}

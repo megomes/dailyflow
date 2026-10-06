@@ -39,8 +39,9 @@ export function hero(s: Snapshot): Hero {
   if (s.running) {
     const off = s.now && s.now.title !== s.running.title;
     return {
-      mode: 'running', tag: off ? 'DOING · OFF PLAN' : 'NOW', title: s.running.title, color: s.running.color,
-      sub: off ? `planned ${s.now!.title} until ${s.now!.endLabel}` : s.now ? `since ${s.running.sinceLabel} · until ${s.now.endLabel}` : `since ${s.running.sinceLabel}`,
+      mode: 'running', tag: s.running.paused ? 'PAUSED' : off ? 'DOING · OFF PLAN' : 'NOW', title: s.running.title, color: s.running.color,
+      // Same line everywhere: time at it and time left in the block (note #34).
+      sub: off ? `${s.running.line} · planned ${s.now!.title} until ${s.now!.endLabel}` : s.running.line ?? `since ${s.running.sinceLabel}`,
       progress: s.now && !off ? s.now.progress : null, action: 'QUICK_STOP',
     };
   }

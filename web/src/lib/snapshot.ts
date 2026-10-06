@@ -1,4 +1,4 @@
-import { coverage, recEnd } from './actual';
+import { coverage, isPaused, leftInBlock, pausedMs, recEnd } from './actual';
 import { logicalAt } from './zone';
 import type { Area, ColorKey, DayBlock, FocusSession, Task, TimeRecord } from './types';
 
@@ -22,7 +22,16 @@ export interface Snapshot {
   now: (SnapItem & { remainingMin: number; progress: number }) | null;
   next: (SnapItem & { inMin: number }) | null;
   timeline: SnapItem[];
-  running: { title: string; area: string; color: string; sinceLabel: string; elapsedMin: number } | null;
+  running: {
+    title: string; area: string; color: string; sinceLabel: string;
+    /** Minutes actually spent (paused time not counted). */
+    elapsedMin: number;
+    paused: boolean;
+    /** Minutes left in its block (negative once past the planned end); null without a block. The same two facts on every surface (note #34). */
+    leftMin: number | null;
+    /** Ready-made line: “14:00 · 8m left” / “22:00 · +3m over” / “Paused”. */
+    line: string;
+  } | null;
   /** Activities running alongside the main one (two things at once). */
   alsoRunning: { title: string; color: string; sinceLabel: string }[];
   /** Every block on now (more than one when blocks overlap on purpose, e.g. a meeting + guitar). */
@@ -58,8 +67,9 @@ export function buildSnapshot(input: { blocks: DayBlock[]; records: TimeRecord[]
   const elapsed = (r: TimeRecord) => {
     const byMinute = minute - r.start;
     const exact = r.startedAt ? (at.getTime() - Date.parse(r.startedAt)) / 60000 : NaN;
-    return Math.max(0, Math.round(Number.isFinite(exact) && Math.abs(exact - byMinute) < 1.5 ? exact : byMinute));
+    return Math.max(0, Math.round((Number.isFinite(exact) && Math.abs(exact - byMinute) < 1.5 ? exact : byMinute) - pausedMs(r, at.getTime()) / 60000));
   };
+  const dur = (min: number) => { const m = Math.max(1, Math.round(min)); return m >= 60 ? `${Math.floor(m / 60)}h${m % 60 ? ` ${m % 60}m` : ''}` : `${m}m`; };
   const focus = input.sessions.filter(f => !f.deleted && (f.state === 'running' || f.state === 'paused')).sort((a, b) => b.startedAt.localeCompare(a.startedAt))[0];
   let focusOut: Snapshot['focus'] = null;
   if (focus) {
@@ -105,7 +115,14 @@ export function buildSnapshot(input: { blocks: DayBlock[]; records: TimeRecord[]
     timeline: blocks.map(item),
     running: running ? (() => {
       const a = areaMap.get(running.areaId);
-      return { title: running.title || a?.name || '', area: a?.name ?? '', color: AREA_HEX[a?.color ?? 'gray'], sinceLabel: hhmm(running.start), elapsedMin: elapsed(running) };
+      const el = elapsed(running);
+      const left = leftInBlock(running, blocks, minute, nowB);
+      const paused = isPaused(running);
+      return {
+        title: running.title || a?.name || '', area: a?.name ?? '', color: AREA_HEX[a?.color ?? 'gray'], sinceLabel: hhmm(running.start), elapsedMin: el,
+        paused, leftMin: left == null ? null : Math.round(left),
+        line: paused ? `Paused · ${dur(el)} so far` : `${dur(el)}${left == null ? '' : left < 0 ? ` · +${dur(-left)} over` : ` · ${dur(left)} left`}`,
+      };
     })() : null,
     alsoRunning: also.map(r => ({ title: r.title || areaMap.get(r.areaId)?.name || '', color: AREA_HEX[areaMap.get(r.areaId)?.color ?? 'gray'], sinceLabel: hhmm(r.start) })),
     nowAll: covering.map(item),

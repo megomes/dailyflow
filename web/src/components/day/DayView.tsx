@@ -11,13 +11,12 @@ import { NEW_BLOCK_MIN } from '@/lib/config';
 import { useClock, useIsMobile } from '@/lib/hooks';
 import { addBlock, addRecord, deleteBlock, patchBlock, reopenDay, scheduleTask, updateRecord } from '@/lib/ops';
 import { getDB } from '@/lib/db';
-import { fmtDuration, fmtMin } from '@/lib/time';
+import { dateAtMinute, fmtDuration, fmtMin } from '@/lib/time';
 import type { DayBlock, Revision } from '@/lib/types';
 import { Timeline, type ChangeKind, type TLColumn, type TLItem } from '../Timeline';
 import { blockMenu, recordMenu } from '../menus';
-import { sleepBands } from '@/lib/sleep';
 import { cutoffHour } from '@/lib/time';
-import { MorningPrompt, SleepSheet, bandTitle, useSleeps } from './Sleep';
+import { MorningPrompt, NightStrip, SleepSheet, useSleeps } from './Sleep';
 import { useDraggedTask } from '../tasks/dragState';
 import { ChangesCard, ConflictsCard, GapsCard, ReasonPrompt, NotPlannedCard, ReplanModal, SaveTemplateModal, StartDayCard } from './Cards';
 import { DayTasks } from './DayTasks';
@@ -119,21 +118,26 @@ export function DayView({ dayId, live, title, sub, sideTop, sideBottom, headExtr
       id: r.id, start: r.start, end: r.end ?? Math.max(r.start + 1, until), title: r.title, areaId: r.areaId,
       variant: r.end == null ? 'running' : 'real',
     }));
-    // Last night's end and tonight's start, from the sleep records (not blocks).
-    const sleepItems: TLItem[] = sleepBands(dayId, sleeps, cutoffHour()).map(b => ({
-      id: b.id, start: b.start, end: b.end, title: bandTitle(b.sleep, b.part), areaId: 'area-sleep', variant: 'sleep', cls: b.part, ...(b.sleep.stages ? { stages: b.sleep.stages } : {}),
-    }));
-    if (view === 'plan') return [{ id: 'plan', items: [...planItems, ...sleepItems], editable: true }];
+    // Pauses read as striped gaps inside the activity (note #33).
+    const base = dateAtMinute(dayId, 0).getTime();
+    for (const r of d.records) {
+      (r.pauses ?? []).forEach((p, i) => {
+        const a = Math.max(r.start, Math.round((p.from - base) / 60000));
+        const b = Math.min(r.end ?? Math.max(until, a + 1), Math.max(a + 1, Math.round(((p.to ?? Date.now()) - base) / 60000)));
+        if (b > a) realItems.push({ id: `pause:${r.id}:${i}`, start: a, end: b, title: m.activity.pausedShort, areaId: r.areaId, variant: 'ghost', cls: 'paused' });
+      });
+    }
+    if (view === 'plan') return [{ id: 'plan', items: planItems, editable: true }];
     if (view === 'real') return [
       { id: 'plan', label: m.day.cols.plan, items: planItems, editable: true },
-      { id: 'real', label: m.day.cols.real, items: [...realItems, ...sleepItems], editable: true },
+      { id: 'real', label: m.day.cols.real, items: realItems, editable: true },
     ];
     return [
       { id: 'baseline', label: m.day.cols.baseline, items: (d.day?.baseline ?? []).map(b => ({ ...b, variant: 'ghost' as const })), editable: false },
       { id: 'plan', label: m.day.cols.final, items: planItems, editable: true },
-      { id: 'real', label: m.day.cols.real, items: [...realItems, ...sleepItems], editable: true },
+      { id: 'real', label: m.day.cols.real, items: realItems, editable: true },
     ];
-  }, [d.blocks, d.records, d.tasks, d.day?.baseline, view, started, until, sleeps, dayId]);
+  }, [d.blocks, d.records, d.tasks, d.day?.baseline, view, started, until]);
 
   function afterRevision(revId: string | null, label: string) {
     if (revId) setReason({ revId, label });
@@ -304,6 +308,7 @@ export function DayView({ dayId, live, title, sub, sideTop, sideBottom, headExtr
           </button>
         </div>
       </header>
+      <NightStrip dayId={dayId} onOpen={setSleepSel} />
       <div className="today">
         <div className="today-side">
           {sideTop}
@@ -337,9 +342,8 @@ export function DayView({ dayId, live, title, sub, sideTop, sideBottom, headExtr
           areas={d.areaMap}
           nowMin={nowMin}
           selectedId={sel?.id ?? null}
-          onSelect={(id, col) => { if (id?.startsWith('sleep:')) { setSleepSel(id.split(':')[1]); return; } setSel(id ? { id, col: col ?? 'plan' } : null); }}
+          onSelect={(id, col) => { setSel(id ? { id, col: col ?? 'plan' } : null); }}
           onItemMenu={(id, col) => {
-            if (id.startsWith('sleep:')) return null;
             if (col === 'plan') {
               const b = d.blocks.find(x => x.id === id);
               return b ? blockMenu(b, { dayId, live, areas: d.areas, edit: () => setSel({ id, col }), patch: (p, k) => onPatchBlock(b, p, k), remove: () => onDeleteBlock(b) }) : null;

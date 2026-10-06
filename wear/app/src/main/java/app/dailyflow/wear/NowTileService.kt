@@ -58,6 +58,7 @@ class NowTileService : TileService() {
             val title = s.runningTitle ?: s.now?.title ?: "Nothing planned"
             val sub = when {
                 s.focusTitle != null && s.focusLeftSec != null -> "focus · ${maxOf(0, s.focusLeftSec / 60)} min"
+                s.runningLine != null -> s.runningLine
                 s.runningSince != null -> "since ${s.runningSince}"
                 s.now != null -> "until ${s.now.endLabel}"
                 else -> ""

@@ -20,6 +20,8 @@ data class Snapshot(
     val now: Block?, val remainingMin: Int, val progress: Float,
     val next: Block?, val inMin: Int,
     val runningTitle: String?, val runningSince: String?, val runningColor: Int?,
+    /** “14m · 8m left” / “+3m over” / “Paused · 14m so far”: the same line on every surface (note #34). */
+    val runningLine: String? = null, val runningPaused: Boolean = false,
     val focusTitle: String?, val focusLeftSec: Int?,
     val timeline: List<Block>,
     val nextTasks: List<String>,
@@ -127,6 +129,7 @@ class Api(context: Context) {
             now = block(now), remainingMin = now?.optInt("remainingMin") ?: 0, progress = now?.optDouble("progress")?.toFloat() ?: 0f,
             next = block(next), inMin = next?.optInt("inMin") ?: 0,
             runningTitle = running?.optString("title"), runningSince = running?.optString("sinceLabel"), runningColor = running?.let { color(it.optString("color")) },
+            runningLine = running?.optString("line")?.takeIf { it.isNotEmpty() }, runningPaused = running?.optBoolean("paused") ?: false,
             focusTitle = focus?.optString("title"), focusLeftSec = focus?.let { if (it.isNull("leftSec")) null else it.optInt("leftSec") },
             timeline = (0 until (tl?.length() ?: 0)).mapNotNull { block(tl!!.optJSONObject(it)) },
             nextTasks = (0 until (nt?.length() ?: 0)).map { nt!!.optString(it) },

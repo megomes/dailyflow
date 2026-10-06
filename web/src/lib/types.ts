@@ -64,6 +64,8 @@ export interface Day extends SyncFields {
   reflection?: Reflection;
   /** Overlapping block pairs the user chose to keep ("a|b", ids sorted): never asked about again. */
   keptOverlaps?: string[];
+  /** Wake-up time chosen when planning the day (minutes from 00:00); the blocks start from it (note #30). */
+  wakeAt?: number;
 }
 
 export interface DayBlock extends SyncFields {
@@ -101,6 +103,8 @@ export interface TimeRecord extends SyncFields {
   alongside?: boolean;
   /** Set when the record is changed after its day was closed (E7). */
   editedAfterClose?: string;
+  /** Pauses (note #33): epoch ms. The last one has no `to` while paused. Paused time is not counted as time spent. */
+  pauses?: { from: number; to?: number }[];
 }
 
 export type TaskStatus = 'inbox' | 'backlog' | 'today' | 'done' | 'archived';

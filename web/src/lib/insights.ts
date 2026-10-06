@@ -1,4 +1,4 @@
-import { recEnd } from './actual';
+import { pausedWithin, recEnd } from './actual';
 import { addDays, dateFromIso } from './time';
 import type { DayBlock, FocusSession, Revision, Task, TimeRecord } from './types';
 
@@ -44,7 +44,7 @@ export function daysIn(p: Period): string[] {
 }
 
 const inP = (p: Period, day: string) => day >= p.from && day <= p.to;
-const dur = (r: { start: number; end: number | null }, now = r.start) => Math.max(0, recEnd(r, now) - r.start);
+const dur = (r: { start: number; end: number | null; dayId?: string; pauses?: TimeRecord['pauses'] }, now = r.start) => Math.max(0, recEnd(r, now) - r.start - (r.dayId ? pausedWithin({ dayId: r.dayId, pauses: r.pauses }) : 0));
 
 /** Real minutes per area, per day (for the stacked daily bars) and in total. */
 export function areaDistribution(records: TimeRecord[], p: Period) {

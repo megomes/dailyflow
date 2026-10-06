@@ -9,5 +9,11 @@ if (allowed && location.origin === allowed) {
     setTray: t => ipcRenderer.send('df:setTray', t),
     openApp: path => ipcRenderer.send('df:openApp', path),
     hide: () => ipcRenderer.send('df:hide'),
+    // The shell watches the cursor (a draggable page never sees hover) and says when it is over the window.
+    onHover: cb => {
+      const on = (_e, inside) => cb(!!inside);
+      ipcRenderer.on('df:hover', on);
+      return () => ipcRenderer.removeListener('df:hover', on);
+    },
   });
 }

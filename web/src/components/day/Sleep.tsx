@@ -123,3 +123,25 @@ export function bandTitle(s: Sleep, part: 'morning' | 'night', now = Date.now())
   if (end) return m.sleep.slept(hhmm(start), hhmm(end), dur);
   return m.sleep.asleepAt(hhmm(start));
 }
+
+/** Last night and tonight as a thin sky strip above the day, outside the plan (note #29). */
+export function NightStrip({ dayId, onOpen }: { dayId: string; onOpen: (id: string) => void }) {
+  const sleeps = useSleeps();
+  const nights = mainSleeps(sleeps);
+  const rows = ([['last', nights.get(addDays(dayId, -1))], ['tonight', nights.get(dayId)]] as const).filter((r): r is readonly ['last' | 'tonight', Sleep] => !!r[1]);
+  if (!rows.length) return null;
+  return (
+    <div className="night-strip">
+      {rows.map(([which, s]) => (
+        <button key={s.id} type="button" className={`night-chip ${which}`} onClick={() => onOpen(s.id)}>
+          <span className="stars" aria-hidden />
+          <Moon size={13} />
+          <b>{which === 'last' ? m.sleep.lastNight : m.sleep.tonight}</b>
+          <span className="tabular">{s.end ? `${hhmm(new Date(s.start))} → ${hhmm(new Date(s.end))}` : m.sleep.asleepAt(hhmm(new Date(s.start)))}</span>
+          {s.end && <span className="tabular muted">{fmtDuration(Math.round(sleepMinutes(s)))}</span>}
+          {s.stages && <StageBar stages={s.stages} />}
+        </button>
+      ))}
+    </div>
+  );
+}

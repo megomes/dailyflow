@@ -5,7 +5,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { WebView, type WebViewMessageEvent } from 'react-native-webview';
 import type { Credential } from './auth';
 import { refreshSurfaces } from './background';
-import { connectHealth, syncSleep } from './health';
+import { connectHealth, syncSleep, syncSleepDetailed, type HealthResult } from './health';
 import { applyOta } from './ota';
 import { C } from './theme';
 
@@ -57,7 +57,13 @@ export function WebShell({ cred, path, onUnauthorized }: { cred: Credential; pat
       timer.current = setTimeout(() => void refreshSurfaces().catch(() => {}), 800);
     } else if (msg.type === 'health-connect') {
       // Settings › Sleep: Health Connect's permission screen, then read and import right away.
-      void connectHealth().then(ok => (ok ? syncSleep() : 0)).then(() => web.current?.injectJavaScript('window.dispatchEvent(new Event("online")); true;'));
+      void (async () => {
+        const say = (r: HealthResult) => web.current?.injectJavaScript(`window.dispatchEvent(new CustomEvent("df-health", { detail: ${JSON.stringify(r)} })); true;`);
+        const step = await connectHealth();
+        if (step !== 'granted') { say({ status: step, sessions: 0, nights: 0, days: 14 }); return; }
+        say(await syncSleepDetailed());
+        web.current?.injectJavaScript('window.dispatchEvent(new Event("online")); true;');
+      })();
     } else if (msg.type === 'haptic') {
       void (msg.kind === 'success' ? Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success) : Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light));
     }

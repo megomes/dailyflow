@@ -7,9 +7,9 @@ import { requireDevice, sql, unauthorized } from '@/lib/server';
 import type { DayBlock, Task, TimeRecord } from '@/lib/types';
 import { logicalAt } from '@/lib/zone';
 
-const Body = z.object({ action: z.enum(['start', 'stop', 'next', 'done']), taskId: z.string().max(100).optional(), tz: z.string().max(64).default('America/Sao_Paulo') });
+const Body = z.object({ action: z.enum(['start', 'stop', 'next', 'pause', 'resume', 'done']), taskId: z.string().max(100).optional(), tz: z.string().max(64).default('America/Sao_Paulo') });
 
-/** POST /api/quick {action:'start'|'stop'|'next'|'done', taskId?} — Wear OS and widget buttons (EH). Same LWW write as /api/sync. */
+/** POST /api/quick {action:'start'|'stop'|'next'|'pause'|'resume'|'done', taskId?} — Wear OS and widget buttons (EH). Same LWW write as /api/sync. */
 export async function POST(req: Request) {
   const deviceId = await requireDevice();
   if (!deviceId) return unauthorized();

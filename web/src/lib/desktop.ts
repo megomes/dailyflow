@@ -7,6 +7,8 @@ export interface DesktopBridge {
   setTray(t: { title: string; tooltip: string; icon?: string }): void;
   openApp(path?: string): void;
   hide(): void;
+  /** Desktop 1.1+: the shell tells when the cursor is over the window (a draggable page never sees hover). */
+  onHover?(cb: (inside: boolean) => void): () => void;
 }
 
 declare global { interface Window { dailyflowDesktop?: DesktopBridge } }

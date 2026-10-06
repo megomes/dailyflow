@@ -4,7 +4,7 @@ import { useLiveQuery } from 'dexie-react-hooks';
 import { useEffect, useMemo, useState } from 'react';
 import { ChevronLeft, ChevronRight } from 'lucide-react';
 import { m } from '@/i18n/en';
-import { areaTotals, dayShape } from '@/lib/actual';
+import { areaTotals, dayShape, pausedWithin } from '@/lib/actual';
 import { track } from '@/lib/analytics';
 import { getDB } from '@/lib/db';
 import { useClock } from '@/lib/hooks';
@@ -71,7 +71,7 @@ function Shape({ recs, areaMap, total }: { recs: TimeRecord[]; areaMap: Map<stri
 }
 
 function DayRow({ day, recs, planned, areaMap, today }: { day: Day; recs: TimeRecord[]; planned: number; areaMap: Map<string, Area>; today: string }) {
-  const tracked = [...areaTotals(recs.map(r => ({ start: r.start, end: r.end ?? r.start, areaId: r.areaId }))).values()].reduce((s, v) => s + v, 0);
+  const tracked = [...areaTotals(recs.map(r => ({ start: r.start, end: r.end ?? r.start, areaId: r.areaId, paused: pausedWithin(r) }))).values()].reduce((s, v) => s + v, 0);
   const top = dayShape(recs).slice(0, 3);
   const status = day.status ?? 'unplanned';
   return (

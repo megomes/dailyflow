@@ -16,9 +16,9 @@ import { capacity, openOverlaps, recEnd } from '@/lib/actual';
 import { track } from '@/lib/analytics';
 import { getDB } from '@/lib/db';
 import { useClock, useIsMobile } from '@/lib/hooks';
-import { addBlock, adoptPlan, deleteBlock, patchBlock, scheduleTask, startDay } from '@/lib/ops';
+import { addBlock, adoptPlan, deleteBlock, patchBlock, scheduleTask, setWake, startDay } from '@/lib/ops';
 import { ensureDay } from '@/lib/repo';
-import { addDays, dateFromIso, fmtDuration, fmtMin } from '@/lib/time';
+import { addDays, dateFromIso, fmtDuration, fmtMin, parseHHMM } from '@/lib/time';
 
 /** Guided planning (E5): Context → Build the day → Conflicts → Start. Every step can be skipped. */
 function PlanInner() {
@@ -27,7 +27,7 @@ function PlanInner() {
   const dayId = params.get('d') || today;
   const router = useRouter();
   const d = useDay(dayId);
-  const open = useOpenTasks();
+  const open = useOpenTasks(dayId);
   const isMobile = useIsMobile();
   const dragged = useDraggedTask();
   const [step, setStep] = useState(0);
@@ -58,6 +58,7 @@ function PlanInner() {
   const inbox = open.filter(t => t.status === 'inbox');
   const yTracked = (yRecs ?? []).filter(r => !r.deleted).reduce((s, r) => s + (recEnd(r, r.start) - r.start), 0);
   const selBlock = d.blocks.find(b => b.id === sel);
+  const wake = d.day?.wakeAt ?? (d.blocks.length ? Math.min(...d.blocks.map(b => b.start)) : 6 * 60);
 
   async function start() {
     started.current = true;
@@ -93,7 +94,12 @@ function PlanInner() {
       {step === 0 && (
         <div className="plan-ctx">
           <section className="card stack">
-            <span className="label">{m.planning.yesterday}</span>
+            <span className="label">{m.planning.wakeTitle}</span>
+            <label className="field"><span>{m.planning.wakeAt}</span><input id="plan-wake" className="input tabular" type="time" value={fmtMin(wake)} onChange={e => { const v = parseHHMM(e.target.value); if (v != null) void setWake(dayId, v); }} /></label>
+            <span className="hint">{m.planning.wakeHint}</span>
+          </section>
+          <section className="card stack">
+            <span className="label">{yId === today ? m.planning.todayLabel : m.planning.yesterday}</span>
             {yDay ? (
               <>
                 <span>{fmtDuration(yTracked)} tracked · <span className={`status-pill s-${yDay.status ?? 'unplanned'}`}>{m.day.status[yDay.status ?? 'unplanned']}</span></span>

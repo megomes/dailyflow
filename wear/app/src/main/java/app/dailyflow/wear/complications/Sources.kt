@@ -151,7 +151,7 @@ class NowSource : SuspendingTimelineComplicationDataSourceService() {
                 RangedValueComplicationData.Builder(DynamicFloat.constant(total).minus(remaining), elapsedNow, 0f, total, desc)
                     .setText(compactCountdownTo(endsAt)).setMonochromaticImage(icon(this, R.drawable.ic_now)).setTapAction(open(this)).build()
             }
-            ComplicationType.LONG_TEXT -> LongTextComplicationData.Builder(text("${if (isRunning) "● " else ""}$name · until ${if (now != null) now.endLabel else until.startLabel}"), desc)
+            ComplicationType.LONG_TEXT -> LongTextComplicationData.Builder(text(if (isRunning && s.runningLine != null) "● $name · ${s.runningLine}" else "${if (isRunning) "● " else ""}$name · until ${if (now != null) now.endLabel else until.startLabel}"), desc)
                 .setTitle(text(when { knownIdle -> "NOT STARTED"; now != null -> "NOW"; else -> "FREE" })).setMonochromaticImage(icon(this, R.drawable.ic_now)).setTapAction(open(this)).build()
             // Running: “● Maker / 34m left”. Planned but nothing running: “Maker / not started”.
             else -> ShortTextComplicationData.Builder(if (knownIdle) text("not started") else compactCountdownTo(endsAt, " left"), desc)

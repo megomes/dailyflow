@@ -14,6 +14,31 @@ export function Modal({ children, onClose, label, wide = false }: { children: Re
     window.addEventListener('keydown', onKey, true);
     return () => { window.removeEventListener('keydown', onKey, true); stack.splice(stack.indexOf(token), 1); };
   }, [onClose]);
+  // Keyboard-proof: follow the visual viewport (WebViews don't always resize the layout) and keep the focused field in view (note #31).
+  useEffect(() => {
+    const vv = window.visualViewport;
+    const root = document.documentElement;
+    const apply = () => {
+      if (!vv) return;
+      root.style.setProperty('--vv-h', `${vv.height}px`);
+      root.style.setProperty('--vv-top', `${vv.offsetTop}px`);
+    };
+    const onFocus = (e: FocusEvent) => {
+      const el = e.target as HTMLElement | null;
+      if (el && /^(INPUT|TEXTAREA|SELECT)$/.test(el.tagName)) setTimeout(() => el.scrollIntoView({ block: 'center', behavior: 'smooth' }), 300);
+    };
+    apply();
+    vv?.addEventListener('resize', apply);
+    vv?.addEventListener('scroll', apply);
+    document.addEventListener('focusin', onFocus);
+    return () => {
+      vv?.removeEventListener('resize', apply);
+      vv?.removeEventListener('scroll', apply);
+      document.removeEventListener('focusin', onFocus);
+      root.style.removeProperty('--vv-h');
+      root.style.removeProperty('--vv-top');
+    };
+  }, []);
   return createPortal(
     <>
       <div className="modal-backdrop" onClick={onClose} />

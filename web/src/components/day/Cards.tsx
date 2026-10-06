@@ -3,7 +3,7 @@ import Link from 'next/link';
 import { useEffect, useState } from 'react';
 import { AlertTriangle, ListChecks, Moon, Play, RefreshCw, Sunrise, X } from 'lucide-react';
 import { m } from '@/i18n/en';
-import { dayGaps, overlapKey, recEnd, replanRemaining, whatChanged, type ChangeLine, type Conflict, type Span } from '@/lib/actual';
+import { dayGaps, overlapKey, pausedWithin, recEnd, replanRemaining, whatChanged, type ChangeLine, type Conflict, type Span } from '@/lib/actual';
 import { track } from '@/lib/analytics';
 import { acceptPlanAsReal, addRecord, adoptPlan, applyReplan, saveDayAsTemplate, closeDay, deleteBlock, keepOverlap, lateStart, patchBlock, setRevisionReason, startDay } from '@/lib/ops';
 import { DAY_KEYS, fmtDuration, fmtMin, templateIdForDate } from '@/lib/time';
@@ -49,7 +49,7 @@ export function NotPlannedCard({ dayId, startedAt }: { dayId: string; startedAt?
 /** Yesterday not closed (CAP-G6): a simple card with the fast path and the full review. */
 export function YesterdayCard({ dayId, blocks, records }: { dayId: string; blocks: DayBlock[]; records: TimeRecord[] }) {
   const [busy, setBusy] = useState(false);
-  const tracked = records.reduce((s, r) => s + (recEnd(r, r.start) - r.start), 0);
+  const tracked = records.reduce((s, r) => s + (recEnd(r, r.start) - r.start - pausedWithin(r)), 0);
   const gaps = dayGaps(blocks, records, 28 * 60).reduce((s, g) => s + g.end - g.start, 0);
   async function quick() {
     setBusy(true);

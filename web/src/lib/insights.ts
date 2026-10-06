@@ -9,10 +9,10 @@ import type { DayBlock, FocusSession, Revision, Task, TimeRecord } from './types
 
 export interface Period { from: string; to: string; label: string }
 
-/** Monday-first week containing `day`. */
+/** Sunday-first week containing `day`. */
 export function weekOf(day: string): Period {
   const d = dateFromIso(day);
-  const offset = (d.getDay() + 6) % 7;
+  const offset = d.getDay();
   const from = addDays(day, -offset);
   return { from, to: addDays(from, 6), label: 'week' };
 }
@@ -51,7 +51,7 @@ export function areaDistribution(records: TimeRecord[], p: Period) {
   const byDay = new Map<string, Map<string, number>>();
   const total = new Map<string, number>();
   for (const r of records) {
-    if (r.deleted || !inP(p, r.dayId)) continue;
+    if (r.deleted || !inP(p, r.dayId) || r.areaId === 'area-sleep') continue;
     const m = dur(r);
     if (!m) continue;
     const day = byDay.get(r.dayId) ?? new Map<string, number>();
@@ -67,7 +67,7 @@ export function plannedVsReal(blocks: DayBlock[], records: TimeRecord[], p: Peri
   const tracked = new Set(records.filter(r => !r.deleted && inP(p, r.dayId)).map(r => r.dayId));
   const planned = new Map<string, number>();
   for (const b of blocks) {
-    if (b.deleted || !tracked.has(b.dayId)) continue;
+    if (b.deleted || !tracked.has(b.dayId) || b.areaId === 'area-sleep') continue;
     planned.set(b.areaId, (planned.get(b.areaId) ?? 0) + (b.end - b.start));
   }
   const { total: real } = areaDistribution(records, p);

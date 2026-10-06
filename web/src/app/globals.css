@@ -963,3 +963,14 @@ html.mw-root, html.mw-root body { background: transparent !important; overflow: 
 .mw-ring-only .mw-main, .mw-ring-only .mw-actions { display: none; }
 .mw.s-paused .mw-ring { opacity: .6; animation: none; }
 .mw.s-paused .mw-over { color: var(--c-orange); }
+
+.mw:not(.mw-ring-only) .mw-bar { align-self: stretch; }
+.blk-hole { position: absolute; left: 0; right: 0; display: grid; place-items: center; color: var(--text-secondary); pointer-events: none; z-index: 2;
+  background: repeating-linear-gradient(135deg, color-mix(in srgb, var(--bg-app) 70%, transparent) 0 5px, transparent 5px 10px); border-block: 1px dashed color-mix(in srgb, var(--text-muted) 55%, transparent); }
+
+.night-chip.empty { border-style: dashed; background: linear-gradient(160deg, color-mix(in srgb, var(--night-1) 70%, var(--bg-app)), color-mix(in srgb, var(--night-2) 55%, var(--bg-app))); }
+.night-chip .chip-edit { margin-left: auto; font-size: 11.5px; font-weight: 600; padding: 2px 8px; border-radius: 6px; background: rgba(255,255,255,.14); }
+@media (min-width: 821px) { .night-chip { min-width: 280px; } }
+
+.changes .sleep-line { display: flex; align-items: center; gap: 6px; color: var(--text-secondary); }
+.sleep-plan { display: flex; flex-direction: column; gap: 2px; }

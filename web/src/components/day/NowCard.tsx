@@ -1,5 +1,5 @@
 'use client';
-import { activeSec, isPaused, leftInBlock, pausedMs, startedMs } from '@/lib/actual';
+import { activeSec, isPaused, leftInBlock, startedMs } from '@/lib/actual';
 import { useEffect, useState } from 'react';
 import { Coffee, Moon, Pause, Play, Plus, Square, Timer, Zap } from 'lucide-react';
 import { m } from '@/i18n/en';
@@ -111,7 +111,7 @@ export function NowCard({ dayId, minute, blocks, tasks, areas, areaMap, running,
               <span>{m.activity.since(fmtMin(running.start))}</span>
               <b className="elapsed">{fmtClock(activeSec(running, tick))}</b>
               {left != null && <span className={left < 0 ? 'over' : ''}>{left < 0 ? m.mini.over(fmtDuration(Math.round(-left))) : m.mini.left(fmtDuration(Math.max(1, Math.round(left))))}</span>}
-              {isPaused(running) && <span className="pill paused-pill" data-color="orange"><Pause size={11} />{m.activity.paused(fmtDuration(Math.max(1, Math.round(pausedMs(running, tick) / 60000))))}</span>}
+              {isPaused(running) && <span className="pill paused-pill" data-color="orange"><Pause size={11} />{m.activity.paused(fmtDuration(Math.max(1, Math.round((tick - running.pauses![running.pauses!.length - 1].from) / 60000))))}</span>}
             </div>
             {now && now.id !== running.blockId && now.start > running.start && (
               <div className="handoff" data-color={areaMap.get(now.areaId)?.color ?? 'gray'}>

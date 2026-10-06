@@ -5,7 +5,7 @@ import { liveBlocks, nowIso, remove, save, saveMany, uid, update } from './repo'
 import { dateAtMinute, minuteOfDay } from './time';
 import { nextDate, revealOn } from './recurrence';
 import type { Column } from './taskBoard';
-import { nightOf, sleepMinutes } from './sleep';
+import { isNight, mainSleeps, nightOf, sleepMinutes } from './sleep';
 import type { Day, DayBlock, DayKey, FocusSession, PlanBlock, Priority, Reflection, Revision, Sleep, Task, TemplateBlock, TimeRecord } from './types';
 
 /**
@@ -588,6 +588,26 @@ export async function saveSleep(id: string | null, start: Date, end: Date | null
   await save('sleep', s);
   track('sleep_added', { minutes: end ? Math.round(sleepMinutes(s)) : null });
   return s.id;
+}
+
+/** Older versions logged a night as a "Sleep" time record (a bar on the real timeline). Those become nights (note #29). */
+export async function migrateSleepRecords() {
+  const db = getDB();
+  const recs = (await db.timeRecords.toArray()).filter(r => !r.deleted && r.areaId === 'area-sleep' && r.end != null);
+  if (!recs.length) return;
+  const nights = mainSleeps((await db.sleeps.toArray()).filter(s => !s.deleted));
+  for (const r of recs) {
+    const start = dateAtMinute(r.dayId, r.start), end = dateAtMinute(r.dayId, r.end!);
+    const night = isNight({ start: start.toISOString(), end: end.toISOString() });
+    if (!night) continue; // a nap stays a record
+    if (!nights.has(nightOf(start))) {
+      const s: Sleep = { id: uid(), night: nightOf(start), start: start.toISOString(), end: end.toISOString(), source: 'manual', updatedAt: '' };
+      await save('sleep', s);
+      nights.set(s.night, s);
+    }
+    await remove('time_record', r.id);
+    track('sleep_record_migrated', {});
+  }
 }
 
 export async function deleteSleep(id: string) {

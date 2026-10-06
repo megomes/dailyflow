@@ -11,6 +11,7 @@ import { track } from '@/lib/analytics';
 import { CHECKIN_FROM_HOUR, STAGE } from '@/lib/config';
 import { getDB, getMeta, setMeta } from '@/lib/db';
 import { useClock } from '@/lib/hooks';
+import { migrateSleepRecords } from '@/lib/ops';
 import { ensureDay, liveBlocks } from '@/lib/repo';
 import { addDays, dateFromIso } from '@/lib/time';
 import { DAILY } from '@/lib/validation';
@@ -22,6 +23,7 @@ export default function TodayPage() {
   useEffect(() => {
     let cancelled = false;
     (async () => {
+      await migrateSleepRecords();
       const created = await ensureDay(day);
       if (cancelled) return;
       if (created) track('day_created', { day, template: (await getDB().days.get(day))?.templateId });

@@ -1,4 +1,4 @@
-import { coverage, isPaused, leftInBlock, pausedMs, recEnd } from './actual';
+import { activeSec, coverage, isPaused, leftInBlock, recEnd } from './actual';
 import { logicalAt } from './zone';
 import type { Area, ColorKey, DayBlock, FocusSession, Task, TimeRecord } from './types';
 
@@ -55,7 +55,7 @@ export function buildSnapshot(input: { blocks: DayBlock[]; records: TimeRecord[]
     const a = areaMap.get(b.areaId);
     return { title: b.title || a?.name || '', area: a?.name ?? '', color: AREA_HEX[a?.color ?? 'gray'], start: b.start, end: b.end, startLabel: hhmm(b.start), endLabel: hhmm(b.end) };
   };
-  const blocks = input.blocks.filter(b => !b.deleted && b.dayId === day).sort((a, b) => a.start - b.start);
+  const blocks = input.blocks.filter(b => !b.deleted && b.dayId === day && b.areaId !== 'area-sleep').sort((a, b) => a.start - b.start);
   const covering = blocks.filter(b => b.start <= minute && minute < b.end);
   const nowB = covering[covering.length - 1] ?? null;
   const nextB = blocks.find(b => b.start > minute && b.id !== nowB?.id) ?? null;
@@ -63,12 +63,8 @@ export function buildSnapshot(input: { blocks: DayBlock[]; records: TimeRecord[]
   const openRecs = input.records.filter(r => !r.deleted && r.end == null);
   const running = openRecs.find(r => !r.alongside) ?? openRecs[0];
   const also = openRecs.filter(r => r !== running);
-  // Minutes since a record started; an edited start (only the minute changes) wins over a stale startedAt.
-  const elapsed = (r: TimeRecord) => {
-    const byMinute = minute - r.start;
-    const exact = r.startedAt ? (at.getTime() - Date.parse(r.startedAt)) / 60000 : NaN;
-    return Math.max(0, Math.round((Number.isFinite(exact) && Math.abs(exact - byMinute) < 1.5 ? exact : byMinute) - pausedMs(r, at.getTime()) / 60000));
-  };
+  // Minutes actually spent: since the start, minus pauses of 10 minutes or more (note #33).
+  const elapsed = (r: TimeRecord) => Math.max(0, Math.round(activeSec(r, at.getTime()) / 60));
   const dur = (min: number) => { const m = Math.max(1, Math.round(min)); return m >= 60 ? `${Math.floor(m / 60)}h${m % 60 ? ` ${m % 60}m` : ''}` : `${m}m`; };
   const focus = input.sessions.filter(f => !f.deleted && (f.state === 'running' || f.state === 'paused')).sort((a, b) => b.startedAt.localeCompare(a.startedAt))[0];
   let focusOut: Snapshot['focus'] = null;

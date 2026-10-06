@@ -5,7 +5,7 @@ import { useLiveQuery } from 'dexie-react-hooks';
 import { LayoutTemplate, ListChecks, Moon, Plus, RefreshCw, RotateCcw } from 'lucide-react';
 import { SyncBadge } from '@/components/AppShell';
 import { m } from '@/i18n/en';
-import { blockActual, coveredIn, openOverlaps } from '@/lib/actual';
+import { blockActual, countedPauses, coveredIn, openOverlaps } from '@/lib/actual';
 import { track } from '@/lib/analytics';
 import { NEW_BLOCK_MIN } from '@/lib/config';
 import { useClock, useIsMobile } from '@/lib/hooks';
@@ -16,7 +16,7 @@ import type { DayBlock, Revision } from '@/lib/types';
 import { Timeline, type ChangeKind, type TLColumn, type TLItem } from '../Timeline';
 import { blockMenu, recordMenu } from '../menus';
 import { cutoffHour } from '@/lib/time';
-import { MorningPrompt, NightStrip, SleepSheet, useSleeps } from './Sleep';
+import { MorningPrompt, NightStrip } from './Sleep';
 import { useDraggedTask } from '../tasks/dragState';
 import { ChangesCard, ConflictsCard, GapsCard, ReasonPrompt, NotPlannedCard, ReplanModal, SaveTemplateModal, StartDayCard } from './Cards';
 import { DayTasks } from './DayTasks';
@@ -55,8 +55,6 @@ export function DayView({ dayId, live, title, sub, sideTop, sideBottom, headExtr
   const dragged = useDraggedTask();
   const [mode, setModeState] = useState<DayViewMode | null>(readMode);
   const [sel, setSel] = useState<{ id: string; col: string } | null>(null);
-  const sleeps = useSleeps();
-  const [sleepSel, setSleepSel] = useState<string | null>(null);
   const [reason, setReason] = useState<{ revId: string; label: string } | null>(null);
   const [mismatch, setMismatch] = useState<{ taskId: string; title: string; target?: DayBlock; blockId: string; taskArea: string; blockArea: string } | null>(null);
   const [replan, setReplan] = useState(false);
@@ -118,14 +116,12 @@ export function DayView({ dayId, live, title, sub, sideTop, sideBottom, headExtr
       id: r.id, start: r.start, end: r.end ?? Math.max(r.start + 1, until), title: r.title, areaId: r.areaId,
       variant: r.end == null ? 'running' : 'real',
     }));
-    // Pauses read as striped gaps inside the activity (note #33).
+    // Pauses (10 min or more) are striped holes inside the activity (note #33).
     const base = dateAtMinute(dayId, 0).getTime();
-    for (const r of d.records) {
-      (r.pauses ?? []).forEach((p, i) => {
-        const a = Math.max(r.start, Math.round((p.from - base) / 60000));
-        const b = Math.min(r.end ?? Math.max(until, a + 1), Math.max(a + 1, Math.round(((p.to ?? Date.now()) - base) / 60000)));
-        if (b > a) realItems.push({ id: `pause:${r.id}:${i}`, start: a, end: b, title: m.activity.pausedShort, areaId: r.areaId, variant: 'ghost', cls: 'paused' });
-      });
+    for (const r of realItems) {
+      const rec = d.records.find(x => x.id === r.id);
+      const holes = countedPauses(rec ?? {}, base + until * 60000).map(p => ({ start: Math.max(r.start, (p.from - base) / 60000), end: Math.min(r.end, ((p.to ?? base + until * 60000) - base) / 60000) })).filter(h => h.end > h.start);
+      if (holes.length) r.holes = holes;
     }
     if (view === 'plan') return [{ id: 'plan', items: planItems, editable: true }];
     if (view === 'real') return [
@@ -247,13 +243,11 @@ export function DayView({ dayId, live, title, sub, sideTop, sideBottom, headExtr
     <RecordInspector key={selRec.id} record={selRec} areas={d.areas} closed={d.status === 'closed'} onClose={() => setSel(null)} />
   ) : null;
 
-  const selSleep = sleepSel ? sleeps.find(s => s.id === sleepSel) : undefined;
-  const sleepSheet = selSleep ? <SleepSheet key={selSleep.id} sleep={selSleep} night={selSleep.night} onClose={() => setSleepSel(null)} /> : null;
   const templateName = m.templates.names[d.day?.templateId ?? ''] ?? '';
   const after = (
     <>
           <DayTasks dayId={dayId} tasks={d.tasks} areaMap={d.areaMap} showBacklog={live} />
-          {started && <ChangesCard baseline={d.day?.baseline} blocks={d.blocks} records={d.records} until={until} areaMap={d.areaMap} />}
+          {started && <ChangesCard dayId={dayId} plannedWake={d.day?.wakeAt} baseline={d.day?.baseline} blocks={d.blocks} records={d.records} until={until} areaMap={d.areaMap} />}
           {!live && (d.records.length > 0 || d.status === 'closed') && <Summary d={d} until={until} />}
           {!live && d.revisions.length > 0 && (
             <section className="card stack">
@@ -273,7 +267,6 @@ export function DayView({ dayId, live, title, sub, sideTop, sideBottom, headExtr
 
   return (
     <div className="page day-page">
-      {sleepSheet}
       <header className="page-head">
         <div>
           <h1>{title}</h1>
@@ -308,7 +301,7 @@ export function DayView({ dayId, live, title, sub, sideTop, sideBottom, headExtr
           </button>
         </div>
       </header>
-      <NightStrip dayId={dayId} onOpen={setSleepSel} />
+      <NightStrip dayId={dayId} />
       <div className="today">
         <div className="today-side">
           {sideTop}

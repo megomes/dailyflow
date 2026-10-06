@@ -140,3 +140,35 @@ export function clockOf(nightMin: number): string {
   const m = ((Math.round(nightMin) % 1440) + 1440) % 1440;
   return `${String(Math.floor(m / 60)).padStart(2, '0')}:${String(m % 60).padStart(2, '0')}`;
 }
+
+export interface SleepVsPlan {
+  kind: 'wake' | 'bed';
+  /** Minutes: positive = later than planned. */
+  delta: number;
+  /** Clock minutes in the day's own minutes (bed after midnight goes past 1440). */
+  actual: number;
+  planned: number;
+}
+
+/**
+ * Sleep is not a block, so “what changed today” reads it against the plan instead: when you woke up
+ * (last night's end) vs the planned wake-up, and when you went to bed (tonight's start) vs the target.
+ * Differences under 5 minutes are not worth a line.
+ */
+export function sleepVsPlan(dayId: string, sleeps: Sleep[], target: SleepTarget, plannedWake?: number, now = new Date()): SleepVsPlan[] {
+  const nights = mainSleeps(sleeps);
+  const out: SleepVsPlan[] = [];
+  const last = nights.get(addDays(dayId, -1));
+  if (last?.end) {
+    const actual = Math.round(minuteOfDay(dayId, new Date(last.end)));
+    const planned = plannedWake ?? target.wake;
+    if (Math.abs(actual - planned) >= 5 && actual < 18 * 60) out.push({ kind: 'wake', delta: actual - planned, actual, planned });
+  }
+  const tonight = nights.get(dayId);
+  if (tonight) {
+    const actual = Math.round(minuteOfDay(dayId, new Date(tonight.start)));
+    const planned = targetSpan(target).bed;
+    if (Math.abs(actual - planned) >= 5 && new Date(tonight.start).getTime() <= now.getTime()) out.push({ kind: 'bed', delta: actual - planned, actual, planned });
+  }
+  return out;
+}

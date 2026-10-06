@@ -130,6 +130,12 @@ export const m = {
     optional: 'Which one? (optional)',
   },
   device: {
+    watch: 'Watch',
+    previewHint: 'See the stand-up reminder exactly as it will show on your watch, without waiting for 45 minutes of sitting.',
+    previewMove: 'Preview the stand-up reminder',
+    previewSending: 'Sending…',
+    previewSent: 'Sent. Look at your watch.',
+    previewNone: 'No watch reached. Open DailyFlow on the watch once, then try again.',
     title: 'Device & appearance',
     theme: 'Theme',
     dark: 'Dark',
@@ -566,6 +572,20 @@ export const m = {
     asleepAt: (t: string) => `Asleep ${t}`,
     planned: 'Sleep',
     lastNight: 'Last night',
+    vsPlan: (kind: 'wake' | 'bed', min: number, later: boolean, actual: string, planned: string) => {
+      const d = min >= 60 ? `${Math.floor(min / 60)}h${min % 60 ? ` ${min % 60}min` : ''}` : `${min} min`;
+      return kind === 'wake'
+        ? `Woke up ${d} ${later ? 'later' : 'earlier'} than planned (${actual} vs ${planned})`
+        : `Went to bed ${d} ${later ? 'later' : 'earlier'} than planned (${actual} vs ${planned})`;
+    },
+    vsTarget: (what: string, min: number, later: boolean) => {
+      const d = min >= 60 ? `${Math.floor(min / 60)}h${min % 60 ? ` ${min % 60}min` : ''}` : `${min} min`;
+      return min < 5 ? `${what}: on target` : `${what}: ${d} ${later ? 'later' : 'earlier'} than planned on average`;
+    },
+    addLast: 'When did you go to bed and wake up?',
+    addTonight: 'Not asleep yet',
+    add: 'Add',
+    edit: 'Edit',
     tonight: 'Tonight',
     duration: (d: string, target: string) => `${d} of ${target}`,
     // Insights

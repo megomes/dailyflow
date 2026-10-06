@@ -10,13 +10,13 @@ import { track } from '@/lib/analytics';
 import { getDB } from '@/lib/db';
 import { useClock } from '@/lib/hooks';
 import { AreaIcon } from '@/lib/icons';
-import { areaDistribution, compareAreas, dayDiscipline, daysIn, estimationAccuracy, focusStats, goalProgress, last7, monthOf, plannedVsReal, previous, weekOf, type Period } from '@/lib/insights';
+import { areaDistribution, compareAreas, dayDiscipline, daysIn, estimationAccuracy, focusStats, goalProgress, monthOf, plannedVsReal, previous, weekOf, type Period } from '@/lib/insights';
 import { savePrefs } from '@/lib/prefs';
 import { activeAreas } from '@/lib/repo';
 import { addDays, dateFromIso, fmtDuration } from '@/lib/time';
 import type { Area } from '@/lib/types';
 
-type Span = 'day' | '7d' | 'week' | 'month';
+type Span = 'day' | 'week' | 'month';
 interface Tip { x: number; y: number; text: string }
 
 /** Insights (E11): what the data says, never a productivity score. */
@@ -36,7 +36,7 @@ export default function InsightsPage() {
   const prefs = useLiveQuery(() => db.prefs.get('prefs'), []);
   const sleeps = (useLiveQuery(() => db.sleeps.toArray(), []) ?? []).filter(x => !x.deleted);
 
-  const period: Period = span === 'day' ? { from: anchor, to: anchor, label: 'day' } : span === '7d' ? last7(anchor) : span === 'week' ? weekOf(anchor) : monthOf(anchor);
+  const period: Period = span === 'day' ? { from: anchor, to: anchor, label: 'day' } : span === 'week' ? weekOf(anchor) : monthOf(anchor);
   const prev = previous(period);
 
   useEffect(() => {
@@ -80,7 +80,7 @@ export default function InsightsPage() {
       </header>
       {/* Stays on top while the cards scroll (note #26); arrows and dates never wrap apart (note #27). */}
       <div className="ins-controls">
-        <div className="seg">{(['day', '7d', 'week', 'month'] as Span[]).map(s => <button key={s} type="button" aria-pressed={span === s} onClick={() => { setSpan(s); track('insight_interacted', { chart: 'period', action: s }); }}>{m.insights.spans[s]}</button>)}</div>
+        <div className="seg">{(['day', 'week', 'month'] as Span[]).map(s => <button key={s} type="button" aria-pressed={span === s} onClick={() => { setSpan(s); track('insight_interacted', { chart: 'period', action: s }); }}>{m.insights.spans[s]}</button>)}</div>
         <div className="period-nav">
           <button type="button" className="btn icon sm" onClick={() => shift(-1)} aria-label="Previous"><ChevronLeft size={15} /></button>
           <b className="period-label tabular">{label}</b>

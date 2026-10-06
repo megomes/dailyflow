@@ -124,24 +124,34 @@ export function bandTitle(s: Sleep, part: 'morning' | 'night', now = Date.now())
   return m.sleep.asleepAt(hhmm(start));
 }
 
-/** Last night and tonight as a thin sky strip above the day, outside the plan (note #29). */
-export function NightStrip({ dayId, onOpen }: { dayId: string; onOpen: (id: string) => void }) {
+/** Last night and tonight as a thin sky strip above the day, outside the plan; always there to log or fix bed and wake times (note #29). */
+export function NightStrip({ dayId }: { dayId: string }) {
   const sleeps = useSleeps();
+  const [sheet, setSheet] = useState<{ sleep: Sleep | null; night: string } | null>(null);
   const nights = mainSleeps(sleeps);
-  const rows = ([['last', nights.get(addDays(dayId, -1))], ['tonight', nights.get(dayId)]] as const).filter((r): r is readonly ['last' | 'tonight', Sleep] => !!r[1]);
-  if (!rows.length) return null;
+  const lastNight = addDays(dayId, -1);
+  const chips: { key: string; which: 'last' | 'tonight'; night: string; s: Sleep | null }[] = [
+    { key: 'last', which: 'last', night: lastNight, s: nights.get(lastNight) ?? null },
+    { key: 'tonight', which: 'tonight', night: dayId, s: nights.get(dayId) ?? null },
+  ];
   return (
     <div className="night-strip">
-      {rows.map(([which, s]) => (
-        <button key={s.id} type="button" className={`night-chip ${which}`} onClick={() => onOpen(s.id)}>
+      {chips.map(({ key, which, night, s }) => (
+        <button key={key} type="button" className={`night-chip ${which}${s ? '' : ' empty'}`} onClick={() => setSheet({ sleep: s, night })}>
           <span className="stars" aria-hidden />
           <Moon size={13} />
           <b>{which === 'last' ? m.sleep.lastNight : m.sleep.tonight}</b>
-          <span className="tabular">{s.end ? `${hhmm(new Date(s.start))} → ${hhmm(new Date(s.end))}` : m.sleep.asleepAt(hhmm(new Date(s.start)))}</span>
-          {s.end && <span className="tabular muted">{fmtDuration(Math.round(sleepMinutes(s)))}</span>}
-          {s.stages && <StageBar stages={s.stages} />}
+          {s ? (
+            <>
+              <span className="tabular">{s.end ? `${hhmm(new Date(s.start))} → ${hhmm(new Date(s.end))}` : m.sleep.asleepAt(hhmm(new Date(s.start)))}</span>
+              {s.end && <span className="tabular muted">{fmtDuration(Math.round(sleepMinutes(s)))}</span>}
+              {s.stages && <StageBar stages={s.stages} />}
+            </>
+          ) : <span className="muted">{which === 'last' ? m.sleep.addLast : m.sleep.addTonight}</span>}
+          <span className="chip-edit">{s ? m.sleep.edit : m.sleep.add}</span>
         </button>
       ))}
+      {sheet && <SleepSheet key={sheet.sleep?.id ?? sheet.night} sleep={sheet.sleep} night={sheet.night} onClose={() => setSheet(null)} />}
     </div>
   );
 }

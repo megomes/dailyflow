@@ -1,4 +1,6 @@
 'use client';
+import { clockOf, sleepVsPlan } from '@/lib/sleep';
+import { useSleeps, useSleepTarget } from './Sleep';
 import Link from 'next/link';
 import { useEffect, useState } from 'react';
 import { AlertTriangle, ListChecks, Moon, Play, RefreshCw, Sunrise, X } from 'lucide-react';
@@ -82,15 +84,21 @@ export function changeText(c: ChangeLine, areaMap: Map<string, Area>): string {
 }
 
 /** “What changed today” (VIS-CAMADAS): plain-language differences, biggest first. */
-export function ChangesCard({ baseline, blocks, records, until, areaMap }: { baseline?: PlanBlock[]; blocks: DayBlock[]; records: TimeRecord[]; until: number; areaMap: Map<string, Area> }) {
+export function ChangesCard({ dayId, baseline, blocks, records, until, areaMap, plannedWake }: { dayId: string; baseline?: PlanBlock[]; blocks: DayBlock[]; records: TimeRecord[]; until: number; areaMap: Map<string, Area>; plannedWake?: number }) {
   const [all, setAll] = useState(false);
+  const sleeps = useSleeps();
+  const target = useSleepTarget();
+  const sleepLines = sleepVsPlan(dayId, sleeps, target, plannedWake);
   const lines = whatChanged(baseline, blocks, records, until);
   const shown = all ? lines : lines.slice(0, 4);
   return (
     <section className="card changes">
       <span className="label">{m.day.changesTitle}</span>
-      {lines.length === 0 ? <span className="hint">{m.day.changesEmpty}</span> : (
+      {lines.length === 0 && sleepLines.length === 0 ? <span className="hint">{m.day.changesEmpty}</span> : (
         <ul>
+          {sleepLines.map(s => (
+            <li key={s.kind} className="plan sleep-line"><Moon size={12} />{m.sleep.vsPlan(s.kind, Math.abs(s.delta), s.delta > 0, clockOf(s.actual), clockOf(s.planned))}</li>
+          ))}
           {shown.map((c, i) => (
             <li key={i} data-color={'areaId' in c ? areaMap.get(c.areaId)?.color ?? 'gray' : 'gray'} className={c.kind === 'area' ? (c.delta > 0 ? 'up' : 'down') : 'plan'}>
               <span className="dot" />{changeText(c, areaMap)}

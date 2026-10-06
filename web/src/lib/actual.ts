@@ -25,14 +25,18 @@ export const isPaused = (r: Pick<TimeRecord, 'pauses'>) => { const p = r.pauses?
 
 /** Milliseconds spent paused (an open pause counts until `nowMs`). */
 export function pausedMs(r: Pick<TimeRecord, 'pauses'>, nowMs = Date.now()): number {
-  return (r.pauses ?? []).reduce((s, p) => s + Math.max(0, (p.to ?? nowMs) - p.from), 0);
+  return (r.pauses ?? []).reduce((s, p) => { const d = (p.to ?? nowMs) - p.from; return s + (d >= MIN_PAUSE_MS ? d : 0); }, 0);
 }
+
+/** A pause shorter than this never happened: it is not counted and not drawn (note #33). */
+export const MIN_PAUSE_MS = 10 * 60_000;
+export const countedPauses = (r: Pick<TimeRecord, 'pauses'>, nowMs = Date.now()) => (r.pauses ?? []).filter(p => (p.to ?? nowMs) - p.from >= MIN_PAUSE_MS);
 
 /** Paused minutes that fall inside [win.start, win.end] (minutes of the record's day); the whole record when no window. */
 export function pausedWithin(r: Pausable, win?: Span, nowMs = Date.now()): number {
   if (!r.pauses?.length) return 0;
   const base = dateAtMinute(r.dayId, 0).getTime();
-  return r.pauses.reduce((s, p) => {
+  return countedPauses(r, nowMs).reduce((s, p) => {
     const a = (p.from - base) / 60000, b = ((p.to ?? nowMs) - base) / 60000;
     return s + (win ? Math.max(0, Math.min(b, win.end) - Math.max(a, win.start)) : Math.max(0, b - a));
   }, 0);
@@ -163,7 +167,11 @@ export function planChanges(baseline: PlanBlock[], current: TimelineBlock[]): Ch
  * Plan and real are compared only over time that has a record: untracked time is not
  * “skipped”, it is just not recorded yet (see dayGaps). Only time before `until` counts.
  */
-export function whatChanged(baseline: PlanBlock[] | undefined, current: TimelineBlock[], records: TimeRecord[], until: number, minDelta = 10): ChangeLine[] {
+export function whatChanged(baselineAll: PlanBlock[] | undefined, currentAll: TimelineBlock[], recordsAll: TimeRecord[], until: number, minDelta = 10): ChangeLine[] {
+  // Sleep is read against the plan on its own (sleepVsPlan), never as a block.
+  const baseline = baselineAll?.filter(b => b.areaId !== 'area-sleep');
+  const current = currentAll.filter(b => b.areaId !== 'area-sleep');
+  const records = recordsAll.filter(r => r.areaId !== 'area-sleep');
   const covered = mergeSpans(records.map(r => ({ start: r.start, end: Math.min(recEnd(r, until), until) })));
   const planned = new Map<string, number>();
   for (const b of current) {
@@ -272,7 +280,10 @@ export function dayShape(records: TimeRecord[], nowMin = Infinity) {
 
 /** Seconds of real activity: elapsed since the start minus paused time (note #33). */
 export function activeSec(r: Pick<TimeRecord, 'dayId' | 'start' | 'startedAt' | 'pauses'>, nowMs: number): number {
-  return Math.max(0, (nowMs - startedMs(r) - pausedMs(r, nowMs)) / 1000);
+  // While paused the clock stands still at the moment of the pause.
+  const last = r.pauses?.[r.pauses.length - 1];
+  const at = last && last.to == null ? last.from : nowMs;
+  return Math.max(0, (at - startedMs(r) - pausedMs(r, at)) / 1000);
 }
 
 /**

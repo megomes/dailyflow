@@ -6,10 +6,10 @@ const rec = (dayId: string, start: number, end: number, areaId: string): TimeRec
   ({ id: `${dayId}${start}`, dayId, start, end, areaId, title: '', source: 'live', createdAt: '', updatedAt: '' });
 
 describe('periods', () => {
-  it('builds Monday-first weeks and months', () => {
-    expect(weekOf('2026-10-08')).toMatchObject({ from: '2026-10-05', to: '2026-10-11' });
+  it('builds Sunday-first weeks and months', () => {
+    expect(weekOf('2026-10-08')).toMatchObject({ from: '2026-10-04', to: '2026-10-10' });
     expect(monthOf('2026-02-10')).toMatchObject({ from: '2026-02-01', to: '2026-02-28' });
-    expect(previous(weekOf('2026-10-08'))).toMatchObject({ from: '2026-09-28', to: '2026-10-04' });
+    expect(previous(weekOf('2026-10-08'))).toMatchObject({ from: '2026-09-27', to: '2026-10-03' });
     expect(previous(monthOf('2026-03-15'))).toMatchObject({ from: '2026-02-01', to: '2026-02-28' });
     expect(daysIn(weekOf('2026-10-08'))).toHaveLength(7);
   });

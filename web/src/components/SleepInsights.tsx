@@ -43,6 +43,10 @@ export function SleepInsights({ sleeps, period, target, blocks, records, hover, 
         <span><b className="tabular">{clockOf(s.avgWake)}</b> {m.sleep.wakeAvg} <span className="muted">{m.sleep.regular(s.wakeSpread)}</span></span>
         <span><b className="tabular">{fmtDuration(Math.round(s.debt))}</b> {m.sleep.debt}</span>
       </div>
+      <div className="sleep-plan hint">
+        <span>{m.sleep.vsTarget('Bedtime', Math.round(Math.abs(s.avgBed - t.bed)), s.avgBed > t.bed)}</span>
+        <span>{m.sleep.vsTarget('Wake-up', Math.round(Math.abs(s.avgWake - t.wake)), s.avgWake > t.wake)}</span>
+      </div>
       <div className="night-chart">
         {s.rows.map(r => (
           <div key={r.night} className="night-row">

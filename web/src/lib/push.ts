@@ -94,3 +94,21 @@ async function sendFcm(token: string, target: { id: string; token: string }, seq
   // The app was uninstalled or the token rotated: forget it.
   if (res.status === 404 || /UNREGISTERED|registration-token-not-registered/.test(body)) await sql().query(`delete from push_targets where id = $1`, [target.id]);
 }
+
+/** Settings “preview”: ask the watch to show a reminder now, so you can see what it looks like (note #19). Returns how many watches were reached. */
+export async function previewOnWatch(kind: 'move'): Promise<number> {
+  const token = await accessToken();
+  const a = serviceAccount();
+  if (!token || !a) return 0;
+  const targets = (await sql().query(`select id, token from push_targets where platform = 'wear'`)) as { id: string; token: string }[];
+  let ok = 0;
+  for (const t of targets) {
+    const res = await fetch(`https://fcm.googleapis.com/v1/projects/${a.project_id}/messages:send`, {
+      method: 'POST', headers: { authorization: `Bearer ${token}`, 'content-type': 'application/json' },
+      body: JSON.stringify({ message: { token: t.token, data: { type: `${kind}-test` }, android: { priority: 'HIGH', ttl: '60s' } } }),
+    });
+    if (res.ok) ok++;
+    else if (res.status === 404) await sql().query(`delete from push_targets where id = $1`, [t.id]);
+  }
+  return ok;
+}

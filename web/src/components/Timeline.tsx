@@ -1,6 +1,6 @@
 'use client';
 import { useMemo, useRef, useState, type DragEvent, type PointerEvent as RPointerEvent } from 'react';
-import { CalendarDays, Lock, Moon, Sunrise } from 'lucide-react';
+import { CalendarDays, Lock, Moon, Pause, Sunrise } from 'lucide-react';
 import { MIN_BLOCK_MIN, SNAP_MIN, TIMELINE_END_MIN, TIMELINE_START_MIN } from '@/lib/config';
 import { layoutLanes, visibleRange } from '@/lib/dayLogic';
 import { AreaIcon } from '@/lib/icons';
@@ -24,6 +24,8 @@ export interface TLItem extends TimelineBlock {
   /** Small badge in the corner (e.g. “−40m”, “3 tasks”). */
   badge?: string;
   badgeTone?: 'warn' | 'ok' | 'muted';
+  /** Paused stretches inside a real activity, drawn as striped holes (note #33). */
+  holes?: { start: number; end: number }[];
 }
 
 export interface TLColumn {
@@ -224,6 +226,7 @@ export function Timeline({ columns, areas, nowMin = null, selectedId, onSelect, 
                 {b.fixed && <Lock size={11} className="blk-lock" aria-label="Fixed" />}
               </div>
               <div className="blk-time">{fmtMin(b.start)}–{b.variant === 'running' ? 'now' : fmtMin(b.end)}</div>
+              {b.holes?.map((hl, i) => <span key={i} className="blk-hole" style={{ top: (hl.start - b.start) * pxPerMin, height: Math.max((hl.end - hl.start) * pxPerMin, 6) }} title={`Paused ${Math.round(hl.end - hl.start)} min`}>{(hl.end - hl.start) * pxPerMin >= 16 && <Pause size={10} />}</span>)}
               {b.badge && <span className={`blk-badge ${b.badgeTone ?? 'muted'}`}>{b.badge}</span>}
               {b.stages && h >= 30 && <span className="stage-bar">{(['deep', 'rem', 'light', 'awake'] as const).map(k => <i key={k} className={`st-${k}`} style={{ flexGrow: b.stages![k] }} />)}</span>}
               {sel && col.editable && !evt && b.variant !== 'running' && <div className="blk-handle bottom" onPointerDown={e => begin(e, b, col, 'resize-end')} />}

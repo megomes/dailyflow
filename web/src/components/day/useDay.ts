@@ -31,7 +31,8 @@ export function useDay(dayId: string): DayData {
   const areas = useLiveQuery(() => db.areas.toArray(), []);
 
   return useMemo(() => {
-    const blocks = liveBlocks(blockRows ?? []);
+    // Sleep is not a block (note #29): old Sleep blocks stay in the data but never show up in the day.
+    const blocks = liveBlocks(blockRows ?? []).filter(b => b.areaId !== 'area-sleep');
     const records = (recRows ?? []).filter(r => !r.deleted).sort((a, b) => a.start - b.start);
     const tasks = (taskRows ?? []).filter(t => !t.deleted).sort((a, b) => a.sort - b.sort);
     const revisions = (revRows ?? []).filter(r => !r.deleted).sort((a, b) => a.ts.localeCompare(b.ts));

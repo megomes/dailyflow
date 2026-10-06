@@ -5,6 +5,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { WebView, type WebViewMessageEvent } from 'react-native-webview';
 import type { Credential } from './auth';
 import { refreshSurfaces } from './background';
+import { connectHealth, syncSleep } from './health';
 import { applyOta } from './ota';
 import { C } from './theme';
 
@@ -36,7 +37,12 @@ export function WebShell({ cred, path, onUnauthorized }: { cred: Credential; pat
       return true;
     });
     const app = AppState.addEventListener('change', st => {
-      if (st === 'active') { void applyOta(); web.current?.injectJavaScript('window.dispatchEvent(new Event("online")); true;'); }
+      if (st === 'active') {
+        void applyOta();
+        web.current?.injectJavaScript('window.dispatchEvent(new Event("online")); true;');
+        // Last night from the watch (note #29), at most every 30 min; the web syncs it in right after.
+        void syncSleep({ minGapMin: 30 }).then(n => { if (n) web.current?.injectJavaScript('window.dispatchEvent(new Event("online")); true;'); });
+      }
       else void refreshSurfaces().catch(() => {});
     });
     return () => { back.remove(); app.remove(); };
@@ -49,6 +55,9 @@ export function WebShell({ cred, path, onUnauthorized }: { cred: Credential; pat
       // Something changed and was synced: redraw widgets and the lock-screen notification (debounced).
       clearTimeout(timer.current);
       timer.current = setTimeout(() => void refreshSurfaces().catch(() => {}), 800);
+    } else if (msg.type === 'health-connect') {
+      // Settings › Sleep: Health Connect's permission screen, then read and import right away.
+      void connectHealth().then(ok => (ok ? syncSleep() : 0)).then(() => web.current?.injectJavaScript('window.dispatchEvent(new Event("online")); true;'));
     } else if (msg.type === 'haptic') {
       void (msg.kind === 'success' ? Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success) : Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light));
     }

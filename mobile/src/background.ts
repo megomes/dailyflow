@@ -1,6 +1,7 @@
 import * as BackgroundTask from 'expo-background-task';
 import * as TaskManager from 'expo-task-manager';
 import { requestWidgetUpdate } from 'react-native-android-widget';
+import { syncSleep } from './health';
 import { showNow } from './notify';
 import { remoteSnapshot } from './snapshot';
 import AsyncStorage from '@react-native-async-storage/async-storage';
@@ -15,6 +16,7 @@ const TASK = 'dailyflow-refresh';
 TaskManager.defineTask(TASK, async () => {
   try {
     await refreshSurfaces();
+    await syncSleep({ minGapMin: 60 });
     return BackgroundTask.BackgroundTaskResult.Success;
   } catch {
     return BackgroundTask.BackgroundTaskResult.Failed;

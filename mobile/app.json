@@ -3,7 +3,7 @@
     "name": "DailyFlow",
     "slug": "dailyflow",
     "scheme": "dailyflow",
-    "version": "0.2.0",
+    "version": "0.3.0",
     "orientation": "portrait",
     "icon": "./assets/icon.png",
     "userInterfaceStyle": "dark",
@@ -16,7 +16,8 @@
       },
       "permissions": [
         "POST_NOTIFICATIONS",
-        "CAMERA"
+        "CAMERA",
+        "android.permission.health.READ_SLEEP"
       ],
       "blockedPermissions": [
         "android.permission.RECORD_AUDIO"
@@ -116,6 +117,15 @@
               "previewImage": "./assets/widget-progress.png"
             }
           ]
+        }
+      ],
+      "react-native-health-connect",
+      [
+        "expo-build-properties",
+        {
+          "android": {
+            "minSdkVersion": 26
+          }
         }
       ]
     ],

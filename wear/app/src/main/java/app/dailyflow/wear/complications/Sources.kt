@@ -221,7 +221,7 @@ class NowSource : SuspendingTimelineComplicationDataSourceService() {
 
 /** NEXT — SHORT_TEXT “11:00 / Guitar”, LONG_TEXT “Guitar or Piano” titled “NEXT · 11:00”. */
 class NextSource : SuspendingTimelineComplicationDataSourceService() {
-    private fun data(s: Snapshot?, m: Float, type: ComplicationType): ComplicationData {
+    private fun data(s: Snapshot?, m: Float, type: ComplicationType, live: Boolean = false): ComplicationData {
         if (s == null && Api.paired(this)) return loading(type)
         val next = s?.nextAt(m)
         // Nothing next (or asleep): the Next slot becomes the bed — a moon to log going to sleep, a sun to log waking up (note #37).
@@ -235,6 +235,19 @@ class NextSource : SuspendingTimelineComplicationDataSourceService() {
                 LongTextComplicationData.Builder(text(if (asleep) "I'm awake" else "Going to sleep"), desc).setTitle(text("NEXT · ${if (asleep) "☀" else "🌙"}")).setMonochromaticImage(icon(this, res)).setTapAction(tap).build()
             else ShortTextComplicationData.Builder(text(if (asleep) "☀️" else "🌙"), desc).setTitle(text(label)).setMonochromaticImage(icon(this, res)).setTapAction(tap).build()
         }
+        // Note #45: still on a block that ended while the next one is due — the Next slot shows the one that is waiting and how late it is.
+        val waiting = s?.nowAt(m)
+        val running = if (live) s?.runningTitle else null
+        val sinceMin = s?.runningSince?.split(":")?.let { it[0].toInt() * 60 + it[1].toInt() }
+        if (s != null && waiting != null && running != null && waiting.title != running &&
+            s.timeline.any { it.title == running && it.end <= m && (sinceMin == null || sinceMin <= it.end) }) {
+            val late = (m - waiting.start).toInt().coerceAtLeast(0)
+            val lateText = if (late < 60) "${late}m late" else "${late / 60}h%02d late".format(late % 60)
+            val d = text("${waiting.title} is waiting, $lateText")
+            return if (type == ComplicationType.LONG_TEXT)
+                LongTextComplicationData.Builder(text(waiting.title), d).setTitle(text("NEXT · $lateText")).setMonochromaticImage(icon(this, R.drawable.ic_next)).setTapAction(open(this)).build()
+            else ShortTextComplicationData.Builder(text(lateText), d).setTitle(text(waiting.title)).setMonochromaticImage(icon(this, R.drawable.ic_next)).setTapAction(open(this)).build()
+        }
         val name = when { s == null -> "Pair"; next == null -> "Done"; else -> next.title }
         val time = next?.startLabel ?: "—"
         val desc = text(if (next != null) "Next $name at $time" else "Nothing else today")
@@ -247,7 +260,7 @@ class NextSource : SuspendingTimelineComplicationDataSourceService() {
     override suspend fun onComplicationRequest(request: ComplicationRequest): ComplicationDataTimeline? {
         val s = snapshot(this) ?: return ComplicationDataTimeline(data(null, 0f, request.complicationType), emptyList())
         val m = s.minuteAt(System.currentTimeMillis())
-        return s.timeline(m, data(s, m, request.complicationType)) { data(s, it, request.complicationType) }
+        return s.timeline(m, data(s, m, request.complicationType, true)) { data(s, it, request.complicationType) }
     }
 
     override fun getPreviewData(type: ComplicationType): ComplicationData =

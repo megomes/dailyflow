@@ -4,3 +4,7 @@ android/
 ios/
 dist/
 *.keystore
+
+# Local Expo modules keep their native sources in git (not their build output)
+!modules/*/android/
+modules/*/android/build/

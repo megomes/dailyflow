@@ -1,0 +1,15 @@
+plugins {
+  id 'com.android.library'
+  id 'expo-module-gradle-plugin'
+}
+
+group = 'app.dailyflow'
+version = '1.0.0'
+
+android {
+  namespace "app.dailyflow.widgetalarm"
+  defaultConfig {
+    versionCode 1
+    versionName "1.0.0"
+  }
+}

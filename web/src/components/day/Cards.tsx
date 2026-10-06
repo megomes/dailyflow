@@ -92,7 +92,7 @@ function ChangeRow({ c, areaMap, scale }: { c: ChangeLine; areaMap: Map<string, 
   if (c.kind === 'area') {
     const skipped = c.actual === 0;
     return (
-      <li className={`chg area ${c.delta > 0 ? 'up' : 'down'}`} data-color={color}>
+      <li className={`chg area ${c.delta > 0 ? 'up' : 'down'}${area?.wasted ? ' is-wasted' : ''}`} data-color={color}>
         <span className="chg-ico">{area ? <AreaIcon name={area.icon} size={15} /> : <Minus size={15} />}</span>
         <div className="chg-body">
           <div className="chg-head">

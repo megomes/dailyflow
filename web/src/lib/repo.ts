@@ -74,6 +74,12 @@ export async function seedIfEmpty(): Promise<void> {
   const db = getDB();
   await db.transaction('rw', db.areas, db.templateBlocks, async () => {
     if ((await db.areas.count()) === 0) await db.areas.bulkPut(SEED_AREAS);
+    // Seed areas added later (Wasted time, note #48) reach existing devices too; an edit or delete synced from elsewhere is newer and wins.
+    else {
+      const have = new Set((await db.areas.toArray()).map(a => a.id));
+      const missing = SEED_AREAS.filter(a => !have.has(a.id));
+      if (missing.length) await db.areas.bulkPut(missing);
+    }
     if ((await db.templateBlocks.count()) === 0) await db.templateBlocks.bulkPut(SEED_TEMPLATE_BLOCKS);
   });
 }

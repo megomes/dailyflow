@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { areaDistribution, compareAreas, daysIn, estimationAccuracy, focusStats, goalProgress, median, monthOf, plannedVsReal, previous, weekOf } from './insights';
+import { areaDistribution, compareAreas, daysIn, estimationAccuracy, focusStats, goalProgress, median, monthOf, plannedVsReal, previous, wastedTime, weekOf } from './insights';
 import type { DayBlock, FocusSession, Task, TimeRecord } from './types';
 
 const rec = (dayId: string, start: number, end: number, areaId: string): TimeRecord =>
@@ -54,5 +54,19 @@ describe('aggregations', () => {
     expect(c[0]).toMatchObject({ areaId: 'work', delta: 100, pct: 0.5 });
     expect(goalProgress({ music: 120 }, new Map([['music', 60]]), weekOf('2026-10-05'))).toEqual([{ areaId: 'music', target: 120, done: 60, ratio: 0.5 }]);
     expect(median([3, 1, 2, 4])).toBe(2.5);
+  });
+});
+
+describe('wasted time (note #48)', () => {
+  it('counts only wasted areas, per day and per hour, with its share of tracked time', () => {
+    const week = weekOf('2026-10-05');
+    const recs = [rec('2026-10-05', 600, 720, 'work'), rec('2026-10-05', 1290, 1350, 'scroll'), rec('2026-10-06', 1320, 1350, 'scroll')];
+    const w = wastedTime(recs, new Set(['scroll']), week);
+    expect(w.total).toBe(90);
+    expect(w.byDay.get('2026-10-05')).toBe(60);
+    expect(w.byHour[21]).toBe(30);
+    expect(w.byHour[22]).toBe(60);
+    expect(w.share).toBeCloseTo(90 / 210);
+    expect(w.days).toBe(2);
   });
 });

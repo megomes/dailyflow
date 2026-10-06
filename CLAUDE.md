@@ -33,6 +33,7 @@ A ferramenta de revisão (`review/`) e o artifact publicado (https://claude.ai/a
 - 1.1.1 = ajuste visual: leave empty com o mesmo tracejado do Show later hours.
 - 1.1.2 = leave empty com o mesmo listrado escuro da noite planejada (.tl-night.planned).
 - 1.2.0 = Visual v2 (proposta do Gemini): fundo azul-noite, cards de vidro, Now com degradê/barra neon, + Block azul, pills translúcidas.
+- 1.3.0 = notas #48 (área de tempo perdido: Wasted time, hachurado na timeline, card próprio em Insights) e #49 (scrollbars no tema e fora do conteúdo).
 
 ## App Android (`mobile/`)
 

@@ -305,7 +305,7 @@ export function Timeline({ columns, areas, nowMin = null, selectedId, onSelect, 
           const dropping = dropAt?.id === b.id;
           const left = `calc(${colLeft(ci)} + (${colWidth}) * ${lane / lanes} + 2px)`;
           const width = `calc((${colWidth}) / ${lanes} - 4px)`;
-          const cls = ['blk', b.variant ?? 'plan', b.cls, sel && 'sel', dragging && 'dragging', past && !sel && 'past', current && 'current', compact && 'compact', dim && 'dim', lit && 'lit', dropping && 'drop'].filter(Boolean).join(' ');
+          const cls = ['blk', b.variant ?? 'plan', b.cls, area?.wasted && 'wasted', sel && 'sel', dragging && 'dragging', past && !sel && 'past', current && 'current', compact && 'compact', dim && 'dim', lit && 'lit', dropping && 'drop'].filter(Boolean).join(' ');
           return (
             <div
               key={`${col.id}-${b.id}`}

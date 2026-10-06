@@ -53,7 +53,7 @@ describe('E12 operations', () => {
     expect(sat).toHaveLength(9);
     const ex = await exportAll();
     expect(ex.data.day_block).toHaveLength(9);
-    expect(entityCsv(ex.data.area as Record<string, unknown>[]).split('\n')).toHaveLength(12);
+    expect(entityCsv(ex.data.area as Record<string, unknown>[]).split('\n')).toHaveLength(13);
   });
 });
 

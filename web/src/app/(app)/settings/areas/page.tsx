@@ -1,7 +1,7 @@
 'use client';
 import { useLiveQuery } from 'dexie-react-hooks';
 import { useEffect, useRef, useState } from 'react';
-import { Archive, ArchiveRestore, Plus } from 'lucide-react';
+import { Archive, ArchiveRestore, Hourglass, Plus } from 'lucide-react';
 import { m } from '@/i18n/en';
 import { track } from '@/lib/analytics';
 import { getDB } from '@/lib/db';
@@ -69,6 +69,8 @@ function AreaRow({ area }: { area: Area }) {
       <button type="button" className="swatch" aria-label={m.areas.color} onClick={() => setOpen(open === 'color' ? null : 'color')} style={{ width: 22, height: 22 }} />
       <input className="input" style={{ flex: 1, minWidth: 140 }} value={name} onChange={e => setName(e.target.value)} onBlur={commitName}
         onKeyDown={e => { if (e.key === 'Enter') (e.target as HTMLInputElement).blur(); }} aria-label="Name" />
+      <button type="button" className="chip wasted-toggle" aria-pressed={!!area.wasted} title={m.areas.wastedTitle}
+        onClick={() => update({ wasted: !area.wasted }, 'life_area_wasted_toggled', { wasted: !area.wasted })}><Hourglass size={13} />{m.areas.wasted}</button>
       {area.archived ? (
         <button type="button" className="btn sm ghost" onClick={() => update({ archived: false }, 'life_area_restored')}><ArchiveRestore size={14} />{m.areas.restore}</button>
       ) : (

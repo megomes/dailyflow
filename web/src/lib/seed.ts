@@ -20,7 +20,8 @@ export const SEED_AREAS: Area[] = [
   ['commute', 'Commute', 'cyan', 'car'],
   ['personal', 'Personal', 'gray', 'user'],
   ['sleep', 'Sleep', 'indigo', 'moon'],
-].map(([id, name, color, icon], sort) => ({ id: `area-${id}`, name, color, icon, sort, updatedAt: SEED_TS }) as Area);
+  ['wasted', 'Wasted time', 'red', 'phone'],
+].map(([id, name, color, icon], sort) => ({ id: `area-${id}`, name, color, icon, sort, updatedAt: SEED_TS, ...(id === 'wasted' ? { wasted: true } : {}) }) as Area);
 
 const H = (h: number, m = 0) => h * 60 + m;
 

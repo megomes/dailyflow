@@ -1159,3 +1159,40 @@ body { background: var(--app-glow), var(--bg-app); background-attachment: fixed;
 .tl-mark.planned button { background: var(--bg-elevated); box-shadow: none; }
 .nowline span { border-radius: 6px; padding: 0 6px; }
 @media (max-width: 820px) { .tabbar { background: color-mix(in srgb, var(--bg-sidebar) 92%, transparent); border-top-color: var(--glass-bd); } }
+
+/* Wasted time (note #48): the same area color, but washed out and hatched, so it reads as time that slipped away. */
+.blk.wasted.plan, .blk.wasted.real, .blk.wasted.running {
+  background: repeating-linear-gradient(135deg, color-mix(in srgb, var(--c) 30%, var(--tl-bg)) 0 5px, color-mix(in srgb, var(--c) 12%, var(--tl-bg)) 5px 10px);
+  border: 1px dashed color-mix(in srgb, var(--c) 60%, var(--tl-bg)); color: color-mix(in srgb, var(--c) 30%, var(--text-secondary)); }
+.blk.wasted .blk-title { font-style: italic; }
+.hbar i.wasted, .wasted-hours .hcol i { background: repeating-linear-gradient(135deg, var(--c, var(--c-red)) 0 3px, color-mix(in srgb, var(--c, var(--c-red)) 45%, transparent) 3px 6px); }
+.wasted-hours .hcol i { --c: var(--c-red); }
+.wasted-card .hbar i.wasted { --c: var(--c-red); }
+.wasted-card { border-color: color-mix(in srgb, var(--c-red) 32%, transparent); background: linear-gradient(165deg, color-mix(in srgb, var(--c-red) 7%, transparent), transparent 55%), var(--glass-bg), var(--bg-surface); }
+.wasted-card > div:first-child svg { color: var(--c-red); }
+.wasted-delta { font-size: 12px; font-weight: 700; padding: 1px 7px; border-radius: 999px; }
+.wasted-delta.up { color: var(--c-orange); background: color-mix(in srgb, var(--c-orange) 15%, transparent); }
+.wasted-delta.down { color: var(--c-green); background: color-mix(in srgb, var(--c-green) 15%, transparent); }
+/* More wasted time than planned is the bad direction. */
+.chg.is-wasted.up .chg-delta { color: var(--c-orange); background: color-mix(in srgb, var(--c-orange) 15%, transparent); }
+.chg.is-wasted.down .chg-delta { color: var(--c-green); background: color-mix(in srgb, var(--c-green) 15%, transparent); }
+.chg.is-wasted .chg-bars .bar.real { background: repeating-linear-gradient(135deg, var(--c) 0 3px, color-mix(in srgb, var(--c) 45%, transparent) 3px 6px); }
+.chip.wasted-toggle:not([aria-pressed='true']) { border-color: transparent; background: transparent; color: var(--text-muted); opacity: .7; }
+.list-row:hover .chip.wasted-toggle { opacity: 1; }
+.chip.wasted-toggle[aria-pressed='true'] { border-color: color-mix(in srgb, var(--c-red) 55%, transparent); background: color-mix(in srgb, var(--c-red) 14%, transparent); color: color-mix(in srgb, var(--c-red) 70%, var(--text-primary)); }
+
+/* Scrollbars follow the theme (note #49): a thin translucent thumb, never a light bar on dark or a dark one on light. */
+:root { --scroll-thumb: rgba(255,255,255,.14); --scroll-thumb-hover: rgba(255,255,255,.26); }
+:root[data-theme='light'] { --scroll-thumb: rgba(20,20,30,.18); --scroll-thumb-hover: rgba(20,20,30,.32); }
+* { scrollbar-color: var(--scroll-thumb) transparent; }
+::-webkit-scrollbar { width: 10px; height: 10px; background: transparent; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: var(--scroll-thumb); border-radius: 10px; border: 3px solid transparent; background-clip: padding-box; }
+::-webkit-scrollbar-thumb:hover { background: var(--scroll-thumb-hover); border: 3px solid transparent; background-clip: padding-box; }
+::-webkit-scrollbar-corner { background: transparent; }
+/* …and outside the content: the timeline keeps a gutter for it (Firefox draws overlay scrollbars on top). */
+@media (min-width: 821px) {
+  .day-page .today > .tl-wrap { scrollbar-gutter: stable; padding-right: 18px; }
+  .day-page .today-side { scrollbar-gutter: stable; padding-right: 10px; }
+  .day-page .today-side::-webkit-scrollbar { width: 10px; }
+}

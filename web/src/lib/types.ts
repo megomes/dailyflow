@@ -13,6 +13,8 @@ export interface Area extends SyncFields {
   icon: string;
   sort: number;
   archived?: boolean;
+  /** Wasted time (note #48): scrolling, binge watching, neither useful nor real rest. Drawn apart and counted apart in Insights. */
+  wasted?: boolean;
 }
 
 export type DayKey = 'mon' | 'tue' | 'wed' | 'thu' | 'fri' | 'sat' | 'sun';

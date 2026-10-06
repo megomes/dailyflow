@@ -14,13 +14,13 @@ beforeEach(async () => {
 });
 
 describe('seed and day creation', () => {
-  it('seeds the 11 areas and one template per weekday once', async () => {
-    expect(await db.areas.count()).toBe(11);
+  it('seeds the 12 areas and one template per weekday once', async () => {
+    expect(await db.areas.count()).toBe(12);
     expect(await db.templateBlocks.where('templateId').equals('mon').count()).toBe(9);
     expect(await db.templateBlocks.where('templateId').equals('tue').count()).toBe(9);
     expect(await db.templateBlocks.where('templateId').equals('sat').count()).toBe(7);
     await seedIfEmpty();
-    expect(await db.areas.count()).toBe(11);
+    expect(await db.areas.count()).toBe(12);
   });
 
   it('creates a Monday from the Monday template with deterministic ids', async () => {

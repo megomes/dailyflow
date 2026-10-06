@@ -62,6 +62,30 @@ export function areaDistribution(records: TimeRecord[], p: Period) {
   return { byDay, total };
 }
 
+/**
+ * Wasted time (note #48): real minutes in areas marked as wasted, per day and per hour of the day
+ * (when it tends to happen), with its share of everything tracked.
+ */
+export function wastedTime(records: TimeRecord[], wastedAreas: Set<string>, p: Period) {
+  const byDay = new Map<string, number>();
+  const byHour = new Array(24).fill(0) as number[];
+  let total = 0, all = 0, stretches = 0;
+  for (const r of records) {
+    if (r.deleted || !inP(p, r.dayId) || r.areaId === 'area-sleep' || r.end == null) continue;
+    const m = dur(r);
+    all += m;
+    if (!m || !wastedAreas.has(r.areaId)) continue;
+    total += m;
+    stretches++;
+    byDay.set(r.dayId, (byDay.get(r.dayId) ?? 0) + m);
+    for (let t = r.start; t < r.end; t = Math.floor(t / 60) * 60 + 60) {
+      const to = Math.min(r.end, Math.floor(t / 60) * 60 + 60);
+      byHour[Math.floor(t / 60) % 24] += to - t;
+    }
+  }
+  return { total, byDay, byHour, stretches, share: all ? total / all : 0, days: byDay.size };
+}
+
 /** Planned (final plan) vs real minutes per area, only on days that have any record. */
 export function plannedVsReal(blocks: DayBlock[], records: TimeRecord[], p: Period) {
   const tracked = new Set(records.filter(r => !r.deleted && inP(p, r.dayId)).map(r => r.dayId));

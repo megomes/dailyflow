@@ -101,6 +101,8 @@ export const m = {
     color: 'Color',
     icon: 'Icon',
     blocks: (n: number) => `${n} block${n === 1 ? '' : 's'} today`,
+    wasted: 'Wasted time',
+    wastedTitle: 'Counts as wasted time: drawn apart on the timeline and counted apart in Insights',
   },
   validation: {
     title: 'Validation',
@@ -508,6 +510,12 @@ export const m = {
     changes: 'Plan changes',
     changesHint: 'How much the days moved after starting.',
     started: 'days started', revisions: 'revisions',
+    wasted: 'Wasted time',
+    wastedHint: 'Scrolling, binge watching: neither useful nor real rest. Areas marked as wasted in Settings › Life Areas.',
+    wastedNone: 'No wasted time recorded in this period.',
+    wastedShare: (pct: number) => `${pct}% of what you tracked`,
+    wastedDays: (n: number, of: number) => `on ${n} of ${of} day${of === 1 ? '' : 's'}`,
+    wastedWhen: 'When it happens',
   },
   quick: {
     placeholder: 'Add a to-do…',

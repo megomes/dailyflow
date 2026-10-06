@@ -4,13 +4,13 @@ import { DEFAULT_TARGET } from '@/lib/sleep';
 import Link from 'next/link';
 import { useLiveQuery } from 'dexie-react-hooks';
 import { useEffect, useMemo, useState, type MouseEvent, type ReactNode } from 'react';
-import { ChevronLeft, ChevronRight } from 'lucide-react';
+import { ChevronLeft, ChevronRight, Hourglass } from 'lucide-react';
 import { m } from '@/i18n/en';
 import { track } from '@/lib/analytics';
 import { getDB } from '@/lib/db';
 import { useClock } from '@/lib/hooks';
 import { AreaIcon } from '@/lib/icons';
-import { areaDistribution, compareAreas, dayDiscipline, daysIn, estimationAccuracy, focusStats, goalProgress, monthOf, plannedVsReal, previous, weekOf, type Period } from '@/lib/insights';
+import { areaDistribution, compareAreas, dayDiscipline, daysIn, estimationAccuracy, focusStats, goalProgress, monthOf, plannedVsReal, previous, wastedTime, weekOf, type Period } from '@/lib/insights';
 import { savePrefs } from '@/lib/prefs';
 import { activeAreas } from '@/lib/repo';
 import { addDays, dateFromIso, fmtDuration } from '@/lib/time';
@@ -45,7 +45,8 @@ export default function InsightsPage() {
   }, [span]);
 
   const data = useMemo(() => {
-    if (!records || !blocks || !tasks || !sessions || !days || !revisions) return null;
+    if (!records || !blocks || !tasks || !sessions || !days || !revisions || !areasRaw) return null;
+    const wastedIds = new Set(areasRaw.filter(a => a.wasted && !a.deleted).map(a => a.id));
     const dist = areaDistribution(records, period);
     const prevDist = areaDistribution(records, prev);
     return {
@@ -56,8 +57,10 @@ export default function InsightsPage() {
       est: estimationAccuracy(tasks, sessions, period),
       focus: focusStats(sessions, period),
       goals: goalProgress(prefs?.goals, dist.total, period),
+      wasted: wastedTime(records, wastedIds, period),
+      prevWasted: wastedTime(records, wastedIds, prev).total,
     };
-  }, [records, blocks, tasks, sessions, days, revisions, prefs, period.from, period.to]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [records, blocks, tasks, sessions, days, revisions, areasRaw, prefs, period.from, period.to]); // eslint-disable-line react-hooks/exhaustive-deps
 
   if (!data || !areasRaw) return <div className="page" />;
   const areaMap = new Map(areasRaw.map(a => [a.id, a]));
@@ -98,6 +101,8 @@ export default function InsightsPage() {
 
       {empty ? <><p className="secondary">{m.insights.empty}</p><SleepInsights sleeps={sleeps} period={period} target={prefs?.sleepTarget ?? DEFAULT_TARGET} blocks={blocks ?? []} records={records ?? []} hover={hover} leave={leave} /></> : (
         <div className="ins-grid">
+          <Wasted w={data.wasted} prev={data.prevWasted} days={daysIn(period)} span={span} hover={hover} leave={leave} />
+
           <Card title={m.insights.distribution} hint={m.insights.distributionHint}>
             <div className="daybars">
               {daysIn(period).map(d => {
@@ -109,7 +114,7 @@ export default function InsightsPage() {
                     <span className="muted tabular">{dateFromIso(d).toLocaleDateString('en-US', span !== 'month' ? { weekday: 'short' } : { day: 'numeric' })}</span>
                     <div className="hbar" style={{ width: `${(sum / max) * 100}%` }}>
                       {row && [...row.entries()].sort((a, b) => order(areaMap, a[0]) - order(areaMap, b[0])).map(([id, v]) => (
-                        <i key={id} data-color={areaMap.get(id)?.color ?? 'gray'} style={{ flexGrow: v }} onMouseMove={hover(`${areaMap.get(id)?.name ?? '?'} · ${fmtDuration(v)}`)} onMouseLeave={leave} />
+                        <i key={id} data-color={areaMap.get(id)?.color ?? 'gray'} className={areaMap.get(id)?.wasted ? 'wasted' : undefined} style={{ flexGrow: v }} onMouseMove={hover(`${areaMap.get(id)?.name ?? '?'} · ${fmtDuration(v)}`)} onMouseLeave={leave} />
                       ))}
                     </div>
                     <span className="tabular secondary">{sum ? fmtDuration(sum) : ''}</span>
@@ -198,6 +203,45 @@ export default function InsightsPage() {
 
 const order = (areaMap: Map<string, Area>, id: string) => areaMap.get(id)?.sort ?? 99;
 const delta = (v: number) => `${v > 0 ? '+' : v < 0 ? '−' : ''}${fmtDuration(Math.abs(v))}`;
+
+/** Wasted time (note #48): its own card, so it is seen apart from the rest of the day. */
+function Wasted({ w, prev, days, span, hover, leave }: { w: ReturnType<typeof wastedTime>; prev: number; days: string[]; span: Span; hover: (t: string) => (e: MouseEvent) => void; leave: () => void }) {
+  const max = Math.max(1, ...w.byDay.values());
+  const maxH = Math.max(1, ...w.byHour);
+  return (
+    <section className="card stack ins-card wasted-card">
+      <div><b className="row"><Hourglass size={15} />{m.insights.wasted}</b><div className="hint">{m.insights.wastedHint}</div></div>
+      {w.total === 0 ? <span className="hint">{m.insights.wastedNone}</span> : (
+        <>
+          <div className="hero-line">
+            <b className="tabular">{fmtDuration(w.total)}</b>
+            <span className="secondary">{m.insights.wastedShare(Math.round(w.share * 100))} · {m.insights.wastedDays(w.days, days.length)}</span>
+            {prev > 0 && Math.abs(w.total - prev) >= 5 && <span className={`wasted-delta tabular ${w.total > prev ? 'up' : 'down'}`}>{delta(w.total - prev)}</span>}
+          </div>
+          {span !== 'day' && (
+            <div className="daybars">
+              {days.map(d => {
+                const v = w.byDay.get(d) ?? 0;
+                return (
+                  <div key={d} className="daybar-row">
+                    <span className="muted tabular">{dateFromIso(d).toLocaleDateString('en-US', span !== 'month' ? { weekday: 'short' } : { day: 'numeric' })}</span>
+                    <div className="hbar" style={{ width: `${(v / max) * 100}%` }}>{v > 0 && <i className="wasted" style={{ flexGrow: 1 }} onMouseMove={hover(fmtDuration(v))} onMouseLeave={leave} />}</div>
+                    <span className="tabular secondary">{v ? fmtDuration(v) : ''}</span>
+                  </div>
+                );
+              })}
+            </div>
+          )}
+          <span className="sublabel">{m.insights.wastedWhen}</span>
+          <div className="hours wasted-hours">
+            {w.byHour.map((v, h) => <div key={h} className="hcol" onMouseMove={hover(`${String(h).padStart(2, '0')}:00 · ${fmtDuration(v)}`)} onMouseLeave={leave}><i style={{ height: `${(v / maxH) * 100}%` }} /></div>)}
+          </div>
+          <div className="hours-axis tabular muted"><span>00</span><span>06</span><span>12</span><span>18</span><span>23</span></div>
+        </>
+      )}
+    </section>
+  );
+}
 
 function Card({ title, hint, children }: { title: string; hint?: string; children: ReactNode }) {
   return <section className="card stack ins-card"><div><b>{title}</b>{hint && <div className="hint">{hint}</div>}</div>{children}</section>;

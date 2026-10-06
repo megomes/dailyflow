@@ -175,7 +175,7 @@ class NowSource : SuspendingTimelineComplicationDataSourceService() {
             ComplicationType.LONG_TEXT -> LongTextComplicationData.Builder(text("● $name $overText, then ${now!!.title}"), desc)
                 .setTitle(text("BEYOND PLAN")).setMonochromaticImage(icon(this, R.drawable.ic_now)).setTapAction(open(this)).build()
             else -> ShortTextComplicationData.Builder(text(overText), desc)
-                .setTitle(text("→${now!!.title}")).setMonochromaticImage(icon(this, R.drawable.ic_now)).setTapAction(open(this)).build()
+                .setTitle(text("● $name")).setMonochromaticImage(icon(this, R.drawable.ic_now)).setTapAction(open(this)).build()
         }
         return when (type) {
             ComplicationType.RANGED_VALUE -> {

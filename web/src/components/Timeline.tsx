@@ -1,6 +1,6 @@
 'use client';
-import { useMemo, useRef, useState, type DragEvent, type PointerEvent as RPointerEvent } from 'react';
-import { CalendarDays, Lock, Moon, Pause, Sunrise } from 'lucide-react';
+import { useEffect, useMemo, useRef, useState, useSyncExternalStore, type DragEvent, type PointerEvent as RPointerEvent } from 'react';
+import { CalendarDays, Lock, Minus, Moon, Pause, Plus, Sunrise } from 'lucide-react';
 import { MIN_BLOCK_MIN, SNAP_MIN, TIMELINE_END_MIN, TIMELINE_START_MIN } from '@/lib/config';
 import { layoutLanes, visibleRange } from '@/lib/dayLogic';
 import { AreaIcon } from '@/lib/icons';
@@ -66,16 +66,83 @@ const GUTTER = 54;
 const MAX_MIN = 28 * 60;
 const COL_GAP = 6;
 
-export function Timeline({ columns, areas, nowMin = null, selectedId, onSelect, onCreate, onChange, onDropTask, highlightArea, pxPerMin = 1.15, onItemMenu, onMark }: Props) {
+const ZOOM_KEY = 'df.tlzoom';
+const ZOOM_MIN = 0.6, ZOOM_MAX = 4;
+const MAX_EXTRA_H = (MAX_MIN - TIMELINE_END_MIN) / 60;
+
+let memoryZoom: number | null = null;
+const zoomListeners = new Set<() => void>();
+const subscribeZoom = (l: () => void) => { zoomListeners.add(l); return () => { zoomListeners.delete(l); }; };
+const readZoom = () => {
+  if (memoryZoom == null) { try { const z = Number(localStorage.getItem(ZOOM_KEY)); memoryZoom = z >= ZOOM_MIN && z <= ZOOM_MAX ? z : 1; } catch { memoryZoom = 1; } }
+  return memoryZoom;
+};
+
+const scrollParent = (el: HTMLElement | null): HTMLElement | null => {
+  for (let p = el; p; p = p.parentElement) {
+    const o = getComputedStyle(p).overflowY;
+    if ((o === 'auto' || o === 'scroll') && p.scrollHeight > p.clientHeight) return p;
+  }
+  return null;
+};
+
+export function Timeline({ columns, areas, nowMin = null, selectedId, onSelect, onCreate, onChange, onDropTask, highlightArea, pxPerMin: basePx = 1.15, onItemMenu, onMark }: Props) {
   const [drag, setDrag] = useState<Drag | null>(null);
+  // Zoom (note #44): pinch with two fingers on the phone, − / + on the desktop. One level for every timeline, kept on this device.
+  const zoom = useSyncExternalStore(subscribeZoom, readZoom, () => 1);
+  const pxPerMin = basePx * zoom;
+  // Hours past 22:00 the user asked for (note #43): the grid ends there unless a block reaches further.
+  const [extraH, setExtraH] = useState(0);
+  const wrapRef = useRef<HTMLDivElement>(null);
+  const live = useRef({ zoom, lo: 0, basePx });
+  const setZoom = (z: number) => {
+    memoryZoom = clamp(Math.round(z * 100) / 100, ZOOM_MIN, ZOOM_MAX);
+    try { localStorage.setItem(ZOOM_KEY, String(memoryZoom)); } catch { /* private mode */ }
+    zoomListeners.forEach(l => l());
+  };
+  /** Zoom around a point of the screen: the minute under it stays where it is. */
+  const zoomAround = (z: number, clientY: number | null) => {
+    const el = wrapRef.current?.querySelector('.tl') as HTMLElement | null;
+    const sp = scrollParent(el);
+    const { zoom: z0, lo: l0, basePx: b0 } = live.current;
+    const next = clamp(z, ZOOM_MIN, ZOOM_MAX);
+    if (el && clientY != null) {
+      const minute = l0 + (clientY - el.getBoundingClientRect().top) / (b0 * z0);
+      setZoom(next);
+      requestAnimationFrame(() => {
+        const r = el.getBoundingClientRect();
+        const dy = r.top + (minute - l0) * b0 * next - clientY;
+        if (sp) sp.scrollTop += dy; else window.scrollBy(0, dy);
+      });
+    } else setZoom(next);
+  };
+  useEffect(() => {
+    const el = wrapRef.current;
+    if (!el) return;
+    let startDist = 0, startZoom = 1;
+    const dist = (t: TouchList) => Math.max(40, Math.abs(t[0].clientY - t[1].clientY), Math.hypot(t[0].clientX - t[1].clientX, t[0].clientY - t[1].clientY) * 0.5);
+    const onStart = (e: TouchEvent) => { if (e.touches.length === 2) { startDist = dist(e.touches); startZoom = live.current.zoom; } };
+    const onMove = (e: TouchEvent) => {
+      if (e.touches.length !== 2 || !startDist) return;
+      e.preventDefault();
+      zoomAround(startZoom * (dist(e.touches) / startDist), (e.touches[0].clientY + e.touches[1].clientY) / 2);
+    };
+    const onEnd = (e: TouchEvent) => { if (e.touches.length < 2) startDist = 0; };
+    el.addEventListener('touchstart', onStart, { passive: true });
+    el.addEventListener('touchmove', onMove, { passive: false });
+    el.addEventListener('touchend', onEnd, { passive: true });
+    return () => { el.removeEventListener('touchstart', onStart); el.removeEventListener('touchmove', onMove); el.removeEventListener('touchend', onEnd); };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
   const [dropAt, setDropAt] = useState<{ col: string; id?: string; min: number } | null>(null);
   const suppressClick = useRef(false);
 
   const all = useMemo(() => columns.flatMap(c => c.items), [columns]);
   const [lo, hi] = useMemo(() => {
     const extra = nowMin != null ? [{ id: 'now', start: nowMin, end: nowMin + 1, title: '', areaId: '' }] : [];
-    return visibleRange([...all, ...extra], TIMELINE_START_MIN, TIMELINE_END_MIN);
-  }, [all, nowMin]);
+    return visibleRange([...all, ...extra], TIMELINE_START_MIN, TIMELINE_END_MIN + extraH * 60);
+  }, [all, nowMin, extraH]);
+  useEffect(() => { live.current = { zoom, lo, basePx }; });
   const placedCols = useMemo(() => columns.map(c => ({
     col: c,
     placed: layoutLanes(c.items.map(b => (drag && b.id === drag.id ? { ...b, start: drag.s, end: drag.e } : b))),
@@ -166,7 +233,12 @@ export function Timeline({ columns, areas, nowMin = null, selectedId, onSelect, 
   }
 
   return (
-    <div className="tl-wrap">
+    <div className="tl-wrap" ref={wrapRef}>
+      <div className="tl-zoom" role="group" aria-label="Zoom">
+        <button type="button" aria-label="Zoom out" disabled={zoom <= ZOOM_MIN} onClick={() => zoomAround(zoom / 1.25, null)}><Minus size={13} /></button>
+        <button type="button" className="pct" aria-label="Reset zoom" disabled={zoom === 1} onClick={() => zoomAround(1, null)}>{Math.round(zoom * 100)}%</button>
+        <button type="button" aria-label="Zoom in" disabled={zoom >= ZOOM_MAX} onClick={() => zoomAround(zoom * 1.25, null)}><Plus size={13} /></button>
+      </div>
       {n > 1 && (
         <div className="tl-cols">
           {columns.map((c, i) => (
@@ -264,6 +336,9 @@ export function Timeline({ columns, areas, nowMin = null, selectedId, onSelect, 
           <div className="nowline" style={{ top: y(nowMin) }} data-now><span>{fmtMin(nowMin)}</span></div>
         )}
       </div>
+      {onCreate && hi < MAX_MIN && extraH < MAX_EXTRA_H && columns.some(c => c.editable) && (
+        <button type="button" className="tl-more" onClick={() => setExtraH(h => Math.min(MAX_EXTRA_H, Math.max(h, Math.ceil((hi - TIMELINE_END_MIN) / 60)) + 2))}>Show later hours</button>
+      )}
     </div>
   );
 }

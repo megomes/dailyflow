@@ -1,6 +1,6 @@
 import { activeSec, coverage, isPaused, leftInBlock, recEnd } from './actual';
 import { logicalAt } from './zone';
-import type { Area, ColorKey, DayBlock, FocusSession, Sleep, Task, TimeRecord } from './types';
+import type { Area, ColorKey, Day, DayBlock, FocusSession, Sleep, Task, TimeRecord } from './types';
 
 /**
  * “Now” snapshot for glanceable surfaces (EH): Android widgets, lock screen notification,
@@ -45,11 +45,13 @@ export interface Snapshot {
   /** Today's to-dos: done and still open. */
   todayCount: { done: number; open: number };
   progress: { trackedMin: number; plannedMin: number; plannedSoFarMin: number };
+  /** The day was closed in the app (note #42): widgets say so instead of asking to close it. */
+  closed: boolean;
 }
 
 const hhmm = (min: number) => { const m = ((Math.round(min) % 1440) + 1440) % 1440; return `${String(Math.floor(m / 60)).padStart(2, '0')}:${String(m % 60).padStart(2, '0')}`; };
 
-export function buildSnapshot(input: { blocks: DayBlock[]; records: TimeRecord[]; tasks: Task[]; sessions: FocusSession[]; areas: Area[]; sleeps?: Sleep[] }, at: Date, tz: string, cutoff: number): Snapshot {
+export function buildSnapshot(input: { blocks: DayBlock[]; records: TimeRecord[]; tasks: Task[]; sessions: FocusSession[]; areas: Area[]; sleeps?: Sleep[]; days?: Day[] }, at: Date, tz: string, cutoff: number): Snapshot {
   const { day, min } = logicalAt(at, tz, cutoff);
   const minute = min + at.getUTCSeconds() / 60;
   const areaMap = new Map(input.areas.map(a => [a.id, a]));
@@ -133,6 +135,7 @@ export function buildSnapshot(input: { blocks: DayBlock[]; records: TimeRecord[]
       next: [...inNow, ...todayTasks.filter(t => !inNow.includes(t))].map(t => t.title).slice(0, 5),
     },
     todos,
+    closed: (input.days ?? []).some(d => !d.deleted && d.id === day && d.status === 'closed'),
     todayCount: { done: tasks.filter(t => t.status === 'done' && t.dayId === day).length, open: todayTasks.length },
     progress: {
       trackedMin: Math.round(coverage(recs.map(r => ({ start: r.start, end: Math.min(recEnd(r, minute), minute) }))).total),

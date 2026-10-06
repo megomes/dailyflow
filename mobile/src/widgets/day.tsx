@@ -45,6 +45,8 @@ export function hero(s: Snapshot): Hero {
       progress: s.now && !off ? s.now.progress : null, action: 'QUICK_STOP',
     };
   }
+  // Closed in the app (note #42): nothing is left to start or to close.
+  if (s.closed) return { mode: 'over', tag: 'DAY CLOSED', title: 'Day closed ✓', color: C.ok, sub: `${dur(s.progress.trackedMin)} tracked`, progress: null, action: null };
   const nowAll = s.nowAll ?? [];
   if (nowAll.length > 1) return { mode: 'idle', tag: `${nowAll.length} AT ONCE · NOT STARTED`, title: nowAll.map(b => b.title).join(' + '), color: nowAll[0].color, sub: `until ${nowAll[0].endLabel}`, progress: s.now?.progress ?? null, action: 'QUICK_START' };
   if (s.now) return { mode: 'idle', tag: 'NOW · NOT STARTED', title: s.now.title, color: s.now.color, sub: `${s.now.startLabel} – ${s.now.endLabel}`, progress: s.now.progress, action: 'QUICK_START' };
@@ -149,7 +151,7 @@ export function DayWidget({ s, info, pending, laterOpen = false }: { s: Snapshot
   const later = todos.filter(t => !t.inNow);
   // Everything on now first (parallel blocks together), then what comes next.
   const isNowB = (b: { start: number; end: number }) => b.start <= s.minute && s.minute < b.end;
-  const agenda = [...s.timeline.filter(isNowB), ...s.timeline.filter(b => b.start > s.minute)];
+  const agenda = s.closed ? [] : [...s.timeline.filter(isNowB), ...s.timeline.filter(b => b.start > s.minute)];
   const perBlock = new Map<string, number>();
   for (const t of todos) if (t.blockStart) perBlock.set(`${t.blockStart}|${t.blockTitle}`, (perBlock.get(`${t.blockStart}|${t.blockTitle}`) ?? 0) + 1);
   // The rest of today stays collapsed (one line) until tapped open: the widget is a summary.

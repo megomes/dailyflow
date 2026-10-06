@@ -39,6 +39,8 @@ export interface TLColumn {
   editable?: boolean;
   nights?: TLNight[];
   marks?: TLMark[];
+  /** Stretches confirmed “leave empty” (note #46): drawn dashed, like “Show later hours”, and only while nothing is recorded there. */
+  empties?: { start: number; end: number }[];
 }
 
 interface Props {
@@ -282,6 +284,9 @@ export function Timeline({ columns, areas, nowMin = null, selectedId, onSelect, 
             })}
           </div>
         ))}
+        {columns.map((col, ci) => col.empties?.map((e, i) => (
+          <div key={`empty-${col.id}-${i}`} className="tl-empty" title="Left empty" aria-hidden style={{ top: y(e.start), height: Math.max((e.end - e.start) * pxPerMin, 4), left: colLeft(ci), width: colWidth }} />
+        )))}
         {dropAt && !dropAt.id && (
           <div className="ghost-new" style={{ top: y(dropAt.min), height: 60 * pxPerMin, left: colLeft(columns.findIndex(c => c.id === dropAt.col)), width: colWidth }} />
         )}

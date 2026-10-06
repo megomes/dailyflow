@@ -64,6 +64,8 @@ export interface Day extends SyncFields {
   reflection?: Reflection;
   /** Overlapping block pairs the user chose to keep ("a|b", ids sorted): never asked about again. */
   keptOverlaps?: string[];
+  /** Untracked stretches the user chose to leave empty (note #46): not asked about again, not on Close the day either. */
+  emptySpans?: { start: number; end: number }[];
   /** Wake-up time chosen when planning the day (minutes from 00:00); the blocks start from it (note #30). */
   wakeAt?: number;
 }

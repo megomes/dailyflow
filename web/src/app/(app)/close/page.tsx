@@ -5,17 +5,17 @@ import { buildNightLayers } from '@/components/day/nightLayers';
 import Link from 'next/link';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { Suspense, useEffect, useMemo, useState } from 'react';
-import { Check, ChevronLeft } from 'lucide-react';
+import { Check, ChevronLeft, X } from 'lucide-react';
 import { Timeline, type TLItem } from '@/components/Timeline';
 import { QuickSwitch } from '@/components/day/QuickSwitch';
 import { RecordInspector } from '@/components/day/Inspectors';
 import { Summary } from '@/components/day/Summary';
 import { useDay } from '@/components/day/useDay';
 import { m } from '@/i18n/en';
-import { dayGaps, type Span } from '@/lib/actual';
+import { dayGaps, emptyLeft, type Span } from '@/lib/actual';
 import { track } from '@/lib/analytics';
 import { useClock, useIsMobile } from '@/lib/hooks';
-import { acceptPlanAsReal, addRecord, closeDay, toggleTaskDone, updateRecord } from '@/lib/ops';
+import { acceptPlanAsReal, addRecord, closeDay, leaveGapEmpty, toggleTaskDone, updateRecord } from '@/lib/ops';
 import { dateFromIso, fmtDuration, fmtMin } from '@/lib/time';
 
 function ClosePageInner() {
@@ -38,7 +38,8 @@ function ClosePageInner() {
   const until = dayId === today ? minute : 28 * 60;
   const sleeps = useSleeps();
   const sleepTarget = useSleepTarget();
-  const gaps = useMemo(() => dayGaps(d.blocks, d.records, until, 5, sleepSpans(dayId, sleeps, until)), [d.blocks, d.records, until, sleeps, dayId]);
+  const emptySpans = d.day?.emptySpans;
+  const gaps = useMemo(() => dayGaps(d.blocks, d.records, until, 5, [...sleepSpans(dayId, sleeps, until), ...(emptySpans ?? [])]), [d.blocks, d.records, until, sleeps, dayId, emptySpans]);
   const gapMin = gaps.reduce((s, g) => s + g.end - g.start, 0);
 
   if (!d.ready) return <div className="page" />;
@@ -90,6 +91,7 @@ function ClosePageInner() {
                       <span className="row">
                         <button type="button" className="btn sm" onClick={() => void acceptPlanAsReal(dayId, until, g, 'close')}>{m.record.fromPlan}</button>
                         <button type="button" className="btn sm ghost" onClick={() => setPicking(g)}>{m.record.other}</button>
+                        <button type="button" className="btn icon sm ghost" aria-label={m.close.leaveEmpty} title={m.close.leaveEmpty} onClick={() => void leaveGapEmpty(dayId, g)}><X size={13} /></button>
                       </span>
                     </div>
                   ))}
@@ -102,7 +104,7 @@ function ClosePageInner() {
           <Timeline
             columns={[
               { id: 'plan', label: m.day.cols.plan, items: d.blocks.map(b => ({ ...b, variant: 'ghost' as const })), editable: false, nights: sky.planNights, marks: sky.planMarks },
-              { id: 'real', label: m.day.cols.real, items: realItems, editable: true, nights: sky.realNights, marks: sky.realMarks },
+              { id: 'real', label: m.day.cols.real, items: realItems, editable: true, nights: sky.realNights, marks: sky.realMarks, empties: emptyLeft(emptySpans, d.records, until) },
             ]}
             areas={d.areaMap}
             nowMin={dayId === today ? minute : null}

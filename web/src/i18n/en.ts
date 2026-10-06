@@ -188,6 +188,9 @@ export const m = {
     changesEmpty: 'So far the day matches the plan.',
     more: (n: number) => `${n} more`,
     less: 'Show less',
+    planned: 'Planned',
+    actual: 'Real',
+    kinds: { moved: 'moved', resized: 'resized', added: 'added', removed: 'removed' },
     area: (name: string, planned: string, actual: string, delta: number) =>
       delta > 0 ? `${name}: ${actual} instead of ${planned} planned (+${fmtD(delta)})` : actual === '0m' ? `${name}: skipped (${planned} planned)` : `${name}: ${actual} of ${planned} planned (−${fmtD(-delta)})`,
     moved: (t: string, from: string, to: string) => `${t} moved ${from} → ${to}`,

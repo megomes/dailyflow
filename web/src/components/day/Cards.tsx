@@ -3,11 +3,12 @@ import { clockOf, sleepSpans, sleepVsPlan } from '@/lib/sleep';
 import { useSleeps, useSleepTarget } from './Sleep';
 import Link from 'next/link';
 import { useEffect, useState } from 'react';
-import { AlertTriangle, ListChecks, Moon, Play, RefreshCw, Sunrise, X } from 'lucide-react';
+import { AlertTriangle, ArrowRight, ChevronsUpDown, ListChecks, Minus, Moon, Play, Plus, RefreshCw, Sunrise, X } from 'lucide-react';
+import { AreaIcon } from '@/lib/icons';
 import { m } from '@/i18n/en';
 import { dayGaps, overlapKey, pausedWithin, recEnd, replanRemaining, whatChanged, type ChangeLine, type Conflict, type Span } from '@/lib/actual';
 import { track } from '@/lib/analytics';
-import { acceptPlanAsReal, addRecord, adoptPlan, applyReplan, saveDayAsTemplate, closeDay, deleteBlock, keepOverlap, lateStart, patchBlock, setRevisionReason, startDay } from '@/lib/ops';
+import { acceptPlanAsReal, addRecord, adoptPlan, applyReplan, saveDayAsTemplate, closeDay, deleteBlock, keepOverlap, lateStart, leaveGapEmpty, patchBlock, setRevisionReason, startDay } from '@/lib/ops';
 import { DAY_KEYS, fmtDuration, fmtMin, templateIdForDate } from '@/lib/time';
 import type { Area, DayBlock, DayKey, PlanBlock, TimeRecord } from '@/lib/types';
 import { Modal } from '../Modal';
@@ -49,11 +50,11 @@ export function NotPlannedCard({ dayId, startedAt }: { dayId: string; startedAt?
 }
 
 /** Yesterday not closed (CAP-G6): a simple card with the fast path and the full review. */
-export function YesterdayCard({ dayId, blocks, records }: { dayId: string; blocks: DayBlock[]; records: TimeRecord[] }) {
+export function YesterdayCard({ dayId, blocks, records, empty = [] }: { dayId: string; blocks: DayBlock[]; records: TimeRecord[]; empty?: Span[] }) {
   const [busy, setBusy] = useState(false);
   const tracked = records.reduce((s, r) => s + (recEnd(r, r.start) - r.start - pausedWithin(r)), 0);
   const sleeps = useSleeps();
-  const gaps = dayGaps(blocks, records, 28 * 60, 10, sleepSpans(dayId, sleeps, 28 * 60)).reduce((s, g) => s + g.end - g.start, 0);
+  const gaps = dayGaps(blocks, records, 28 * 60, 10, [...sleepSpans(dayId, sleeps, 28 * 60), ...empty]).reduce((s, g) => s + g.end - g.start, 0);
   async function quick() {
     setBusy(true);
     const t0 = Date.now();
@@ -84,6 +85,44 @@ export function changeText(c: ChangeLine, areaMap: Map<string, Area>): string {
   }
 }
 
+/** One line of “What changed today”, drawn (note #47): an area is a planned bar against a real bar; a plan change is an icon and the before → after. */
+function ChangeRow({ c, areaMap, scale }: { c: ChangeLine; areaMap: Map<string, Area>; scale: number }) {
+  const area = 'areaId' in c ? areaMap.get(c.areaId) : undefined;
+  const color = area?.color ?? 'gray';
+  if (c.kind === 'area') {
+    const skipped = c.actual === 0;
+    return (
+      <li className={`chg area ${c.delta > 0 ? 'up' : 'down'}`} data-color={color}>
+        <span className="chg-ico">{area ? <AreaIcon name={area.icon} size={15} /> : <Minus size={15} />}</span>
+        <div className="chg-body">
+          <div className="chg-head">
+            <b>{area?.name ?? m.close.unplanned}</b>
+            <span className="chg-delta tabular">{skipped ? m.day.skipped : `${c.delta > 0 ? '+' : '−'}${fmtDuration(Math.abs(c.delta))}`}</span>
+          </div>
+          <div className="chg-bars" aria-hidden>
+            <span className="bar plan" style={{ width: `${Math.max(3, (c.planned / scale) * 100)}%` }} />
+            <span className="bar real" style={{ width: `${Math.max(c.actual ? 3 : 0, (c.actual / scale) * 100)}%` }} />
+          </div>
+          <div className="chg-sub tabular"><span>{m.day.planned} {fmtDuration(c.planned)}</span><span>{m.day.actual} {fmtDuration(c.actual)}</span></div>
+        </div>
+      </li>
+    );
+  }
+  const Icon = c.kind === 'moved' ? ArrowRight : c.kind === 'resized' ? ChevronsUpDown : c.kind === 'added' ? Plus : Minus;
+  const detail = c.kind === 'moved' ? `${fmtMin(c.from)} → ${fmtMin(c.to)}`
+    : c.kind === 'resized' ? `${fmtDuration(c.from)} → ${fmtDuration(c.to)}`
+    : `${fmtMin(c.start)} · ${fmtDuration(c.minutes)}`;
+  return (
+    <li className={`chg plan ${c.kind}`} data-color={color}>
+      <span className="chg-ico"><Icon size={15} /></span>
+      <div className="chg-body">
+        <div className="chg-head"><b>{c.title}</b><span className="chg-tag">{m.day.kinds[c.kind]}</span></div>
+        <div className="chg-sub tabular"><span>{detail}</span></div>
+      </div>
+    </li>
+  );
+}
+
 /** “What changed today” (VIS-CAMADAS): plain-language differences, biggest first. */
 export function ChangesCard({ dayId, baseline, blocks, records, until, areaMap, plannedWake }: { dayId: string; baseline?: PlanBlock[]; blocks: DayBlock[]; records: TimeRecord[]; until: number; areaMap: Map<string, Area>; plannedWake?: number }) {
   const [all, setAll] = useState(false);
@@ -92,6 +131,8 @@ export function ChangesCard({ dayId, baseline, blocks, records, until, areaMap, 
   const sleepLines = sleepVsPlan(dayId, sleeps, target, plannedWake);
   const lines = whatChanged(baseline, blocks, records, until);
   const shown = all ? lines : lines.slice(0, 4);
+  // One scale for every area bar, so a 2h gap looks twice as big as a 1h one.
+  const scale = Math.max(30, ...lines.map(c => (c.kind === 'area' ? Math.max(c.planned, c.actual) : 0)));
   return (
     <section className="card changes">
       <span className="label">{m.day.changesTitle}</span>
@@ -100,11 +141,7 @@ export function ChangesCard({ dayId, baseline, blocks, records, until, areaMap, 
           {sleepLines.map(s => (
             <li key={s.kind} className="plan sleep-line"><Moon size={12} />{m.sleep.vsPlan(s.kind, Math.abs(s.delta), s.delta > 0, clockOf(s.actual), clockOf(s.planned))}</li>
           ))}
-          {shown.map((c, i) => (
-            <li key={i} data-color={'areaId' in c ? areaMap.get(c.areaId)?.color ?? 'gray' : 'gray'} className={c.kind === 'area' ? (c.delta > 0 ? 'up' : 'down') : 'plan'}>
-              <span className="dot" />{changeText(c, areaMap)}
-            </li>
-          ))}
+          {shown.map((c, i) => <ChangeRow key={i} c={c} areaMap={areaMap} scale={scale} />)}
         </ul>
       )}
       {lines.length > 4 && <button type="button" className="btn sm ghost" onClick={() => { setAll(!all); if (!all) track('changes_expanded', { lines: lines.length }); }}>{all ? m.day.less : m.day.more(lines.length - 4)}</button>}
@@ -191,11 +228,10 @@ export function ReplanModal({ dayId, blocks, records, minute, onClose }: { dayId
 }
 
 /** Untracked time, newest first, with the one-tap fixes: as planned, or pick what it was (US-TIME-008). */
-export function GapsCard({ dayId, blocks, records, areas, until }: { dayId: string; blocks: DayBlock[]; records: TimeRecord[]; areas: Area[]; until: number }) {
-  const [dismissed, setDismissed] = useState<string[]>([]);
+export function GapsCard({ dayId, blocks, records, areas, until, empty = [] }: { dayId: string; blocks: DayBlock[]; records: TimeRecord[]; areas: Area[]; until: number; empty?: Span[] }) {
   const [picking, setPicking] = useState<Span | null>(null);
   const sleeps = useSleeps();
-  const gaps = dayGaps(blocks, records, until, 15, sleepSpans(dayId, sleeps, until)).filter(g => !dismissed.includes(`${g.start}`)).reverse();
+  const gaps = dayGaps(blocks, records, until, 15, [...sleepSpans(dayId, sleeps, until), ...empty]).reverse();
   if (!gaps.length) return null;
   const total = gaps.reduce((s, g) => s + g.end - g.start, 0);
   const shown = gaps.slice(0, 2);
@@ -208,7 +244,7 @@ export function GapsCard({ dayId, blocks, records, areas, until }: { dayId: stri
           <span className="row">
             <button type="button" className="btn sm" onClick={() => void acceptPlanAsReal(dayId, until, g, 'gaps_card')}>{m.record.fromPlan}</button>
             <button type="button" className="btn sm ghost" onClick={() => setPicking(g)}>{m.record.other}</button>
-            <button type="button" className="btn icon sm ghost" aria-label={m.close.leaveEmpty} title={m.close.leaveEmpty} onClick={() => { setDismissed(x => [...x, `${g.start}`]); track('gap_left_empty', { gap_min: g.end - g.start }); }}><X size={13} /></button>
+            <button type="button" className="btn icon sm ghost" aria-label={m.close.leaveEmpty} title={m.close.leaveEmpty} onClick={() => void leaveGapEmpty(dayId, g)}><X size={13} /></button>
           </span>
         </div>
       ))}

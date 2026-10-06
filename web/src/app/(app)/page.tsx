@@ -61,7 +61,7 @@ export default function TodayPage() {
       title={m.today.title}
       sub={<span>{dateLabel}</span>}
       headExtra={<Link href={`/plan?d=${addDays(day, 1)}`} className="btn sm"><CalendarPlus size={14} /><span className="desk-only">{m.planning.tomorrow}</span><span className="phone-only">{m.planning.tomorrowShort}</span></Link>}
-      sideTop={showYesterday ? <YesterdayCard dayId={yId} blocks={liveBlocks(yBlocks ?? [])} records={yRecords} /> : null}
+      sideTop={showYesterday ? <YesterdayCard dayId={yId} blocks={liveBlocks(yBlocks ?? [])} records={yRecords} empty={yesterday?.emptySpans} /> : null}
       sideBottom={checkinFor && (
         <QuestionSet
           key={checkinFor}

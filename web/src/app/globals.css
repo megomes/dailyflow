@@ -133,6 +133,7 @@ textarea.input { height: auto; min-height: 60px; padding: 8px 10px; resize: vert
 .tl-zoom button:not(:first-child) { margin-left: -1px; }
 .tl-zoom button:hover:not(:disabled) { color: var(--text-primary); opacity: 1; }
 .tl-zoom button:disabled { opacity: .4; cursor: default; }
+.tl-empty { position: absolute; box-sizing: border-box; border: 1.5px dashed var(--text-muted); border-radius: 10px; background: color-mix(in srgb, var(--text-muted) 6%, transparent); pointer-events: none; opacity: .7; }
 .tl-more { display: block; margin: 8px auto 2px; padding: 6px 12px; border: 1px dashed var(--border-default); border-radius: 10px; background: transparent; color: var(--text-secondary); font-size: 12px; cursor: pointer; }
 .tl-more:hover { color: var(--text-primary); border-color: var(--text-tertiary, var(--border-default)); }
 .tl-hour { position: absolute; left: 0; right: 0; border-top: 1px solid var(--grid-line); }
@@ -204,6 +205,23 @@ textarea.input { height: auto; min-height: 60px; padding: 8px 10px; resize: vert
 .changes li { display: flex; align-items: baseline; gap: 8px; color: var(--text-secondary); }
 .changes li .dot { transform: translateY(-1px); }
 .changes li.plan .dot { background: transparent; border: 1.5px solid var(--text-muted); }
+/* “What changed today”, drawn (note #47): area icon + planned/real bars, or an icon for each plan change. */
+.changes ul { gap: 10px; }
+.changes li.chg { align-items: flex-start; gap: 10px; }
+.chg-ico { flex: none; width: 28px; height: 28px; border-radius: 9px; display: inline-flex; align-items: center; justify-content: center; color: var(--c, var(--text-secondary)); background: color-mix(in srgb, var(--c, var(--text-muted)) 16%, transparent); }
+.chg-body { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 4px; }
+.chg-head { display: flex; align-items: baseline; justify-content: space-between; gap: 8px; }
+.chg-head b { font-weight: 600; color: var(--text-primary); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.chg-delta { flex: none; font-size: 12px; font-weight: 700; padding: 1px 7px; border-radius: 999px; }
+.chg.up .chg-delta { color: var(--c-green); background: color-mix(in srgb, var(--c-green) 15%, transparent); }
+.chg.down .chg-delta { color: var(--c-orange); background: color-mix(in srgb, var(--c-orange) 15%, transparent); }
+.chg-tag { flex: none; font-size: 11px; color: var(--text-muted); text-transform: uppercase; letter-spacing: .04em; }
+.chg-bars { display: flex; flex-direction: column; gap: 3px; }
+.chg-bars .bar { display: block; height: 6px; border-radius: 3px; }
+.chg-bars .bar.plan { background: color-mix(in srgb, var(--c, var(--text-muted)) 28%, transparent); }
+.chg-bars .bar.real { background: var(--c, var(--text-muted)); }
+.chg-sub { display: flex; gap: 12px; font-size: 12px; color: var(--text-muted); }
+.chg.plan.removed .chg-head b { text-decoration: line-through; text-decoration-color: var(--text-muted); }
 .conflicts { display: flex; flex-direction: column; gap: 8px; border-color: color-mix(in srgb, var(--c-orange) 50%, var(--border-default)); }
 .conflicts .label svg { color: var(--c-orange); }
 .reason { display: flex; flex-direction: column; gap: 8px; border-color: color-mix(in srgb, var(--c-blue) 40%, var(--border-default)); }

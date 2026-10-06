@@ -251,6 +251,16 @@ export async function addBlock(dayId: string, b: Omit<DayBlock, 'id' | 'dayId' |
   return { id: block.id, revId };
 }
 
+/** “Leave empty” (note #46): remembered on the day, so neither Today nor Close the day asks about this stretch again. */
+export async function leaveGapEmpty(dayId: string, gap: { start: number; end: number }) {
+  const day = await getDB().days.get(dayId);
+  if (!day) return;
+  const spans = day.emptySpans ?? [];
+  if (spans.some(s => s.start === gap.start && s.end === gap.end)) return;
+  await update<Day>('day', dayId, { emptySpans: [...spans, { start: gap.start, end: gap.end }] });
+  track('gap_left_empty', { gap_min: gap.end - gap.start });
+}
+
 /** “Keep both”: remembered on the day, so no screen or device asks again about this pair. */
 export async function keepOverlap(dayId: string, key: string) {
   const day = await getDB().days.get(dayId);

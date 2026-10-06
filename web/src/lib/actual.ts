@@ -97,6 +97,12 @@ export function dayGaps(plan: TimelineBlock[], records: TimeRecord[], until: num
   return uncovered([...recordSpans(records, until), ...covered], from, to, min);
 }
 
+/** The stretches confirmed “leave empty” that are still empty: anything recorded over them later takes that part off (note #46). */
+export function emptyLeft(empty: Span[] | undefined, records: TimeRecord[], until: number): Span[] {
+  const rec = recordSpans(records, until);
+  return (empty ?? []).flatMap(s => uncovered(rec, s.start, s.end, 1));
+}
+
 export interface RecordDraft { start: number; end: number; areaId: string; title: string; blockId?: string }
 
 /**

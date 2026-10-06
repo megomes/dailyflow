@@ -5,7 +5,7 @@ import { useLiveQuery } from 'dexie-react-hooks';
 import { LayoutTemplate, ListChecks, Moon, Plus, RefreshCw, RotateCcw } from 'lucide-react';
 import { SyncBadge } from '@/components/AppShell';
 import { m } from '@/i18n/en';
-import { blockActual, countedPauses, coveredIn, openOverlaps } from '@/lib/actual';
+import { blockActual, countedPauses, coveredIn, emptyLeft, openOverlaps } from '@/lib/actual';
 import { track } from '@/lib/analytics';
 import { NEW_BLOCK_MIN } from '@/lib/config';
 import { useClock, useIsMobile } from '@/lib/hooks';
@@ -130,18 +130,19 @@ export function DayView({ dayId, live, title, sub, sideTop, sideBottom, headExtr
       const holes = countedPauses(rec ?? {}, base + until * 60000).map(p => ({ start: Math.max(r.start, (p.from - base) / 60000), end: Math.min(r.end, ((p.to ?? base + until * 60000) - base) / 60000) })).filter(h => h.end > h.start);
       if (holes.length) r.holes = holes;
     }
+    const empties = emptyLeft(d.day?.emptySpans, d.records, until);
     const { realNights, realMarks, planNights, planMarks } = buildNightLayers(dayId, sleeps, sleepTarget, d.day?.wakeAt, until);
     if (view === 'plan') return [{ id: 'plan', items: planItems, editable: true, nights: planNights, marks: planMarks }];
     if (view === 'real') return [
       { id: 'plan', label: m.day.cols.plan, items: planItems, editable: true, nights: planNights, marks: planMarks },
-      { id: 'real', label: m.day.cols.real, items: realItems, editable: true, nights: realNights, marks: realMarks },
+      { id: 'real', label: m.day.cols.real, items: realItems, editable: true, nights: realNights, marks: realMarks, empties },
     ];
     return [
       { id: 'baseline', label: m.day.cols.baseline, items: (d.day?.baseline ?? []).map(b => ({ ...b, variant: 'ghost' as const })), editable: false },
       { id: 'plan', label: m.day.cols.final, items: planItems, editable: true, nights: planNights, marks: planMarks },
-      { id: 'real', label: m.day.cols.real, items: realItems, editable: true, nights: realNights, marks: realMarks },
+      { id: 'real', label: m.day.cols.real, items: realItems, editable: true, nights: realNights, marks: realMarks, empties },
     ];
-  }, [d.blocks, d.records, d.tasks, d.day?.baseline, view, started, until, sleeps, sleepTarget, dayId, d.day?.wakeAt]);
+  }, [d.blocks, d.records, d.tasks, d.day?.baseline, view, started, until, sleeps, sleepTarget, dayId, d.day?.wakeAt, d.day?.emptySpans]);
 
   function afterRevision(revId: string | null, label: string) {
     if (revId) setReason({ revId, label });
@@ -331,7 +332,7 @@ export function DayView({ dayId, live, title, sub, sideTop, sideBottom, headExtr
               </div>
             </section>
           )}
-          {(started || d.records.length > 0) && <GapsCard dayId={dayId} blocks={d.blocks} records={d.records} areas={d.areas} until={until} />}
+          {(started || d.records.length > 0) && <GapsCard dayId={dayId} blocks={d.blocks} records={d.records} areas={d.areas} until={until} empty={d.day?.emptySpans} />}
           {live && <CalendarStatusBanner problems={calStatus.results.filter(r => r.error)} />}
           {conflicts.length > 0 && <ConflictsCard dayId={dayId} conflicts={conflicts} />}
           {!isMobile && inspector}

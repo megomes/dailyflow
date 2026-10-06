@@ -28,6 +28,12 @@ class PushService : FirebaseMessagingService() {
 
     override fun onMessageReceived(message: RemoteMessage) {
         // Settings › Device › preview: show the stand-up reminder now (note #19).
+        if (message.data["type"] == "block-test") {
+            app.dailyflow.wear.face.FaceData.load(applicationContext)
+            runBlocking { withTimeoutOrNull(9_000) { FaceData.refresh(applicationContext) } }
+            app.dailyflow.wear.notify.Transitions.preview(applicationContext)
+            return
+        }
         if (message.data["type"] == "move-test") { app.dailyflow.wear.move.Move.nudge(applicationContext, "Maker", 52, 38); return }
         if (message.data["type"] != "sync") return
         val app = applicationContext

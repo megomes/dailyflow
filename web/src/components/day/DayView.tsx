@@ -11,12 +11,15 @@ import { NEW_BLOCK_MIN } from '@/lib/config';
 import { useClock, useIsMobile } from '@/lib/hooks';
 import { addBlock, addRecord, deleteBlock, patchBlock, reopenDay, scheduleTask, updateRecord } from '@/lib/ops';
 import { getDB } from '@/lib/db';
-import { dateAtMinute, fmtDuration, fmtMin } from '@/lib/time';
+import { dateAtMinute, fmtDuration, fmtMin, minuteOfDay } from '@/lib/time';
 import type { DayBlock, Revision } from '@/lib/types';
 import { Timeline, type ChangeKind, type TLColumn, type TLItem } from '../Timeline';
 import { blockMenu, recordMenu } from '../menus';
 import { cutoffHour } from '@/lib/time';
-import { MorningPrompt, NightStrip } from './Sleep';
+import { MorningPrompt, NightStrip, SleepSheet, useSleeps, useSleepTarget } from './Sleep';
+import { clockOf, mainSleeps, targetSpan } from '@/lib/sleep';
+import { addDays } from '@/lib/time';
+import type { TLMark, TLNight } from '../Timeline';
 import { useDraggedTask } from '../tasks/dragState';
 import { ChangesCard, ConflictsCard, GapsCard, ReasonPrompt, NotPlannedCard, ReplanModal, SaveTemplateModal, StartDayCard } from './Cards';
 import { DayTasks } from './DayTasks';
@@ -60,6 +63,9 @@ export function DayView({ dayId, live, title, sub, sideTop, sideBottom, headExtr
   const [replan, setReplan] = useState(false);
   const [saveTpl, setSaveTpl] = useState(false);
   const prefs = useLiveQuery(() => getDB().prefs.get('prefs'), []);
+  const sleeps = useSleeps();
+  const sleepTarget = useSleepTarget();
+  const [sleepNight, setSleepNight] = useState<string | null>(null);
   const density = prefs?.density === 'compact' ? 0.75 : prefs?.density === 'roomy' ? 1.6 : 1;
   const scrolled = useRef(false);
 
@@ -123,17 +129,41 @@ export function DayView({ dayId, live, title, sub, sideTop, sideBottom, headExtr
       const holes = countedPauses(rec ?? {}, base + until * 60000).map(p => ({ start: Math.max(r.start, (p.from - base) / 60000), end: Math.min(r.end, ((p.to ?? base + until * 60000) - base) / 60000) })).filter(h => h.end > h.start);
       if (holes.length) r.holes = holes;
     }
-    if (view === 'plan') return [{ id: 'plan', items: planItems, editable: true }];
+    // Sleep as sky behind the day: last night's end and tonight's start (real), the plan's wake and bed (dashed).
+    const dur = (min: number) => (min >= 60 ? `${Math.floor(min / 60)}h${min % 60 ? ` ${min % 60}m` : ''}` : `${min}m`);
+    const nightMap = mainSleeps(sleeps);
+    const lastN = nightMap.get(addDays(dayId, -1)), tonightN = nightMap.get(dayId);
+    const plannedWake = d.day?.wakeAt ?? sleepTarget.wake, plannedBed = targetSpan(sleepTarget).bed;
+    const realNights: TLNight[] = [], realMarks: TLMark[] = [];
+    if (lastN) {
+      const wake = lastN.end ? Math.round(minuteOfDay(dayId, new Date(lastN.end))) : Math.round(until);
+      realNights.push({ start: 0, end: wake, part: 'morning' });
+      if (lastN.end) {
+        const delta = wake - plannedWake;
+        realMarks.push({ at: wake, kind: 'wake', night: lastN.night, tone: Math.abs(delta) < 5 ? 'ok' : delta > 0 ? 'late' : 'early',
+          text: `Woke ${clockOf(wake)}${Math.abs(delta) >= 5 ? ` · ${dur(Math.abs(delta))} ${delta > 0 ? 'later' : 'earlier'}` : ''}` });
+      }
+    }
+    if (tonightN) {
+      const bed = Math.round(minuteOfDay(dayId, new Date(tonightN.start)));
+      const delta = bed - plannedBed;
+      realNights.push({ start: bed, end: 1800, part: 'night' });
+      realMarks.push({ at: bed, kind: 'bed', night: tonightN.night, tone: Math.abs(delta) < 5 ? 'ok' : delta > 0 ? 'late' : 'early',
+        text: `Bed ${clockOf(bed)}${Math.abs(delta) >= 5 ? ` · ${dur(Math.abs(delta))} ${delta > 0 ? 'later' : 'earlier'}` : ''}` });
+    }
+    const planNights: TLNight[] = [{ start: 0, end: plannedWake, part: 'morning', planned: true }, { start: plannedBed, end: 1800, part: 'night', planned: true }];
+    const planMarks: TLMark[] = [{ at: plannedWake, kind: 'wake', text: `Wake ${clockOf(plannedWake)}`, planned: true }, { at: plannedBed, kind: 'bed', text: `Bed ${clockOf(plannedBed)}`, planned: true }];
+    if (view === 'plan') return [{ id: 'plan', items: planItems, editable: true, nights: planNights, marks: planMarks }];
     if (view === 'real') return [
-      { id: 'plan', label: m.day.cols.plan, items: planItems, editable: true },
-      { id: 'real', label: m.day.cols.real, items: realItems, editable: true },
+      { id: 'plan', label: m.day.cols.plan, items: planItems, editable: true, nights: planNights, marks: planMarks },
+      { id: 'real', label: m.day.cols.real, items: realItems, editable: true, nights: realNights, marks: realMarks },
     ];
     return [
       { id: 'baseline', label: m.day.cols.baseline, items: (d.day?.baseline ?? []).map(b => ({ ...b, variant: 'ghost' as const })), editable: false },
-      { id: 'plan', label: m.day.cols.final, items: planItems, editable: true },
-      { id: 'real', label: m.day.cols.real, items: realItems, editable: true },
+      { id: 'plan', label: m.day.cols.final, items: planItems, editable: true, nights: planNights, marks: planMarks },
+      { id: 'real', label: m.day.cols.real, items: realItems, editable: true, nights: realNights, marks: realMarks },
     ];
-  }, [d.blocks, d.records, d.tasks, d.day?.baseline, view, started, until]);
+  }, [d.blocks, d.records, d.tasks, d.day?.baseline, view, started, until, sleeps, sleepTarget, dayId]);
 
   function afterRevision(revId: string | null, label: string) {
     if (revId) setReason({ revId, label });
@@ -301,6 +331,7 @@ export function DayView({ dayId, live, title, sub, sideTop, sideBottom, headExtr
           </button>
         </div>
       </header>
+      {sleepNight && <SleepSheet key={sleepNight} sleep={mainSleeps(sleeps).get(sleepNight) ?? null} night={sleepNight} onClose={() => setSleepNight(null)} />}
       <NightStrip dayId={dayId} />
       <div className="today">
         <div className="today-side">
@@ -332,6 +363,7 @@ export function DayView({ dayId, live, title, sub, sideTop, sideBottom, headExtr
         </div>
         <Timeline
           columns={columns}
+          onMark={mk => setSleepNight(mk.night ?? null)}
           areas={d.areaMap}
           nowMin={nowMin}
           selectedId={sel?.id ?? null}

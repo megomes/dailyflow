@@ -6,6 +6,7 @@ import { PairDevice } from '@/components/PairDevice';
 import { m } from '@/i18n/en';
 import { deviceId, track } from '@/lib/analytics';
 import { useSyncState } from '@/lib/hooks';
+import { inAndroidApp, postNative } from '@/lib/native';
 import { syncNow } from '@/lib/sync';
 
 export default function DevicePage() {
@@ -13,12 +14,14 @@ export default function DevicePage() {
   const [busy, setBusy] = useState(false);
   const [preview, setPreview] = useState<string | null>(null);
 
-  async function previewMove() {
+  async function previewOn(kind: 'move' | 'block') {
     setPreview(m.device.previewSending);
+    // Inside the Android app the phone shows its own block-change notification right away.
+    if (kind === 'block') postNative({ type: 'preview-block' });
     try {
-      const r = await fetch('/api/push/test', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ kind: 'move' }) });
+      const r = await fetch('/api/push/test', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ kind }) });
       const j = (await r.json().catch(() => ({}))) as { reached?: number };
-      setPreview(r.ok && j.reached ? m.device.previewSent : m.device.previewNone);
+      setPreview(r.ok && j.reached ? m.device.previewSent : kind === 'block' && inAndroidApp() ? m.device.previewPhone : m.device.previewNone);
     } catch { setPreview(m.device.previewNone); }
   }
 
@@ -53,7 +56,8 @@ export default function DevicePage() {
         <h2><Watch size={15} /> {m.device.watch}</h2>
         <p className="hint" style={{ margin: 0 }}>{m.device.previewHint}</p>
         <div className="row wrap">
-          <button type="button" className="btn sm" onClick={() => void previewMove()}>{m.device.previewMove}</button>
+          <button type="button" className="btn sm" onClick={() => void previewOn('move')}>{m.device.previewMove}</button>
+          <button type="button" className="btn sm" onClick={() => void previewOn('block')}>{m.device.previewBlock}</button>
           {preview && <span className="hint" role="status">{preview}</span>}
         </div>
       </section>

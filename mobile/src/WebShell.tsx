@@ -7,6 +7,8 @@ import type { Credential } from './auth';
 import { refreshSurfaces } from './background';
 import { connectHealth, syncSleep, syncSleepDetailed, type HealthResult } from './health';
 import { applyOta } from './ota';
+import { previewChange } from './notify';
+import { remoteSnapshot } from './snapshot';
 import { C } from './theme';
 
 /**
@@ -64,6 +66,8 @@ export function WebShell({ cred, path, onUnauthorized }: { cred: Credential; pat
         say(await syncSleepDetailed());
         web.current?.injectJavaScript('window.dispatchEvent(new Event("online")); true;');
       })();
+    } else if (msg.type === 'preview-block') {
+      void remoteSnapshot().then(previewChange);
     } else if (msg.type === 'haptic') {
       void (msg.kind === 'success' ? Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success) : Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light));
     }

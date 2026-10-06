@@ -9,6 +9,12 @@ import android.content.BroadcastReceiver
 import android.content.Context
 import android.content.Intent
 import android.content.pm.PackageManager
+import android.graphics.Bitmap
+import android.graphics.Canvas
+import android.graphics.Color
+import android.graphics.LinearGradient
+import android.graphics.Paint
+import android.graphics.Shader
 import android.hardware.Sensor
 import android.hardware.SensorEvent
 import android.hardware.SensorEventListener
@@ -129,16 +135,35 @@ object Move {
         "Quick lap? 🏃", "Water + a walk? 💧", "Unfreeze! 🧊➡️🚶",
     )
 
+    /** The stretching figure on a green gradient: the same character as the break screen. */
+    private fun figureIcon(): Bitmap {
+        val bmp = Bitmap.createBitmap(160, 160, Bitmap.Config.ARGB_8888)
+        val c = Canvas(bmp)
+        val p = Paint(Paint.ANTI_ALIAS_FLAG)
+        p.shader = LinearGradient(0f, 0f, 160f, 160f, Color.parseColor("#0C3B26"), Color.parseColor("#19B66A"), Shader.TileMode.CLAMP)
+        c.drawCircle(80f, 80f, 80f, p)
+        p.shader = null
+        p.color = Color.parseColor("#73E3AA"); p.strokeWidth = 9f; p.strokeCap = Paint.Cap.ROUND
+        c.drawCircle(80f, 38f, 13f, p)
+        c.drawLine(80f, 56f, 80f, 102f, p)
+        c.drawLine(80f, 66f, 52f, 40f, p); c.drawLine(80f, 66f, 108f, 40f, p)
+        c.drawLine(80f, 102f, 62f, 140f, p); c.drawLine(80f, 102f, 98f, 140f, p)
+        p.color = Color.WHITE; p.alpha = 150
+        for ((x, y) in listOf(34f to 30f, 128f to 28f, 26f to 70f, 136f to 74f)) c.drawCircle(x, y, 4f, p)
+        return bmp
+    }
+
     fun nudge(context: Context, block: String, minutes: Int, steps: Long) {
         if (ContextCompat.checkSelfPermission(context, Manifest.permission.POST_NOTIFICATIONS) != PackageManager.PERMISSION_GRANTED) return
         ensureChannel(context)
         prefs(context).edit().putLong("lastNudge", System.currentTimeMillis()).putString("nudgeBlock", block).apply()
         val title = LINES[(System.currentTimeMillis() / 60_000 % LINES.size).toInt()]
-        val text = "$block for ${minutes}m · $steps steps 🪑"
+        val text = "$block · ${minutes}m sitting · $steps steps"
         val open = PendingIntent.getActivity(context, 7, Intent(context, MoveActivity::class.java).putExtra(MoveActivity.BLOCK, block)
             .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK), PendingIntent.FLAG_IMMUTABLE or PendingIntent.FLAG_UPDATE_CURRENT)
         val n = NotificationCompat.Builder(context, CHANNEL)
-            .setSmallIcon(R.drawable.ic_move).setColor(0xFF19B66A.toInt())
+            .setSmallIcon(R.drawable.ic_move).setColor(0xFF19B66A.toInt()).setLargeIcon(figureIcon())
+            .setFullScreenIntent(open, true)
             .setContentTitle(title).setContentText(text)
             .setStyle(NotificationCompat.BigTextStyle().bigText("$text\nTwo minutes on your feet resets the clock."))
             .setCategory(NotificationCompat.CATEGORY_REMINDER).setPriority(NotificationCompat.PRIORITY_HIGH)

@@ -2,9 +2,9 @@ import { z } from 'zod';
 import { previewOnWatch } from '@/lib/push';
 import { requireDevice, unauthorized } from '@/lib/server';
 
-const Body = z.object({ kind: z.enum(['move']) });
+const Body = z.object({ kind: z.enum(['move', 'block']) });
 
-/** POST /api/push/test {kind:'move'} — Settings › Device “preview on the watch” (note #19). */
+/** POST /api/push/test {kind:'move'|'block'} — Settings › Device “preview on the watch” (note #19). */
 export async function POST(req: Request) {
   if (!(await requireDevice())) return unauthorized();
   const parsed = Body.safeParse(await req.json().catch(() => null));

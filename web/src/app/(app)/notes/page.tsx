@@ -1,6 +1,6 @@
 'use client';
 import { useEffect, useMemo, useState } from 'react';
-import { Archive, ArrowLeft, ChevronRight, GitCommitHorizontal, MessageSquareWarning, MonitorSmartphone, Pencil, ThumbsDown, ThumbsUp, Trash2 } from 'lucide-react';
+import { Archive, ArrowLeft, CheckCheck, ChevronRight, GitCommitHorizontal, MonitorSmartphone, Pencil, ThumbsDown, ThumbsUp, Trash2 } from 'lucide-react';
 import { m } from '@/i18n/en';
 import { previousScreen, track } from '@/lib/analytics';
 import { collectContext, summarizeContext, type ClientContext } from '@/lib/clientContext';
@@ -197,10 +197,9 @@ function NoteCard({ note, onChanged }: { note: Note; onChanged: () => void }) {
   const [comment, setComment] = useState('');
   const r = note.resolution ?? {};
   const delivered = note.status === 'done' || note.status === 'ignored';
-  // The user's latest 👎 comment, shown until Claude delivers again.
-  const lastReject = findLast(note.log, l => l.action === 'rejected');
-  const lastDelivery = findLast(note.log, l => l.action === 'status' && (l.detail?.status === 'done' || l.detail?.status === 'ignored'));
-  const feedback = lastReject > lastDelivery ? note.log[lastReject] : null;
+  // The whole conversation stays under the note (note #35): each 👎 in the user's own words, with a divider
+  // saying when, and a divider for every delivery in between. The first delivery is only a divider too.
+  const thread = note.log.filter(l => l.action === 'rejected' || (l.action === 'status' && (l.detail?.status === 'done' || l.detail?.status === 'ignored')));
   const open = note.status === 'open';
   const hasResolution = !!(r.summary || r.done?.length || r.ignored?.length || r.decisions?.length || r.follow_ups?.length || r.commits?.length || r.deployed);
 
@@ -264,10 +263,16 @@ function NoteCard({ note, onChanged }: { note: Note; onChanged: () => void }) {
       ) : <p className="note-body">{note.body}</p>}
       {msg && <p className="error" style={{ margin: 0 }}>{msg}</p>}
 
-      {feedback && (
-        <div className="feedback">
-          <MessageSquareWarning size={15} />
-          <div><span className="label">{m.notes.feedback} · {fmtWhen(feedback.ts)}</span><p>{feedback.message}</p></div>
+      {thread.length > 0 && (
+        <div className="thread">
+          {thread.map((l, i) => l.action === 'rejected' ? (
+            <div key={i} className="thread-item">
+              <div className="thread-divider user"><ThumbsDown size={12} />{m.notes.thread.rejected(i === thread.length - 1 && !delivered ? 0 : 1)} · {fmtWhen(l.ts)}</div>
+              <p className="note-body">{l.message}</p>
+            </div>
+          ) : (
+            <div key={i} className="thread-divider claude"><CheckCheck size={12} />{m.notes.thread[l.detail?.status === 'ignored' ? 'ignored' : 'delivered']} · {fmtWhen(l.ts)}</div>
+          ))}
         </div>
       )}
 

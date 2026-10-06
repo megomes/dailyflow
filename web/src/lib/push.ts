@@ -96,7 +96,7 @@ async function sendFcm(token: string, target: { id: string; token: string }, seq
 }
 
 /** Settings “preview”: ask the watch to show a reminder now, so you can see what it looks like (note #19). Returns how many watches were reached. */
-export async function previewOnWatch(kind: 'move'): Promise<number> {
+export async function previewOnWatch(kind: 'move' | 'block'): Promise<number> {
   const token = await accessToken();
   const a = serviceAccount();
   if (!token || !a) return 0;

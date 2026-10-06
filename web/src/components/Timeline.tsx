@@ -28,11 +28,17 @@ export interface TLItem extends TimelineBlock {
   holes?: { start: number; end: number }[];
 }
 
+/** Sleep is not a block (note #29): the night is the sky behind the day, with a marker where you woke up or went to bed. */
+export interface TLNight { start: number; end: number; part: 'morning' | 'night'; planned?: boolean }
+export interface TLMark { at: number; kind: 'wake' | 'bed'; text: string; tone?: 'ok' | 'late' | 'early'; planned?: boolean; night?: string }
+
 export interface TLColumn {
   id: string;
   label?: string;
   items: TLItem[];
   editable?: boolean;
+  nights?: TLNight[];
+  marks?: TLMark[];
 }
 
 interface Props {
@@ -50,6 +56,8 @@ interface Props {
   pxPerMin?: number;
   /** Right-click / press-and-hold menu for an item (note #22). */
   onItemMenu?: (id: string, columnId: string) => MenuSpec | Promise<MenuSpec | null> | null;
+  /** A wake / bed marker was tapped (to fix the time). */
+  onMark?: (mark: TLMark) => void;
 }
 
 interface Drag { id: string; col: string; kind: ChangeKind; y0: number; s0: number; e0: number; s: number; e: number; moved: boolean; pointerId: number }
@@ -58,7 +66,7 @@ const GUTTER = 54;
 const MAX_MIN = 28 * 60;
 const COL_GAP = 6;
 
-export function Timeline({ columns, areas, nowMin = null, selectedId, onSelect, onCreate, onChange, onDropTask, highlightArea, pxPerMin = 1.15, onItemMenu }: Props) {
+export function Timeline({ columns, areas, nowMin = null, selectedId, onSelect, onCreate, onChange, onDropTask, highlightArea, pxPerMin = 1.15, onItemMenu, onMark }: Props) {
   const [drag, setDrag] = useState<Drag | null>(null);
   const [dropAt, setDropAt] = useState<{ col: string; id?: string; min: number } | null>(null);
   const suppressClick = useRef(false);
@@ -183,6 +191,24 @@ export function Timeline({ columns, areas, nowMin = null, selectedId, onSelect, 
             role="presentation"
             data-col={col.id}
           />
+        ))}
+        {columns.map((col, ci) => (
+          <div key={`sky-${col.id}`} className="tl-sky" aria-hidden={!col.marks?.length}>
+            {col.nights?.map((nb, i) => {
+              const t = Math.max(0, y(nb.start)), b = Math.min(height, y(nb.end));
+              if (b - t < 2) return null;
+              return <div key={i} className={`tl-night ${nb.part}${nb.planned ? ' planned' : ''}`} style={{ top: t, height: b - t, left: colLeft(ci), width: colWidth }}><span className="stars" /></div>;
+            })}
+            {col.marks?.map((mk, i) => {
+              const top = y(mk.at);
+              if (top < 0 || top > height) return null;
+              return (
+                <div key={`m${i}`} className={`tl-mark ${mk.kind}${mk.tone ? ` ${mk.tone}` : ''}${mk.planned ? ' planned' : ''}`} style={{ top, left: colLeft(ci), width: colWidth }}>
+                  <button type="button" onClick={() => onMark?.(mk)} disabled={mk.planned || !onMark}>{mk.kind === 'wake' ? <Sunrise size={11} /> : <Moon size={11} />}{mk.text}</button>
+                </div>
+              );
+            })}
+          </div>
         ))}
         {dropAt && !dropAt.id && (
           <div className="ghost-new" style={{ top: y(dropAt.min), height: 60 * pxPerMin, left: colLeft(columns.findIndex(c => c.id === dropAt.col)), width: colWidth }} />

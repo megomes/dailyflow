@@ -71,6 +71,19 @@ async function scheduleChanges(s: Snapshot) {
   await AsyncStorage.setItem(SCHEDULED, JSON.stringify(ids));
 }
 
+/** Settings › Device › preview: the notification of the next block change, shown right now (note #19). */
+export async function previewChange(s: Snapshot | null) {
+  if (!s || !s.timeline.length) return;
+  const b = s.timeline.find(x => x.start > s.minute) ?? s.timeline[s.timeline.length - 1];
+  const ended = s.timeline.find(x => x.end === b.start && x !== b);
+  const todos = s.todos.filter(t => t.blockStart === b.startLabel && t.blockTitle === b.title);
+  const lines = [`${b.title} · ${b.startLabel}–${b.endLabel}`, ...todos.slice(0, 3).map(t => `${t.high ? '!' : '○'} ${t.title}`), ...(todos.length > 3 ? [`+${todos.length - 3} more`] : [])];
+  await Notifications.scheduleNotificationAsync({
+    content: { title: headline(ended, b, Date.now() / 60000), body: lines.join('\n'), color: b.color, priority: Notifications.AndroidNotificationPriority.HIGH, data: { url: 'dailyflow:///', preview: true } },
+    trigger: { channelId: CHANNEL },
+  }).catch(() => null);
+}
+
 /** A shown change notification goes away once its block is started anywhere, or once it is over. */
 async function dismissDone(s: Snapshot) {
   const shown = await Notifications.getPresentedNotificationsAsync().catch(() => []);

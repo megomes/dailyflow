@@ -1,6 +1,6 @@
 'use client';
 import { useLiveQuery } from 'dexie-react-hooks';
-import { useEffect, useState } from 'react';
+import { useSyncExternalStore } from 'react';
 import { HeartPulse, Moon } from 'lucide-react';
 import { m } from '@/i18n/en';
 import { track } from '@/lib/analytics';
@@ -10,13 +10,15 @@ import { savePrefs } from '@/lib/prefs';
 import { DEFAULT_TARGET, targetMinutes } from '@/lib/sleep';
 import { dateFromIso, fmtDuration, fmtMin, parseHHMM } from '@/lib/time';
 
+const noop = () => () => {};
+
 /** Settings › Sleep (note #29): the target night, and Samsung Health through Health Connect (Android app). */
 export default function SleepSettings() {
   const prefs = useLiveQuery(() => getDB().prefs.get('prefs'), []);
   const target = prefs?.sleepTarget ?? DEFAULT_TARGET;
   const lastWatch = useLiveQuery(async () => (await getDB().sleeps.toArray()).filter(s => !s.deleted && s.source === 'health').sort((a, b) => b.night.localeCompare(a.night))[0], []);
-  const [app, setApp] = useState(false);
-  useEffect(() => { setApp(inAndroidApp()); }, []);
+  // Inside the Android app only (false while prerendering, so no hydration mismatch).
+  const app = useSyncExternalStore(noop, inAndroidApp, () => false);
 
   async function setTarget(k: 'bed' | 'wake', v: string) {
     const min = parseHHMM(v);

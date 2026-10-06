@@ -116,7 +116,7 @@ export function QuickAdd({ mode, dayId: dayProp, blockId: pinned, autoFocus, exp
             if (e.key === 'Enter' && e.shiftKey && !compact) { e.preventDefault(); setDetail(true); }
           }}
           onChange={e => { if (t0.current == null) t0.current = performance.now(); setText(e.target.value); }} />
-        {!compact && <button type="button" className="btn icon sm ghost" title={m.quick.details} aria-label={m.quick.details} onClick={() => setDetail(true)}><Maximize2 size={14} /></button>}
+        {!compact && <button type="button" className="btn sm qa-more" title={m.quick.details} aria-label={m.quick.details} onClick={() => setDetail(true)}><Maximize2 size={15} /><span>{m.quick.more}</span></button>}
         {(!compact || parsed.title) && <button type="submit" className={`btn sm${parsed.title ? ' primary' : ''}`} disabled={!parsed.title}>{m.quick.add}</button>}
       </form>
       {added && (

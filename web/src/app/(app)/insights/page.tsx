@@ -1,4 +1,5 @@
 'use client';
+import Link from 'next/link';
 import { useLiveQuery } from 'dexie-react-hooks';
 import { useEffect, useMemo, useState, type MouseEvent, type ReactNode } from 'react';
 import { ChevronLeft, ChevronRight } from 'lucide-react';
@@ -13,13 +14,13 @@ import { activeAreas } from '@/lib/repo';
 import { addDays, dateFromIso, fmtDuration } from '@/lib/time';
 import type { Area } from '@/lib/types';
 
-type Span = '7d' | 'week' | 'month';
+type Span = 'day' | '7d' | 'week' | 'month';
 interface Tip { x: number; y: number; text: string }
 
 /** Insights (E11): what the data says, never a productivity score. */
 export default function InsightsPage() {
   const { day: today } = useClock();
-  const [span, setSpan] = useState<Span>('7d');
+  const [span, setSpan] = useState<Span>('week');
   const [anchor, setAnchor] = useState(today);
   const [tip, setTip] = useState<Tip | null>(null);
   const db = getDB();
@@ -32,7 +33,7 @@ export default function InsightsPage() {
   const areasRaw = useLiveQuery(() => db.areas.toArray(), []);
   const prefs = useLiveQuery(() => db.prefs.get('prefs'), []);
 
-  const period: Period = span === '7d' ? last7(anchor) : span === 'week' ? weekOf(anchor) : monthOf(anchor);
+  const period: Period = span === 'day' ? { from: anchor, to: anchor, label: 'day' } : span === '7d' ? last7(anchor) : span === 'week' ? weekOf(anchor) : monthOf(anchor);
   const prev = previous(period);
 
   useEffect(() => {
@@ -59,10 +60,12 @@ export default function InsightsPage() {
   const areaMap = new Map(areasRaw.map(a => [a.id, a]));
   const tracked = [...data.dist.total.values()].reduce((s, v) => s + v, 0);
   const prevTracked = data.cmp.reduce((s, r) => s + r.prev, 0);
-  const label = span !== 'month'
+  const label = span === 'day'
+    ? dateFromIso(period.from).toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' })
+    : span !== 'month'
     ? `${dateFromIso(period.from).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })} – ${dateFromIso(period.to).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}`
     : dateFromIso(period.from).toLocaleDateString('en-US', { month: 'long', year: 'numeric' });
-  const shift = (n: number) => { setAnchor(span !== 'month' ? addDays(anchor, 7 * n) : addDays(n > 0 ? addDays(period.to, 1) : period.from, n > 0 ? 0 : -1)); track('insight_interacted', { chart: 'period', action: n > 0 ? 'next' : 'prev' }); };
+  const shift = (n: number) => { setAnchor(span === 'day' ? addDays(anchor, n) : span !== 'month' ? addDays(anchor, 7 * n) : addDays(n > 0 ? addDays(period.to, 1) : period.from, n > 0 ? 0 : -1)); track('insight_interacted', { chart: 'period', action: n > 0 ? 'next' : 'prev' }); };
   const hover = (text: string) => (e: MouseEvent) => setTip({ x: e.clientX, y: e.clientY, text });
   const leave = () => setTip(null);
   const empty = tracked === 0;
@@ -71,13 +74,17 @@ export default function InsightsPage() {
     <div className="page insights">
       <header className="page-head">
         <div><h1>{m.insights.title}</h1><div className="sub"><span>{m.insights.subtitle}</span></div></div>
-        <div className="row wrap">
-          <div className="seg">{(['7d', 'week', 'month'] as Span[]).map(s => <button key={s} type="button" aria-pressed={span === s} onClick={() => setSpan(s)}>{m.insights.spans[s]}</button>)}</div>
+      </header>
+      {/* Stays on top while the cards scroll (note #26); arrows and dates never wrap apart (note #27). */}
+      <div className="ins-controls">
+        <div className="seg">{(['day', '7d', 'week', 'month'] as Span[]).map(s => <button key={s} type="button" aria-pressed={span === s} onClick={() => { setSpan(s); track('insight_interacted', { chart: 'period', action: s }); }}>{m.insights.spans[s]}</button>)}</div>
+        <div className="period-nav">
           <button type="button" className="btn icon sm" onClick={() => shift(-1)} aria-label="Previous"><ChevronLeft size={15} /></button>
           <b className="period-label tabular">{label}</b>
           <button type="button" className="btn icon sm" onClick={() => shift(1)} disabled={period.to >= today} aria-label="Next"><ChevronRight size={15} /></button>
         </div>
-      </header>
+        {span === 'day' && <Link className="btn sm ghost" href={`/day?d=${period.from}`}>{m.insights.openDay}</Link>}
+      </div>
 
       <div className="stats">
         <div><b>{fmtDuration(tracked)}</b><span>{m.insights.tracked}{prevTracked ? ` · ${delta(tracked - prevTracked)}` : ''}</span></div>

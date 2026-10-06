@@ -451,7 +451,8 @@ export const m = {
   insights: {
     title: 'Insights',
     subtitle: 'What the real timeline says. No scores.',
-    spans: { '7d': '7 days', week: 'Week', month: 'Month' } as Record<string, string>,
+    spans: { day: 'Day', '7d': '7 days', week: 'Week', month: 'Month' } as Record<string, string>,
+    openDay: 'Open this day',
     tracked: 'Tracked',
     ofPlan: 'Real vs plan (tracked days)',
     closed: 'Days closed',
@@ -502,6 +503,7 @@ export const m = {
     otherBlock: 'Other block…',
     syntax: 'Optional: 30m · ! · #area · tomorrow · Shift+Enter for details',
     details: 'Details (Shift+Enter)',
+    more: 'Details',
     detailTitle: 'New to-do · details',
     create: 'Create',
     createMore: 'Create more',

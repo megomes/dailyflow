@@ -23,6 +23,11 @@ A ferramenta de revisão (`review/`) e o artifact publicado (https://claude.ai/a
 - Código de acesso: `.secrets/access-code.txt` (fora do git). Trocar: `npm run hash-code -- "<novo>"` e atualizar `ACCESS_CODE_HASH` na Vercel.
 - Antes de commitar: `npm run lint`, `npm test`, `npm run build` em `web/`.
 
+## Versão (sempre informar)
+
+- O app mostra a versão ao lado de “Synced” (`SyncBadge` em `web/src/components/AppShell.tsx`): `web <sha de 7 caracteres do commit>` e, dentro do app Android, `apk <version do mobile/app.json>` (o WebView manda no user agent, `DailyFlowAndroid/<version>`).
+- **Ao terminar qualquer entrega, diga ao usuário qual versão acabou de lançar:** o sha curto do commit publicado (`web …`) e, se mexeu no `mobile/`, a `version` do APK e se foi OTA ou APK novo (e o relógio, se instalou). Sem isso a entrega não está completa.
+
 ## App Android (`mobile/`)
 
 - **Web e app têm SEMPRE as mesmas funcionalidades.** O app é uma casca nativa (Expo) em volta do próprio webapp numa WebView (`src/WebShell.tsx`), logada com o token do aparelho via `/api/devices/web`. Funcionalidade nova vai **no web** (com layout de celular); nunca crie telas nativas paralelas.

@@ -21,6 +21,13 @@ export interface ClientContext {
 
 export const APP_VERSION = process.env.NEXT_PUBLIC_APP_VERSION || 'local';
 
+/** Version of the Android app (its WebView says it in the user agent: DailyFlowAndroid/0.4.0); null outside the app or on an old APK that only said “/1”. */
+export function apkVersion(): string | null {
+  if (typeof navigator === 'undefined') return null;
+  const v = navigator.userAgent.match(/DailyFlowAndroid\/(\d+\.\d+(?:\.\d+)?)/);
+  return v ? v[1] : null;
+}
+
 function os(ua: string): string {
   if (/iPhone|iPad|iPod/.test(ua)) return 'iOS';
   if (/Android/.test(ua)) return 'Android';

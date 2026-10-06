@@ -1,3 +1,4 @@
+import Constants from 'expo-constants';
 import * as Haptics from 'expo-haptics';
 import { useEffect, useRef, useState } from 'react';
 import { ActivityIndicator, AppState, BackHandler, Linking, Pressable, Text, View } from 'react-native';
@@ -97,7 +98,7 @@ export function WebShell({ cred, path, onUnauthorized }: { cred: Credential; pat
         sharedCookiesEnabled
         thirdPartyCookiesEnabled
         cacheEnabled
-        applicationNameForUserAgent="DailyFlowAndroid/1"
+        applicationNameForUserAgent={`DailyFlowAndroid/${Constants.expoConfig?.version ?? '1'}`}
         overScrollMode="never"
         pullToRefreshEnabled={false}
         setSupportMultipleWindows={false}

@@ -1,9 +1,9 @@
 # DailyFlow — Design System
 
-> **Status:** v0.1 — Dark definido pelo usuário · Light é proposta em validação
+> **Status:** v0.2 — Dark “Visual v2” (proposta do Gemini, aprovada em 2026-10-06) · Light é proposta em validação
 > **Tokens:** [`design/tokens.css`](tokens.css) (fonte da verdade para cores, espaçamento, raios)
 > **Ícone do app:** [`design/assets/dailyflow-icon.webp`](assets/dailyflow-icon.webp) · PNG 1024: [`dailyflow-icon-1024.png`](assets/dailyflow-icon-1024.png)
-> **Referência visual:** [`design/assets/reference-dark-ui.webp`](assets/reference-dark-ui.webp)
+> **Referência visual (oficial, v2):** [`design/assets/reference-dark-ui-v2.png`](assets/reference-dark-ui-v2.png) — a tela Today como deve ficar. Referência anterior (v1, densidade e sidebar): [`reference-dark-ui.webp`](assets/reference-dark-ui.webp)
 
 Todo artefato, tela, protótipo ou ferramenta interna do DailyFlow deve seguir este documento.
 
@@ -17,7 +17,7 @@ Interface de produtividade desktop-first, refinada, inspirada em apps modernos d
 - Nativa de desktop · levemente premium · **dark-first**
 - Altamente estruturada · baixo ruído
 
-Evitar: elementos gigantes, gradientes excessivos, glassmorphism, sombras pesadas, componentes decorativos.
+Evitar: elementos gigantes, gradientes gratuitos, sombras pesadas, componentes decorativos. (Desde a v2, vidro sutil, degradês e brilho são permitidos **nos lugares listados na §19**.)
 Priorizar: densidade de informação, hierarquia e usabilidade.
 
 Personalidade: entre um app de produtividade macOS polido, Linear, Raycast e ferramentas modernas de dev.
@@ -198,7 +198,7 @@ Não depender de títulos enormes, sombras, gradientes, cards gigantes ou fundos
 - Fundo de página quase preto (dark) / quase branco frio (light)
 - Contraste forte no conteúdo primário
 - Acento só quando carrega significado · ícones monocromáticos salvo categoria/status
-- Nada de: estética SaaS genérica, gradientes, glassmorphism, sombras grandes, raios enormes, tipografia gigante
+- Nada de: estética SaaS genérica, sombras grandes, raios enormes, tipografia gigante; degradê/vidro/brilho só onde a §19 permite
 - Padrões nativos de desktop · teclado primeiro · tooltip em controles só-ícone
 - Ações contextuais em vez de controles permanentes
 - Consistência visual em todas as áreas do app
@@ -207,3 +207,16 @@ Não depender de títulos enormes, sombras, gradientes, cards gigantes ou fundos
 
 - Nome: **DailyFlow** (a spec antiga usa "Daily OS" — substituir)
 - Ícone: blocos empilhados azul → roxo → rosa → verde conectados por um fluxo até um relógio. As 4 cores do ícone (`blue`, `purple`, `pink`, `green`) são a assinatura da marca e podem aparecer juntas **apenas** no ícone, na linha da transição de tema e em momentos de marca (splash, onboarding). Dentro do produto, cada cor pertence a uma Life Area/status.
+
+## 19. Visual v2 (2026-10-06)
+
+Proposta do Gemini aprovada pelo usuário: modernizar sem perder densidade. Implementada no fim de `web/src/app/globals.css` (bloco “Visual v2”), que substitui os tokens do dark; o light só herda as formas.
+
+- **Fundo:** azul-noite `#0B0D12` com dois brilhos radiais bem fracos (índigo no alto à esquerda, roxo embaixo à direita), fixos.
+- **Cards de vidro:** `linear-gradient(rgba(255,255,255,.045), rgba(255,255,255,.015))` sobre `--bg-surface` `#12151C`, borda `rgba(255,255,255,.075)`, raio 14px, sombra `0 10px 30px rgba(0,0,0,.28)` + brilho de 1px no topo.
+- **Now:** o único card que brilha — degradê na cor da área (radial no canto + linear para `#0E1222`), borda na cor da área e halo; barra de progresso de 4px em degradê área → ciano, com glow neon.
+- **Ações:** botão principal da tela (`.btn.accent`, ex. “+ Block”) azul cheio com degradê; “Start” é pílula clara (`.btn.primary`); o resto é contornado. Segmented com fundo escuro e ativo em `rgba(255,255,255,.1)`.
+- **Sidebar:** item ativo com degradê índigo → azul e borda lavanda.
+- **Pills/tags:** translúcidas — fundo a 16% da cor, borda a 42%, texto claro na cor. Status do dia em minúsculas (“in progress”). Badges dos blocos (“skipped”, “−38m”, “2/2”) em pílula escura; avisos em laranja translúcido.
+- **Timeline:** fundo `#0E1117`, blocos com raio 8px, cor da área a 24% + borda a 52% + reflexo suave no topo; blocos altos mostram o ícone da área no canto inferior direito. Bloco atual com barra à esquerda e halo.
+- **Raios v2:** cards 14px · botões 8–9px · blocos 8px · pills 6px.

@@ -32,6 +32,7 @@ A ferramenta de revisão (`review/`) e o artifact publicado (https://claude.ai/a
 - Histórico: 1.1.0 = notas #42–#47 (widget com dia fechado, horas depois das 22h, zoom, leave empty, What changed today, relógio atrasado).
 - 1.1.1 = ajuste visual: leave empty com o mesmo tracejado do Show later hours.
 - 1.1.2 = leave empty com o mesmo listrado escuro da noite planejada (.tl-night.planned).
+- 1.2.0 = Visual v2 (proposta do Gemini): fundo azul-noite, cards de vidro, Now com degradê/barra neon, + Block azul, pills translúcidas.
 
 ## App Android (`mobile/`)
 
@@ -73,7 +74,7 @@ O usuário escreve comentários sobre o app em **Notes** (`/notes`). Cada nota t
 
 Toda UI (app, protótipos, ferramentas internas, artefatos HTML) segue `design/DESIGN_SYSTEM.md` e usa os tokens de `design/tokens.css`. Dark-first; o light mode é proposta v0.1 em validação.
 
-- Referência visual oficial (dark): `design/assets/reference-dark-ui.webp`. Antes de criar ou alterar qualquer tela, abra essa imagem e mantenha a mesma densidade, sidebar, segmented controls e event pills.
+- Referência visual oficial (dark, **Visual v2** desde 1.2.0): `design/assets/reference-dark-ui-v2.png` (fundo azul-noite, cards de vidro, Now com degradê e barra neon; ver §19 do design system). Antes de criar ou alterar qualquer tela, abra essa imagem e mantenha o mesmo visual e densidade.
 - Ícone do app: `design/assets/dailyflow-icon.webp` (PNG 1024 em `design/assets/dailyflow-icon-1024.png`).
 
 ## Idioma

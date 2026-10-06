@@ -305,7 +305,7 @@ export function DayView({ dayId, live, title, sub, sideTop, sideBottom, headExtr
             <button type="button" className="btn sm ghost" onClick={() => setSaveTpl(true)} title={m.day.saveTemplate}><LayoutTemplate size={14} /><span className="desk-only">{m.day.saveTemplate}</span></button>
           )}
           {d.status === 'closed' && <button type="button" className="btn sm" onClick={() => void reopenDay(dayId)}><RotateCcw size={14} />{m.day.reopen}</button>}
-          <button type="button" className="btn sm" onClick={() => { const base = nowMin != null ? Math.ceil(nowMin / 30) * 30 : 9 * 60; void onCreate('plan', base, base + NEW_BLOCK_MIN); }}>
+          <button type="button" className="btn sm accent" onClick={() => { const base = nowMin != null ? Math.ceil(nowMin / 30) * 30 : 9 * 60; void onCreate('plan', base, base + NEW_BLOCK_MIN); }}>
             <Plus size={15} />{m.today.addBlock}
           </button>
         </div>

@@ -9,29 +9,34 @@
   color-scheme: dark;
 
   /* Backgrounds */
-  --bg-app: #141416;
-  --bg-sidebar: #1C1C1E;
-  --bg-surface: #19191B;
-  --bg-surface-hover: #242426;
-  --bg-surface-active: #343436;
-  --bg-elevated: #29292B;
-  --bg-input: #19191B;
-  --bg-segmented: #18181A;
-  --bg-button: #28282A;
+  /* Visual v2 (2026-10-06): azul-noite, cards de vidro — ver DESIGN_SYSTEM.md §19 */
+  --bg-app: #0B0D12;
+  --bg-sidebar: #0D1016;
+  --bg-surface: #12151C;
+  --bg-surface-hover: #1A1E28;
+  --bg-surface-active: #232937;
+  --bg-elevated: #171B24;
+  --bg-input: #10131A;
+  --bg-segmented: #0F1218;
+  --bg-button: #161A23;
+  --tl-bg: #0E1117;
+  --glass-bg: linear-gradient(180deg, rgba(255,255,255,.045), rgba(255,255,255,.015));
+  --glass-bd: rgba(255,255,255,.075);
+  --glass-shadow: inset 0 1px 0 rgba(255,255,255,.04), 0 10px 30px rgba(0,0,0,.28);
 
   /* Borders */
-  --border-default: #303033;
-  --border-subtle: #262629;
-  --border-strong: #3A3A3D;
-  --border-input: #39393C;
-  --grid-line: #29292C;
+  --border-default: #22262F;
+  --border-subtle: #1B1F28;
+  --border-strong: #2F3442;
+  --border-input: #282D38;
+  --grid-line: #1A1E27;
 
   /* Text */
-  --text-primary: #F3F3F4;
-  --text-secondary: #A1A1A6;
-  --text-muted: #717176;
-  --text-disabled: #55555A;
-  --text-placeholder: #77777C;
+  --text-primary: #F2F4F8;
+  --text-secondary: #A4AAB7;
+  --text-muted: #6F7584;
+  --text-disabled: #4C515D;
+  --text-placeholder: #6B7180;
 
   /* Accents (categorias, status, eventos) */
   --accent-blue: #248CF2;

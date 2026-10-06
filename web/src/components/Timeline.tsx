@@ -331,6 +331,7 @@ export function Timeline({ columns, areas, nowMin = null, selectedId, onSelect, 
               <div className="blk-time">{fmtMin(b.start)}–{b.variant === 'running' ? 'now' : fmtMin(b.end)}</div>
               {b.holes?.map((hl, i) => <span key={i} className="blk-hole" style={{ top: (hl.start - b.start) * pxPerMin, height: Math.max((hl.end - hl.start) * pxPerMin, 6) }} title={`Paused ${Math.round(hl.end - hl.start)} min`}>{(hl.end - hl.start) * pxPerMin >= 16 && <Pause size={10} />}</span>)}
               {b.badge && <span className={`blk-badge ${b.badgeTone ?? 'muted'}`}>{b.badge}</span>}
+              {area && h >= 64 && (b.variant === 'plan' || b.variant === 'real' || !b.variant) && <span className="blk-corner" aria-hidden><AreaIcon name={area.icon} size={12} /></span>}
               {b.stages && h >= 30 && <span className="stage-bar">{(['deep', 'rem', 'light', 'awake'] as const).map(k => <i key={k} className={`st-${k}`} style={{ flexGrow: b.stages![k] }} />)}</span>}
               {sel && col.editable && !evt && b.variant !== 'running' && <div className="blk-handle bottom" onPointerDown={e => begin(e, b, col, 'resize-end')} />}
             </div>

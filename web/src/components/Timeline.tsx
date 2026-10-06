@@ -278,7 +278,7 @@ export function Timeline({ columns, areas, nowMin = null, selectedId, onSelect, 
               if (top < 0 || top > height) return null;
               return (
                 <div key={`m${i}`} className={`tl-mark ${mk.kind}${mk.tone ? ` ${mk.tone}` : ''}${mk.planned ? ' planned' : ''}`} style={{ top, left: colLeft(ci), width: colWidth }}>
-                  <button type="button" onClick={() => onMark?.(mk)} disabled={mk.planned || !onMark}>{mk.kind === 'wake' ? <Sunrise size={11} /> : <Moon size={11} />}{mk.text}</button>
+                  <button type="button" onClick={() => onMark?.(mk)} disabled={mk.planned || !onMark}>{mk.kind === 'wake' ? <Sunrise size={11} /> : <Moon size={11} />}<span className="mark-text">{mk.text}</span></button>
                 </div>
               );
             })}
@@ -305,7 +305,7 @@ export function Timeline({ columns, areas, nowMin = null, selectedId, onSelect, 
           const dropping = dropAt?.id === b.id;
           const left = `calc(${colLeft(ci)} + (${colWidth}) * ${lane / lanes} + 2px)`;
           const width = `calc((${colWidth}) / ${lanes} - 4px)`;
-          const cls = ['blk', b.variant ?? 'plan', b.cls, area?.wasted && 'wasted', sel && 'sel', dragging && 'dragging', past && !sel && 'past', current && 'current', compact && 'compact', dim && 'dim', lit && 'lit', dropping && 'drop'].filter(Boolean).join(' ');
+          const cls = ['blk', b.variant ?? 'plan', b.cls, area?.wasted && 'wasted', sel && 'sel', dragging && 'dragging', past && !sel && 'past', current && 'current', compact && 'compact', h < 26 && 'tiny', dim && 'dim', lit && 'lit', dropping && 'drop'].filter(Boolean).join(' ');
           return (
             <div
               key={`${col.id}-${b.id}`}
@@ -324,13 +324,16 @@ export function Timeline({ columns, areas, nowMin = null, selectedId, onSelect, 
               onKeyDown={e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); onSelect(b.id, col.id); } }}
             >
               {sel && col.editable && !evt && <div className="blk-handle top" onPointerDown={e => begin(e, b, col, 'resize-start')} />}
-              <div className="blk-title">
-                {b.variant === 'event' ? <CalendarDays size={12} /> : b.variant === 'sleep' ? (b.cls === 'morning' ? <Sunrise size={13} /> : <Moon size={13} />) : area && <AreaIcon name={area.icon} size={13} />}<span>{b.title || area?.name || '—'}</span>
-                {b.fixed && <Lock size={11} className="blk-lock" aria-label="Fixed" />}
+              {/* Name, time and badge share one body that rearranges itself by the block's own width (note: phone columns are narrow). */}
+              <div className="blk-body">
+                <div className="blk-title">
+                  {b.variant === 'event' ? <CalendarDays size={12} /> : b.variant === 'sleep' ? (b.cls === 'morning' ? <Sunrise size={13} /> : <Moon size={13} />) : area && <AreaIcon name={area.icon} size={13} />}<span>{b.title || area?.name || '—'}</span>
+                  {b.fixed && <Lock size={11} className="blk-lock" aria-label="Fixed" />}
+                </div>
+                <div className="blk-time"><span>{fmtMin(b.start)}</span><span className="blk-end">–{b.variant === 'running' ? 'now' : fmtMin(b.end)}</span></div>
+                {b.badge && <span className={`blk-badge ${b.badgeTone ?? 'muted'}`}>{b.badge}</span>}
               </div>
-              <div className="blk-time">{fmtMin(b.start)}–{b.variant === 'running' ? 'now' : fmtMin(b.end)}</div>
               {b.holes?.map((hl, i) => <span key={i} className="blk-hole" style={{ top: (hl.start - b.start) * pxPerMin, height: Math.max((hl.end - hl.start) * pxPerMin, 6) }} title={`Paused ${Math.round(hl.end - hl.start)} min`}>{(hl.end - hl.start) * pxPerMin >= 16 && <Pause size={10} />}</span>)}
-              {b.badge && <span className={`blk-badge ${b.badgeTone ?? 'muted'}`}>{b.badge}</span>}
               {area && h >= 64 && (b.variant === 'plan' || b.variant === 'real' || !b.variant) && <span className="blk-corner" aria-hidden><AreaIcon name={area.icon} size={12} /></span>}
               {b.stages && h >= 30 && <span className="stage-bar">{(['deep', 'rem', 'light', 'awake'] as const).map(k => <i key={k} className={`st-${k}`} style={{ flexGrow: b.stages![k] }} />)}</span>}
               {sel && col.editable && !evt && b.variant !== 'running' && <div className="blk-handle bottom" onPointerDown={e => begin(e, b, col, 'resize-end')} />}

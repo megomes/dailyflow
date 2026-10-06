@@ -30,6 +30,7 @@ A ferramenta de revisão (`review/`) e o artifact publicado (https://claude.ai/a
 - **Ao terminar, diga ao usuário a versão lançada (`v1.X.X`)**, e onde chegou: web (produção), Android (OTA ou APK novo) e relógio (se instalou). Registre-a também no `deployed` da nota (`v1.X.X · production`). Sem isso a entrega não está completa.
 - `mobile/app.json` → `version` é a versão **nativa** do APK (o runtime do OTA segue ela): não suba só para acompanhar o 1.X.X; só ao mudar algo nativo.
 - Histórico: 1.1.0 = notas #42–#47 (widget com dia fechado, horas depois das 22h, zoom, leave empty, What changed today, relógio atrasado).
+- 1.1.1 = ajuste visual: leave empty com o mesmo tracejado do Show later hours.
 
 ## App Android (`mobile/`)
 

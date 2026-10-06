@@ -5,8 +5,7 @@ import { useEffect, useRef, useSyncExternalStore, type ReactNode } from 'react';
 import { BarChart3, CalendarDays, CheckSquare, History, MessageSquareText, Moon, Settings, Sun } from 'lucide-react';
 import { m } from '@/i18n/en';
 import { setScreen, track } from '@/lib/analytics';
-import { useClock, useSyncState } from '@/lib/hooks';
-import { NightStrip } from './day/Sleep';
+import { useSyncState } from '@/lib/hooks';
 import { currentTheme, toggleTheme } from '@/lib/theme';
 import { ContextMenuHost } from './ContextMenu';
 import { LiveAgents } from './LiveAgents';
@@ -61,7 +60,6 @@ function OfflineBanner() {
 
 export function AppShell({ children }: { children: ReactNode }) {
   const path = usePathname();
-  const { day } = useClock();
   const prev = useRef<string | null>(null);
 
   useEffect(() => {
@@ -85,7 +83,6 @@ export function AppShell({ children }: { children: ReactNode }) {
           ))}
         </nav>
         <div className="side-foot">
-          <NightStrip dayId={day} side />
           <div className="row"><SyncBadge /><span className="spacer" /><ThemeToggle /></div>
         </div>
       </aside>

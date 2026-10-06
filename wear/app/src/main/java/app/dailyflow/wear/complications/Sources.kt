@@ -132,6 +132,20 @@ class NowSource : SuspendingTimelineComplicationDataSourceService() {
         val running = if (live) s.runningTitle else null
         val name = running ?: now?.title ?: "Free"
         val until: Block? = now ?: next
+        // Running with nothing planned right now: the time that is beyond the plan, “+36m” (note #36).
+        if (live && running != null && now == null) {
+            val since = s.runningSince?.split(":")?.let { (it[0].toInt() * 60 + it[1].toInt()) }
+            val elapsed = if (since != null) ((m.toInt() % 1440) - since + 1440) % 1440 else 0
+            val lastEnd = s.timeline.filter { it.end <= m }.maxOfOrNull { it.end }
+            val over = if (lastEnd != null) minOf(elapsed, (m - lastEnd).toInt()) else elapsed
+            val e = "+" + (if (over < 60) "${over}m" else "${over / 60}h%02d".format(over % 60))
+            val d = text("$running: $e beyond the plan")
+            return when (type) {
+                ComplicationType.RANGED_VALUE -> RangedValueComplicationData.Builder(0f, 0f, 1f, d).setText(text(e)).setMonochromaticImage(icon(this, R.drawable.ic_now)).setTapAction(open(this)).build()
+                ComplicationType.LONG_TEXT -> LongTextComplicationData.Builder(text("● $running · $e"), d).setTitle(text("BEYOND PLAN")).setMonochromaticImage(icon(this, R.drawable.ic_now)).setTapAction(open(this)).build()
+                else -> ShortTextComplicationData.Builder(text(e), d).setTitle(text("● $running")).setMonochromaticImage(icon(this, R.drawable.ic_now)).setTapAction(open(this)).build()
+            }
+        }
         if (until == null) {
             // Nothing planned, but something is running: show how long, not a dash.
             val since = s.runningSince?.split(":")?.let { (it[0].toInt() * 60 + it[1].toInt()) }
@@ -207,7 +221,7 @@ class NextSource : SuspendingTimelineComplicationDataSourceService() {
             val tap = confirm(this, if (asleep) "wake" else "sleep")
             return if (type == ComplicationType.LONG_TEXT)
                 LongTextComplicationData.Builder(text(if (asleep) "I'm awake" else "Going to sleep"), desc).setTitle(text("NEXT · ${if (asleep) "☀" else "🌙"}")).setMonochromaticImage(icon(this, res)).setTapAction(tap).build()
-            else ShortTextComplicationData.Builder(text(label), desc).setTitle(text("NEXT")).setMonochromaticImage(icon(this, res)).setTapAction(tap).build()
+            else ShortTextComplicationData.Builder(text(if (asleep) "☀️" else "🌙"), desc).setTitle(text(label)).setMonochromaticImage(icon(this, res)).setTapAction(tap).build()
         }
         val name = when { s == null -> "Pair"; next == null -> "Done"; else -> next.title }
         val time = next?.startLabel ?: "—"

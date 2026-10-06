@@ -332,7 +332,6 @@ export function DayView({ dayId, live, title, sub, sideTop, sideBottom, headExtr
         </div>
       </header>
       {sleepNight && <SleepSheet key={sleepNight} sleep={mainSleeps(sleeps).get(sleepNight) ?? null} night={sleepNight} onClose={() => setSleepNight(null)} />}
-      {isMobile && <NightStrip dayId={dayId} />}
       <div className="today">
         <div className="today-side">
           {sideTop}
@@ -359,6 +358,8 @@ export function DayView({ dayId, live, title, sub, sideTop, sideBottom, headExtr
           {conflicts.length > 0 && <ConflictsCard dayId={dayId} conflicts={conflicts} />}
           {!isMobile && inspector}
           {!isMobile && after}
+          {/* Last night / Tonight: the end of Today's left column (note #39). */}
+          <NightStrip dayId={dayId} side />
 
         </div>
         <Timeline

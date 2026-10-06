@@ -164,7 +164,19 @@ class NowSource : SuspendingTimelineComplicationDataSourceService() {
         // State is only known for the current interval (live); later timeline entries just count down.
         val isRunning = live && s.runningTitle != null
         val knownIdle = live && s.runningTitle == null && now != null
-        val desc = text("$name until ${if (now != null) now.endLabel else until.startLabel}")
+        // Note #45: still on a block that already ended while the next one is due. The countdown would be the next
+        // block's, so show how far past the first one's end you are (“+10m”) and which one is waiting.
+        val sinceMin = s.runningSince?.split(":")?.let { it[0].toInt() * 60 + it[1].toInt() }
+        val overran = if (isRunning && now != null && now.title != running) s.timeline.lastOrNull { it.title == running && it.end <= m && (sinceMin == null || sinceMin <= it.end) } else null
+        val over = overran?.let { (m - it.end).toInt() }?.takeIf { it > 0 }
+        val overText = over?.let { "+" + (if (it < 60) "${it}m" else "${it / 60}h%02d".format(it % 60)) }
+        val desc = if (overText != null) text("$name $overText past its end, ${now!!.title} is waiting") else text("$name until ${if (now != null) now.endLabel else until.startLabel}")
+        if (overText != null && type != ComplicationType.RANGED_VALUE) return when (type) {
+            ComplicationType.LONG_TEXT -> LongTextComplicationData.Builder(text("● $name $overText, then ${now!!.title}"), desc)
+                .setTitle(text("BEYOND PLAN")).setMonochromaticImage(icon(this, R.drawable.ic_now)).setTapAction(open(this)).build()
+            else -> ShortTextComplicationData.Builder(text(overText), desc)
+                .setTitle(text("→${now!!.title}")).setMonochromaticImage(icon(this, R.drawable.ic_now)).setTapAction(open(this)).build()
+        }
         return when (type) {
             ComplicationType.RANGED_VALUE -> {
                 // Free time: an empty ring, the countdown to the next block.
@@ -176,7 +188,7 @@ class NowSource : SuspendingTimelineComplicationDataSourceService() {
                 val remaining = DynamicInstant.platformTimeWithSecondsPrecision().durationUntil(DynamicInstant.withSecondsPrecision(endsAt)).toIntSeconds().asFloat()
                 // Only the time left (short, fits where “21%” goes); the block's name gets cut on arcs and lives in the inner slot.
                 RangedValueComplicationData.Builder(DynamicFloat.constant(total).minus(remaining), elapsedNow, 0f, total, desc)
-                    .setText(compactCountdownTo(endsAt)).setMonochromaticImage(icon(this, R.drawable.ic_now)).setTapAction(open(this)).build()
+                    .setText(if (overText != null) text(overText) else compactCountdownTo(endsAt)).setMonochromaticImage(icon(this, R.drawable.ic_now)).setTapAction(open(this)).build()
             }
             ComplicationType.LONG_TEXT -> LongTextComplicationData.Builder(text(if (isRunning && s.runningLine != null) "● $name · ${s.runningLine}" else "${if (isRunning) "● " else ""}$name · until ${if (now != null) now.endLabel else until.startLabel}"), desc)
                 .setTitle(text(when { knownIdle -> "NOT STARTED"; now != null -> "NOW"; else -> "FREE" })).setMonochromaticImage(icon(this, R.drawable.ic_now)).setTapAction(open(this)).build()

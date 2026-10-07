@@ -12,3 +12,6 @@ next-env.d.ts
 
 # Desktop: the server URL baked into the installer
 desktop/config.json
+
+# Claude Code: private notes for this machine
+CLAUDE.local.md

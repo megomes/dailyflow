@@ -1,7 +1,7 @@
 import { isPaused, pausedMs, planAsReal, recEnd, type RecordDraft, type ReplanResult, type Span } from './actual';
 import { track } from './analytics';
 import { getDB } from './db';
-import { liveBlocks, nowIso, remove, save, saveMany, uid, update } from './repo';
+import { copyTemplateToDay, liveBlocks, nowIso, remove, save, saveMany, uid, update } from './repo';
 import { dateAtMinute, minuteOfDay } from './time';
 import { nextDate, revealOn } from './recurrence';
 import type { Column } from './taskBoard';
@@ -286,6 +286,21 @@ export async function patchBlock(id: string, patch: Partial<DayBlock>, kind: Rev
 export async function setWake(dayId: string, minute: number) {
   await update<Day>('day', dayId, { wakeAt: minute });
   track('wake_time_set', { dayId, minute });
+}
+
+/**
+ * Puts the day's plan back to its weekday template (note #55): template blocks return to the
+ * template's times, names and areas, blocks you added are removed and calendar events stay. Ids are
+ * the template ones, so tasks in those blocks stay with them. Works before and after Start day; once
+ * started it is one revision, and the Baseline is not touched.
+ */
+export async function resetToTemplate(dayId: string, surface = 'button') {
+  const db = getDB();
+  const day = await db.days.get(dayId);
+  if (!day) return;
+  const n = await copyTemplateToDay(day);
+  await recordRevision(dayId, 'replan', null, null, { title: 'Reset to template', count: n });
+  track('day_reset_to_template', { surface, blocks: n, started: day.status === 'active' || day.status === 'closed' });
 }
 
 export async function deleteBlock(id: string) {

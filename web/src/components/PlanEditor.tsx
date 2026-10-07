@@ -7,6 +7,7 @@ import { useIsMobile } from '@/lib/hooks';
 import { AreaIcon } from '@/lib/icons';
 import { clamp, fmtDuration, fmtMin, parseHHMM } from '@/lib/time';
 import type { Area, TimelineBlock } from '@/lib/types';
+import { SelBar } from './SelBar';
 import { Timeline, type ChangeKind } from './Timeline';
 
 export type BlockPatch = Partial<Pick<TimelineBlock, 'start' | 'end' | 'title' | 'areaId' | 'fixed'>>;
@@ -29,7 +30,10 @@ interface Props {
 
 /** Timeline + inspector used by Today and by the template editor. */
 export function PlanEditor({ blocks, areas, nowMin = null, side, sideAfter, note, onCreate, onUpdate, onDelete, pxPerMin }: Props) {
-  const [pickedId, setSelectedId] = useState<string | null>(null);
+  const [pickedId, setPicked] = useState<string | null>(null);
+  // Phone: the sheet opens from the selection bar's Edit, so a tapped block can be dragged (note #54).
+  const [sheet, setSheet] = useState(false);
+  const setSelectedId = (id: string | null, open = false) => { setPicked(id); setSheet(open); };
   const isMobile = useIsMobile();
   const areaMap = useMemo(() => new Map(areas.map(a => [a.id, a])), [areas]);
   const selected = blocks.find(b => b.id === pickedId) ?? null;
@@ -37,7 +41,7 @@ export function PlanEditor({ blocks, areas, nowMin = null, side, sideAfter, note
 
   async function create(start: number, end: number, surface: string) {
     const id = await onCreate(start, end, surface);
-    setSelectedId(id);
+    setSelectedId(id, true);
   }
 
   useEffect(() => {
@@ -95,7 +99,8 @@ export function PlanEditor({ blocks, areas, nowMin = null, side, sideAfter, note
         onChange={(_c, id, start, end, kind) => { const b = blocks.find(x => x.id === id); if (b) onUpdate(id, { start, end }, kind, b); }}
         pxPerMin={pxPerMin ?? (isMobile ? 1 : 1.15)}
       />
-      {isMobile && inspector && (
+      {isMobile && selected && !sheet && <SelBar title={selected.title} start={selected.start} end={selected.end} onEdit={() => setSheet(true)} onClose={() => setSelectedId(null)} />}
+      {isMobile && inspector && sheet && (
         <>
           <div className="sheet-backdrop" onClick={() => setSelectedId(null)} />
           <div className="sheet" role="dialog" aria-label={m.inspector.title}>{inspector}</div>

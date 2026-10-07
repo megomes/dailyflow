@@ -3,9 +3,10 @@ import Link from 'next/link';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { useLiveQuery } from 'dexie-react-hooks';
 import { Suspense, useEffect, useMemo, useRef, useState } from 'react';
-import { AlertTriangle, Check, ChevronLeft, Play, Plus, Trash2 } from 'lucide-react';
+import { AlertTriangle, Check, ChevronLeft, Play, Plus, RotateCcw, Trash2 } from 'lucide-react';
+import { SelBar } from '@/components/SelBar';
 import { Timeline } from '@/components/Timeline';
-import { ConflictsCard } from '@/components/day/Cards';
+import { ConflictsCard, ResetTemplateModal } from '@/components/day/Cards';
 import { DayTasks } from '@/components/day/DayTasks';
 import { BlockInspector } from '@/components/day/Inspectors';
 import { useDay, useOpenTasks } from '@/components/day/useDay';
@@ -32,8 +33,12 @@ function PlanInner() {
   const isMobile = useIsMobile();
   const dragged = useDraggedTask();
   const [step, setStep] = useState(0);
-  const [sel, setSel] = useState<string | null>(null);
+  const [sel, setSelState] = useState<string | null>(null);
+  // Phone: the sheet opens from the selection bar's Edit, so a tapped block can be dragged (note #54).
+  const [sheet, setSheet] = useState(false);
+  const setSel = (id: string | null, open = false) => { setSelState(id); setSheet(open); };
   const [t0] = useState(() => Date.now());
+  const [reset, setReset] = useState(false);
   const started = useRef(false);
   const stepRef = useRef(0);
   const yId = addDays(dayId, -1);
@@ -62,6 +67,7 @@ function PlanInner() {
   const wake = d.day?.wakeAt ?? (d.blocks.length ? Math.min(...d.blocks.map(b => b.start)) : 6 * 60);
   const lostAtWake = wakeImpact(d.blocks, wake);
   const beforeWake = new Set(lostAtWake.hits.map(h => h.block.id));
+  const templateName = m.templates.names[d.day?.templateId ?? ''] ?? '';
 
   async function start() {
     started.current = true;
@@ -148,7 +154,10 @@ function PlanInner() {
       {step === 1 && (
         <div className="today">
           <div className="today-side">
-            <p className="hint" style={{ margin: 0 }}>{m.planning.buildHint}</p>
+            <div className="row wrap">
+              <p className="hint" style={{ margin: 0, flex: 1 }}>{m.planning.buildHint}</p>
+              <button type="button" className="btn sm ghost" onClick={() => setReset(true)}><RotateCcw size={13} />{m.day.resetTemplate}</button>
+            </div>
             {!isMobile && selBlock && (
               <BlockInspector dayId={dayId} block={selBlock} areas={d.areas} areaMap={areaMap} tasks={d.tasks} revisions={d.revisions} live={false} started={d.status !== 'unplanned'}
                 onClose={() => setSel(null)} onPatch={(p, k) => void patchBlock(selBlock.id, p, k)} onDelete={() => { void deleteBlock(selBlock.id); setSel(null); }} />
@@ -156,12 +165,13 @@ function PlanInner() {
             <DayTasks dayId={dayId} tasks={d.tasks} areaMap={areaMap} title={m.planning.buildTitle} />
           </div>
           <Timeline
-            columns={[{ id: 'plan', items: [...d.blocks.map(b => ({ ...b, badge: beforeWake.has(b.id) ? m.planning.beforeWake : d.tasks.some(t => t.blockId === b.id) ? `${d.tasks.filter(t => t.blockId === b.id).length}` : undefined, badgeTone: beforeWake.has(b.id) || capacity(b, d.tasks).over ? 'warn' as const : 'muted' as const }))], editable: true }]}
+            columns={[{ id: 'plan', items: [...d.blocks.map(b => ({ ...b, badge: beforeWake.has(b.id) ? m.planning.beforeWake : d.tasks.some(t => t.blockId === b.id) ? `${d.tasks.filter(t => t.blockId === b.id).length}` : undefined, badgeTone: beforeWake.has(b.id) || capacity(b, d.tasks).over ? 'warn' as const : 'muted' as const }))], editable: true,
+              ...(d.day?.wakeAt != null ? { nights: [{ start: 0, end: d.day.wakeAt, part: 'morning' as const, planned: true }], marks: [{ at: d.day.wakeAt, kind: 'wake' as const, text: `Wake ${fmtMin(d.day.wakeAt)}`, planned: true }] } : {}) }]}
             areas={areaMap}
             nowMin={isToday ? minute : null}
             selectedId={sel}
             onSelect={id => setSel(id)}
-            onCreate={async (_c, s, e) => { const { id } = await addBlock(dayId, { start: s, end: e, title: d.areaMap.get('area-personal')?.name ?? m.inspector.newBlock, areaId: 'area-personal' }); setSel(id); }}
+            onCreate={async (_c, s, e) => { const { id } = await addBlock(dayId, { start: s, end: e, title: d.areaMap.get('area-personal')?.name ?? m.inspector.newBlock, areaId: 'area-personal' }); setSel(id, true); }}
             onChange={(_c, id, s, e, k) => void patchBlock(id, { start: s, end: e }, k === 'move' ? 'move' : 'resize')}
             onDropTask={async (taskId, _c, minute, blockId) => {
               if (blockId && !blockId.startsWith('ev:')) { await scheduleTask(taskId, dayId, blockId, 'planning'); return; }
@@ -173,7 +183,8 @@ function PlanInner() {
             highlightArea={dragged?.areaId ?? null}
             pxPerMin={isMobile ? 1 : 1.05}
           />
-          {isMobile && selBlock && (
+          {isMobile && selBlock && !sheet && <SelBar title={selBlock.title} start={selBlock.start} end={selBlock.end} onEdit={() => setSheet(true)} onClose={() => setSel(null)} />}
+          {isMobile && selBlock && sheet && (
             <>
               <div className="sheet-backdrop" onClick={() => setSel(null)} />
               <div className="sheet"><BlockInspector dayId={dayId} block={selBlock} areas={d.areas} areaMap={areaMap} tasks={d.tasks} revisions={d.revisions} live={false} started={d.status !== 'unplanned'}
@@ -214,6 +225,7 @@ function PlanInner() {
         </section>
       )}
 
+      {reset && <ResetTemplateModal dayId={dayId} templateName={templateName} started={d.status !== 'unplanned'} onClose={() => setReset(false)} />}
       <div className="close-nav">
         {step > 0 && <button type="button" className="btn" onClick={() => setStep(step - 1)}>{m.close.back}</button>}
         <span className="spacer" />

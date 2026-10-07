@@ -13,6 +13,7 @@ import { addBlock, addRecord, deleteBlock, patchBlock, reopenDay, scheduleTask, 
 import { getDB } from '@/lib/db';
 import { dateAtMinute, fmtDuration, fmtMin, minuteOfDay } from '@/lib/time';
 import type { DayBlock, Revision } from '@/lib/types';
+import { SelBar } from '../SelBar';
 import { Timeline, type ChangeKind, type TLColumn, type TLItem } from '../Timeline';
 import { blockMenu, recordMenu } from '../menus';
 import { cutoffHour } from '@/lib/time';
@@ -22,7 +23,7 @@ import { clockOf, mainSleeps, targetSpan } from '@/lib/sleep';
 import { addDays } from '@/lib/time';
 import type { TLMark, TLNight } from '../Timeline';
 import { useDraggedTask } from '../tasks/dragState';
-import { ChangesCard, ConflictsCard, GapsCard, ReasonPrompt, NotPlannedCard, ReplanModal, SaveTemplateModal, StartDayCard } from './Cards';
+import { ChangesCard, ConflictsCard, GapsCard, ReasonPrompt, NotPlannedCard, ReplanModal, ResetTemplateModal, SaveTemplateModal, StartDayCard } from './Cards';
 import { DayTasks } from './DayTasks';
 import { BlockInspector, RecordInspector } from './Inspectors';
 import { NowCard } from './NowCard';
@@ -58,11 +59,15 @@ export function DayView({ dayId, live, title, sub, sideTop, sideBottom, headExtr
   const isMobile = useIsMobile();
   const dragged = useDraggedTask();
   const [mode, setModeState] = useState<DayViewMode | null>(readMode);
-  const [sel, setSel] = useState<{ id: string; col: string } | null>(null);
+  const [sel, setSelState] = useState<{ id: string; col: string } | null>(null);
+  // Phone: the inspector sheet opens from the selection bar's Edit, so a tapped block can be dragged (note #54).
+  const [sheet, setSheet] = useState(false);
+  const setSel = (s: { id: string; col: string } | null, open = false) => { setSelState(s); setSheet(open); };
   const [reason, setReason] = useState<{ revId: string; label: string } | null>(null);
   const [mismatch, setMismatch] = useState<{ taskId: string; title: string; target?: DayBlock; blockId: string; taskArea: string; blockArea: string } | null>(null);
   const [replan, setReplan] = useState(false);
   const [saveTpl, setSaveTpl] = useState(false);
+  const [resetTpl, setResetTpl] = useState(false);
   const prefs = useLiveQuery(() => getDB().prefs.get('prefs'), []);
   const sleeps = useSleeps();
   const sleepTarget = useSleepTarget();
@@ -154,12 +159,12 @@ export function DayView({ dayId, live, title, sub, sideTop, sideBottom, headExtr
       const title = d.areaMap.get(DEFAULT_AREA)?.name ?? m.inspector.newBlock;
       const { id, revId } = await addBlock(dayId, { start, end, title, areaId: DEFAULT_AREA });
       track('block_created', { area: DEFAULT_AREA, duration_min: end - start, from_template: false, surface: 'timeline' });
-      setSel({ id, col: 'plan' });
+      setSel({ id, col: 'plan' }, true);
       afterRevision(revId, `${m.day.revKinds.add}: ${title}`);
     } else if (col === 'real') {
       const plan = d.blocks.find(b => b.start <= start && start < b.end);
       const rec = await addRecord(dayId, { start, end, areaId: plan?.areaId ?? DEFAULT_AREA, title: plan?.title ?? '', blockId: plan?.id }, 'manual');
-      setSel({ id: rec.id, col: 'real' });
+      setSel({ id: rec.id, col: 'real' }, true);
     }
   }
 
@@ -304,6 +309,9 @@ export function DayView({ dayId, live, title, sub, sideTop, sideBottom, headExtr
           {view === 'plan' && d.blocks.length > 0 && (
             <button type="button" className="btn sm ghost" onClick={() => setSaveTpl(true)} title={m.day.saveTemplate}><LayoutTemplate size={14} /><span className="desk-only">{m.day.saveTemplate}</span></button>
           )}
+          {view === 'plan' && d.status !== 'closed' && d.day?.templateId && (
+            <button type="button" className="btn sm ghost" onClick={() => setResetTpl(true)} title={m.day.resetTemplate}><RotateCcw size={14} /><span className="desk-only">{m.day.resetTemplate}</span></button>
+          )}
           {d.status === 'closed' && <button type="button" className="btn sm" onClick={() => void reopenDay(dayId)}><RotateCcw size={14} />{m.day.reopen}</button>}
           <button type="button" className="btn sm accent" onClick={() => { const base = nowMin != null ? Math.ceil(nowMin / 30) * 30 : 9 * 60; void onCreate('plan', base, base + NEW_BLOCK_MIN); }}>
             <Plus size={15} />{m.today.addBlock}
@@ -351,10 +359,10 @@ export function DayView({ dayId, live, title, sub, sideTop, sideBottom, headExtr
           onItemMenu={(id, col) => {
             if (col === 'plan') {
               const b = d.blocks.find(x => x.id === id);
-              return b ? blockMenu(b, { dayId, live, areas: d.areas, edit: () => setSel({ id, col }), patch: (p, k) => onPatchBlock(b, p, k), remove: () => onDeleteBlock(b) }) : null;
+              return b ? blockMenu(b, { dayId, live, areas: d.areas, edit: () => setSel({ id, col }, true), patch: (p, k) => onPatchBlock(b, p, k), remove: () => onDeleteBlock(b) }) : null;
             }
             const r = d.records.find(x => x.id === id);
-            return r ? recordMenu(r, { dayId, live, areas: d.areas, blocks: d.blocks, edit: () => setSel({ id, col: 'real' }) }) : null;
+            return r ? recordMenu(r, { dayId, live, areas: d.areas, blocks: d.blocks, edit: () => setSel({ id, col: 'real' }, true) }) : null;
           }}
           onCreate={(c, s, e) => void onCreate(c, s, e)}
           onChange={(c, id, s, e, k) => void onChange(c, id, s, e, k)}
@@ -364,12 +372,17 @@ export function DayView({ dayId, live, title, sub, sideTop, sideBottom, headExtr
         />
         {isMobile && <div className="today-after">{after}</div>}
       </div>
-      {isMobile && inspector && (
+      {isMobile && !sheet && (selBlock ?? selRec) && (
+        <SelBar title={(selBlock ?? selRec)!.title || d.areaMap.get((selBlock ?? selRec)!.areaId)?.name || ''} start={(selBlock ?? selRec)!.start} end={selBlock?.end ?? selRec?.end ?? clockMin}
+          onEdit={() => setSheet(true)} onClose={() => setSel(null)} />
+      )}
+      {isMobile && inspector && sheet && (
         <>
           <div className="sheet-backdrop" onClick={() => setSel(null)} />
           <div className="sheet" role="dialog" aria-label={m.inspector.title}>{inspector}</div>
         </>
       )}
+      {resetTpl && <ResetTemplateModal dayId={dayId} templateName={templateName} started={started} onClose={() => setResetTpl(false)} />}
       {saveTpl && <SaveTemplateModal dayId={dayId} count={d.blocks.length} onClose={() => setSaveTpl(false)} />}
       {replan && <ReplanModal dayId={dayId} blocks={d.blocks} records={d.records} minute={clockMin} onClose={() => setReplan(false)} />}
     </div>

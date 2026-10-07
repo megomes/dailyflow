@@ -3,12 +3,12 @@ import { clockOf, sleepSpans, sleepVsPlan } from '@/lib/sleep';
 import { useSleeps, useSleepTarget } from './Sleep';
 import Link from 'next/link';
 import { useEffect, useState } from 'react';
-import { AlertTriangle, ArrowRight, ChevronsUpDown, ListChecks, Minus, Moon, Play, Plus, RefreshCw, Sunrise, X } from 'lucide-react';
+import { AlertTriangle, ArrowRight, ChevronsUpDown, ListChecks, Minus, Moon, Play, Plus, RefreshCw, RotateCcw, Sunrise, X } from 'lucide-react';
 import { AreaIcon } from '@/lib/icons';
 import { m } from '@/i18n/en';
 import { dayGaps, overlapKey, pausedWithin, recEnd, replanRemaining, whatChanged, type ChangeLine, type Conflict, type Span } from '@/lib/actual';
 import { track } from '@/lib/analytics';
-import { acceptPlanAsReal, addRecord, adoptPlan, applyReplan, saveDayAsTemplate, closeDay, deleteBlock, keepOverlap, lateStart, leaveGapEmpty, patchBlock, setRevisionReason, startDay } from '@/lib/ops';
+import { acceptPlanAsReal, addRecord, adoptPlan, applyReplan, resetToTemplate, saveDayAsTemplate, closeDay, deleteBlock, keepOverlap, lateStart, leaveGapEmpty, patchBlock, setRevisionReason, startDay } from '@/lib/ops';
 import { DAY_KEYS, fmtDuration, fmtMin, templateIdForDate } from '@/lib/time';
 import type { Area, DayBlock, DayKey, PlanBlock, TimeRecord } from '@/lib/types';
 import { Modal } from '../Modal';
@@ -276,3 +276,20 @@ export function SaveTemplateModal({ dayId, count, onClose }: { dayId: string; co
     </Modal>
   );
 }
+
+/** “Reset to template”, with a confirm first (note #55). */
+export function ResetTemplateModal({ dayId, templateName, started, onClose }: { dayId: string; templateName: string; started: boolean; onClose: () => void }) {
+  const [busy, setBusy] = useState(false);
+  return (
+    <Modal onClose={onClose} label={m.day.resetTemplate}>
+      <div className="head"><b>{m.day.resetTemplate}</b><button type="button" className="btn icon sm ghost" onClick={onClose} aria-label="Close"><X size={15} /></button></div>
+      <p className="hint" style={{ margin: 0 }}>{m.day.resetTemplateHint(templateName, started)}</p>
+      <div className="row">
+        <span className="spacer" />
+        <button type="button" className="btn sm ghost" onClick={onClose}>{m.day.cancel}</button>
+        <button type="button" className="btn sm danger" disabled={busy} onClick={async () => { setBusy(true); await resetToTemplate(dayId); onClose(); }}><RotateCcw size={13} />{m.day.resetConfirm}</button>
+      </div>
+    </Modal>
+  );
+}
+

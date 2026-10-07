@@ -1,41 +1,21 @@
 'use client';
 import { useLiveQuery } from 'dexie-react-hooks';
-import { useEffect, useState, useSyncExternalStore } from 'react';
 import { HeartPulse, Moon } from 'lucide-react';
 import { m } from '@/i18n/en';
 import { track } from '@/lib/analytics';
 import { getDB } from '@/lib/db';
-import { inAndroidApp, postNative } from '@/lib/native';
 import { savePrefs } from '@/lib/prefs';
 import { DEFAULT_TARGET, targetMinutes } from '@/lib/sleep';
 import { dateFromIso, fmtDuration, fmtMin, parseHHMM } from '@/lib/time';
-
-const noop = () => () => {};
-
-interface HealthResult { status: 'unavailable' | 'denied' | 'error' | 'empty' | 'ok'; sessions: number; nights: number; days: number; message?: string }
+import { useHealthImport } from '@/lib/useHealthImport';
 
 /** Settings › Sleep (note #29): the target night, and Samsung Health through Health Connect (Android app). */
 export default function SleepSettings() {
   const prefs = useLiveQuery(() => getDB().prefs.get('prefs'), []);
   const target = prefs?.sleepTarget ?? DEFAULT_TARGET;
   const lastWatch = useLiveQuery(async () => (await getDB().sleeps.toArray()).filter(s => !s.deleted && s.source === 'health').sort((a, b) => b.night.localeCompare(a.night))[0], []);
-  // Inside the Android app only (false while prerendering, so no hydration mismatch).
-  const app = useSyncExternalStore(noop, inAndroidApp, () => false);
-
-  // What the app says happened when it asked Health Connect (permission, read, import).
-  const [busy, setBusy] = useState(false);
-  const [result, setResult] = useState<HealthResult | null>(null);
-  useEffect(() => {
-    const on = (e: Event) => { setResult((e as CustomEvent<HealthResult>).detail); setBusy(false); };
-    window.addEventListener('df-health', on);
-    return () => window.removeEventListener('df-health', on);
-  }, []);
-  function connect() {
-    setBusy(true); setResult(null);
-    postNative({ type: 'health-connect' });
-    track('sleep_health_connect', {});
-    setTimeout(() => setBusy(false), 30000);
-  }
+  // Inside the Android app only: what the app says happened when it asked Health Connect (permission, read, import).
+  const { app, busy, result, run: connect } = useHealthImport('settings');
 
   async function setTarget(k: 'bed' | 'wake', v: string) {
     const min = parseHHMM(v);

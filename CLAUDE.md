@@ -39,6 +39,7 @@ A ferramenta de revisão (`review/`) e o artifact publicado (https://claude.ai/a
 - 1.3.3 = Today no celular com um scroll só (a coluna de cards não rola mais sozinha por dentro).
 - 1.3.4 = app Android: faixas da barra de status e de gestos na cor do tema (o web manda via postNative theme) e sem margem dobrada em cima/embaixo (html.in-app zera --sa-top/--sa-bottom). Web + OTA.
 - 1.4.0 = acordar mais tarde não empurra mais o plano: o template fica no lugar, o Plan mostra o tempo perdido no começo do dia e os blocos afetados (começar na hora de acordar, mover para o primeiro espaço livre ou remover); na timeline do Build eles ganham o selo "Before wake-up".
+- 1.5.0 = notas #52 (noite planejada até a hora de acordar na timeline do Plan), #53 (Import from Samsung Health no "How did you sleep?" e no Good morning, só no app), #54 (no celular, tocar seleciona e o bloco arrasta; o painel abre pelo Edit da barra de seleção) e #55 (dia ainda não editado segue o template atualizado; Reset to template com confirmação no Today e no Plan).
 
 ## App Android (`mobile/`)
 

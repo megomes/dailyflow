@@ -4,7 +4,8 @@ import { DailyFlowDB, setDB } from './db';
 import { copyTemplate, ensureDay, migrateToDayTemplates, remove, save, seedIfEmpty, update } from './repo';
 import { SEED_TS } from './seed';
 import { applyRemote } from './sync';
-import type { DayBlock, TemplateBlock } from './types';
+import { resetToTemplate } from './ops';
+import type { DayBlock, Task, TemplateBlock } from './types';
 
 let db: DailyFlowDB;
 beforeEach(async () => {
@@ -137,5 +138,46 @@ describe('sync merge (last writer wins)', () => {
     const rec = (await db.dayBlocks.get('2026-09-28:tb-mon:tb-weekday-2'))!;
     await applyRemote([{ entity: 'day_block', id: rec.id, data: { ...rec }, updatedAt: '2999-01-01T00:00:00.000Z', deleted: true, seq: 4 }]);
     expect((await db.dayBlocks.get(rec.id))?.deleted).toBe(true);
+  });
+});
+
+describe('days follow their template until edited (note #55)', () => {
+  const tplBlock = async (id: string) => (await db.templateBlocks.get(id))!;
+
+  it('an untouched unplanned day picks up later template edits', async () => {
+    await ensureDay('2026-09-28');
+    await save<TemplateBlock>('template_block', { ...(await tplBlock('tb-mon:tb-weekday-4')), start: 12 * 60, end: 13 * 60, title: 'Guitar' });
+    await save<TemplateBlock>('template_block', { id: 'new-tb', templateId: 'mon', start: 5 * 60, end: 6 * 60, title: 'Gym', areaId: 'area-health', updatedAt: '' });
+    expect(await ensureDay('2026-09-28')).toBe(false);
+    const b = await db.dayBlocks.get('2026-09-28:tb-mon:tb-weekday-4');
+    expect([b?.start, b?.title]).toEqual([12 * 60, 'Guitar']);
+    expect((await db.dayBlocks.get('2026-09-28:new-tb'))?.title).toBe('Gym');
+  });
+
+  it('a day you edited keeps its blocks', async () => {
+    await ensureDay('2026-09-28');
+    await update<DayBlock>('day_block', '2026-09-28:tb-mon:tb-weekday-2', { start: 10 * 60 });
+    await save<TemplateBlock>('template_block', { ...(await tplBlock('tb-mon:tb-weekday-4')), title: 'Guitar' });
+    await ensureDay('2026-09-28');
+    expect((await db.dayBlocks.get('2026-09-28:tb-mon:tb-weekday-4'))?.title).not.toBe('Guitar');
+    expect((await db.dayBlocks.get('2026-09-28:tb-mon:tb-weekday-2'))?.start).toBe(10 * 60);
+  });
+
+  it('Reset to template undoes edits, removes added blocks and keeps calendar events', async () => {
+    await ensureDay('2026-09-28');
+    const tb = await tplBlock('tb-mon:tb-weekday-2');
+    await update<DayBlock>('day_block', '2026-09-28:tb-mon:tb-weekday-2', { start: 3 * 60, end: 4 * 60, title: 'Moved' });
+    await remove('day_block', '2026-09-28:tb-mon:tb-weekday-1');
+    await save<DayBlock>('day_block', { id: 'mine', dayId: '2026-09-28', start: 0, end: 30, title: 'Mine', areaId: 'area-work', updatedAt: '' });
+    await save<DayBlock>('day_block', { id: 'cal-1', dayId: '2026-09-28', start: 60, end: 90, title: 'Call', areaId: 'area-work', updatedAt: '',
+      calendar: { accountId: 'a', provider: 'google', eventId: 'e', calendarKey: 'k', calArea: 'area-work' } });
+    await save<Task>('task', { id: 't1', title: 'x', status: 'today', dayId: '2026-09-28', blockId: 'mine', createdAt: '', updatedAt: '' } as Task);
+    await resetToTemplate('2026-09-28');
+    const b = await db.dayBlocks.get('2026-09-28:tb-mon:tb-weekday-2');
+    expect([b?.start, b?.end, b?.title]).toEqual([tb.start, tb.end, tb.title]);
+    expect((await db.dayBlocks.get('2026-09-28:tb-mon:tb-weekday-1'))?.deleted).toBeFalsy();
+    expect((await db.dayBlocks.get('mine'))?.deleted).toBe(true);
+    expect((await db.dayBlocks.get('cal-1'))?.deleted).toBeFalsy();
+    expect((await db.tasks.get('t1'))?.blockId).toBeUndefined();
   });
 });

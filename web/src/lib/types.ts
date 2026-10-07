@@ -70,6 +70,8 @@ export interface Day extends SyncFields {
   emptySpans?: { start: number; end: number }[];
   /** Wake-up time chosen when planning the day (minutes from 00:00); the blocks start from it (note #30). */
   wakeAt?: number;
+  /** When the blocks were last copied from the template (creation, or Reset to template; note #55). */
+  templateAt?: string;
 }
 
 export interface DayBlock extends SyncFields {

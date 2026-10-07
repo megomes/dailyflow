@@ -1,7 +1,7 @@
 import { getDB, getMeta, setMeta, tableFor } from './db';
 import { dayBlockId, SEED_AREAS, SEED_TEMPLATE_BLOCKS } from './seed';
 import { DAY_KEYS, templateIdForDate } from './time';
-import type { Area, Day, DayBlock, DayKey, Entity, SyncFields, TemplateBlock } from './types';
+import type { Area, Day, DayBlock, DayKey, Entity, SyncFields, Task, TemplateBlock } from './types';
 
 type Listener = () => void;
 const listeners = new Set<Listener>();
@@ -130,6 +130,7 @@ export async function copyTemplate(from: DayKey, to: DayKey): Promise<number> {
  * Also repairs a day that a stale pre-per-weekday build created from the (now tombstoned)
  * Weekday/Weekend template: legacy template id and no blocks at all, not even deleted ones,
  * so it was never touched.
+ * An unplanned day you have not edited yet follows later edits to its template (note #55).
  * Returns true when the day was created (or refilled) now.
  */
 export async function ensureDay(dayId: string): Promise<boolean> {
@@ -137,18 +138,75 @@ export async function ensureDay(dayId: string): Promise<boolean> {
   const existing = await db.days.get(dayId);
   if (existing && !existing.deleted) {
     const legacy = existing.templateId === 'weekday' || existing.templateId === 'weekend';
-    if (!legacy || (await db.dayBlocks.where('dayId').equals(dayId).count()) > 0) return false;
+    if (!legacy || (await db.dayBlocks.where('dayId').equals(dayId).count()) > 0) {
+      if (!legacy && (await staleTemplateCopy(existing))) await copyTemplateToDay(existing);
+      return false;
+    }
   }
   const templateId = templateIdForDate(dayId);
   const tBlocks = (await db.templateBlocks.where('templateId').equals(templateId).toArray()).filter(b => !b.deleted);
-  const day: Day = { id: dayId, templateId, createdAt: existing?.createdAt ?? new Date().toISOString(), updatedAt: '' };
+  const createdAt = existing?.createdAt ?? new Date().toISOString();
   const blocks: DayBlock[] = tBlocks.map(b => ({
     id: `${dayId}:${b.id}`, dayId, start: b.start, end: b.end, title: b.title, areaId: b.areaId, fromTemplate: b.id, updatedAt: '',
     ...(b.fixed ? { fixed: true } : {}),
   }));
-  await save('day', day);
   await saveMany('day_block', blocks);
+  // Stamped after the blocks: a block written later than this was edited (note #55).
+  await save<Day>('day', { id: dayId, templateId, createdAt, templateAt: nowIso(), updatedAt: '' });
   return true;
+}
+
+/** Days created before `templateAt` existed: their blocks were written right after `createdAt`. */
+const LEGACY_SLACK_MS = 10_000;
+
+/**
+ * The day is still the untouched copy of its template (not started; no block added, moved, renamed
+ * or removed since; calendar events don't count) but no longer matches it: the template was edited
+ * after the copy, or the copy was made from a template that had not synced yet.
+ */
+async function staleTemplateCopy(day: Day): Promise<boolean> {
+  if (day.status && day.status !== 'unplanned') return false;
+  const db = getDB();
+  const copiedAt = Date.parse(day.templateAt ?? day.createdAt);
+  if (!copiedAt) return false;
+  const untilAt = day.templateAt ? copiedAt : copiedAt + LEGACY_SLACK_MS;
+  const [tBlocks, all] = await Promise.all([
+    db.templateBlocks.where('templateId').equals(day.templateId).toArray(),
+    db.dayBlocks.where('dayId').equals(day.id).toArray(),
+  ]);
+  const blocks = all.filter(b => !b.calendar);
+  if (!blocks.every(b => b.fromTemplate && Date.parse(b.updatedAt) <= untilAt)) return false;
+  const key = (id: string, x: { start: number; end: number; title: string; areaId: string; fixed?: boolean }) => [id, x.start, x.end, x.title, x.areaId, !!x.fixed].join('|');
+  const want = tBlocks.filter(t => !t.deleted).map(t => key(t.id, t)).sort().join('\n');
+  const have = blocks.filter(b => !b.deleted).map(b => key(b.fromTemplate!, b)).sort().join('\n');
+  return want !== have;
+}
+
+/**
+ * Makes the day's plan its template again: template blocks get the template's times, names and
+ * areas (same ids, so their tasks stay), blocks not in the template are removed (their tasks stay on
+ * the day, unassigned) and calendar events are left alone. Returns how many blocks it wrote.
+ */
+export async function copyTemplateToDay(day: Day): Promise<number> {
+  const db = getDB();
+  const templateId = day.templateId === 'weekday' || day.templateId === 'weekend' ? templateIdForDate(day.id) : day.templateId;
+  const [tBlocks, current] = await Promise.all([
+    db.templateBlocks.where('templateId').equals(templateId).toArray(),
+    db.dayBlocks.where('dayId').equals(day.id).toArray(),
+  ]);
+  const live = tBlocks.filter(t => !t.deleted);
+  const ids = new Set(live.map(t => `${day.id}:${t.id}`));
+  const gone = current.filter(b => !b.deleted && !b.calendar && !ids.has(b.id));
+  await saveMany<DayBlock>('day_block', gone.map(b => ({ ...b, deleted: true })));
+  const orphaned = (await db.tasks.where('dayId').equals(day.id).toArray()).filter(t => !t.deleted && t.blockId && gone.some(b => b.id === t.blockId));
+  await saveMany<Task>('task', orphaned.map(t => ({ ...t, blockId: undefined })));
+  const blocks: DayBlock[] = live.map(t => ({
+    id: `${day.id}:${t.id}`, dayId: day.id, start: t.start, end: t.end, title: t.title, areaId: t.areaId, fromTemplate: t.id, updatedAt: '',
+    ...(t.fixed ? { fixed: true } : {}),
+  }));
+  await saveMany('day_block', blocks);
+  await update<Day>('day', day.id, { templateId, templateAt: nowIso() });
+  return blocks.length + gone.length;
 }
 
 export function liveBlocks<T extends { deleted?: boolean; start: number }>(rows: T[]): T[] {

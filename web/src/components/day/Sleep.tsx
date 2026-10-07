@@ -1,13 +1,14 @@
 'use client';
 import { useLiveQuery } from 'dexie-react-hooks';
 import { useState } from 'react';
-import { Moon, Sunrise, Trash2, X } from 'lucide-react';
+import { HeartPulse, Moon, Sunrise, Trash2, X } from 'lucide-react';
 import { m } from '@/i18n/en';
 import { getDB, getMeta, setMeta } from '@/lib/db';
 import { deleteSleep, endSleep, saveSleep, startSleep } from '@/lib/ops';
 import { DEFAULT_TARGET, mainSleeps, sleepMinutes, targetMinutes, type SleepTarget } from '@/lib/sleep';
 import { addDays, dateAtMinute, fmtClock, fmtDuration, pad2, parseHHMM } from '@/lib/time';
 import type { Sleep } from '@/lib/types';
+import { useHealthImport } from '@/lib/useHealthImport';
 import { Modal } from '../Modal';
 
 /** Every night on this device, live (note #29). */
@@ -57,6 +58,18 @@ export function NightCard({ sleep, tick, onFix }: { sleep: Sleep; tick: number; 
   );
 }
 
+/** Inside the Android app: read the night from Samsung Health (Health Connect) instead of typing it (note #53). */
+export function HealthImportButton({ surface }: { surface: string }) {
+  const { app, busy, result, run } = useHealthImport(surface);
+  if (!app) return null;
+  return (
+    <div className="stack health-import">
+      <button type="button" className="btn sm" disabled={busy} onClick={run}><HeartPulse size={13} />{busy ? m.sleep.reading : m.sleep.importHealth}</button>
+      {result && <p className={`hint health-result ${result.status}`} role="status">{m.sleep.healthResult(result)}</p>}
+    </div>
+  );
+}
+
 /** Add or fix a night by hand: bedtime and wake-up for that night. */
 export function SleepSheet({ sleep, night, onClose, tonight = false }: { sleep: Sleep | null; night: string; onClose: () => void; /** Tonight's night: you have not woken up yet, so no wake-up time is asked (note #40). */ tonight?: boolean }) {
   const target = useSleepTarget();
@@ -88,6 +101,7 @@ export function SleepSheet({ sleep, night, onClose, tonight = false }: { sleep: 
         {sleep ? ` · ${sleep.source === 'health' ? m.sleep.fromWatch : m.sleep.manual}` : ''}
       </p>
       {sleep?.stages && <StageBar stages={sleep.stages} />}
+      {!tonight && sleep?.source !== 'health' && <HealthImportButton surface="sleep_sheet" />}
       <div className="row">
         {sleep && <button type="button" className="btn sm ghost danger" onClick={() => { void deleteSleep(sleep.id); onClose(); }}><Trash2 size={13} />{m.sleep.delete}</button>}
         <span className="spacer" />
@@ -113,6 +127,7 @@ export function MorningPrompt({ dayId, minute }: { dayId: string; minute: number
         <button type="button" className="btn sm primary" onClick={() => setOpen(true)}><Moon size={13} />{m.sleep.newTitle}</button>
         <button type="button" className="btn sm ghost" onClick={() => void setMeta('sleepPromptSkipped', dayId)}>{m.sleep.skip}</button>
       </div>
+      <HealthImportButton surface="morning_prompt" />
       {open && <SleepSheet sleep={null} night={night} onClose={() => setOpen(false)} />}
     </section>
   );

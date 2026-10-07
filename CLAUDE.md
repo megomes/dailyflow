@@ -37,6 +37,7 @@ A ferramenta de revisão (`review/`) e o artifact publicado (https://claude.ai/a
 - 1.3.1 = nota #50: Today voltou a uma coluna no celular (o bloco Visual v2 sobrescrevia a grade e o padding do celular).
 - 1.3.2 = timeline no celular: nome, horário e badge se reorganizam pela largura do bloco (container queries), pílulas de acordar/dormir numa linha só.
 - 1.3.3 = Today no celular com um scroll só (a coluna de cards não rola mais sozinha por dentro).
+- 1.3.4 = app Android: faixas da barra de status e de gestos na cor do tema (o web manda via postNative theme) e sem margem dobrada em cima/embaixo (html.in-app zera --sa-top/--sa-bottom). Web + OTA.
 
 ## App Android (`mobile/`)
 

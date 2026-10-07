@@ -7,6 +7,7 @@ import { m } from '@/i18n/en';
 import { setScreen, track } from '@/lib/analytics';
 import { APP_SEMVER, APP_VERSION, apkVersion } from '@/lib/clientContext';
 import { useSyncState } from '@/lib/hooks';
+import { syncNativeChrome } from '@/lib/native';
 import { currentTheme, toggleTheme } from '@/lib/theme';
 import { ContextMenuHost } from './ContextMenu';
 import { LiveAgents } from './LiveAgents';
@@ -67,6 +68,13 @@ function OfflineBanner() {
 export function AppShell({ children }: { children: ReactNode }) {
   const path = usePathname();
   const prev = useRef<string | null>(null);
+
+  // Android app: no doubled insets, and the bars around the page in the theme's colors (follows theme changes).
+  useEffect(() => {
+    syncNativeChrome();
+    window.addEventListener('df-theme', syncNativeChrome);
+    return () => window.removeEventListener('df-theme', syncNativeChrome);
+  }, []);
 
   useEffect(() => {
     const name = screenName(path);

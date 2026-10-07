@@ -25,7 +25,7 @@ export const viewport: Viewport = {
 };
 
 /** Applies the saved theme before the first paint (no light/dark flash). Dark is the default. */
-const themeScript = `try{var t=localStorage.getItem('df-theme');document.documentElement.setAttribute('data-theme',t==='light'?'light':'dark')}catch(e){document.documentElement.setAttribute('data-theme','dark')}`;
+const themeScript = `try{var t=localStorage.getItem('df-theme');document.documentElement.setAttribute('data-theme',t==='light'?'light':'dark')}catch(e){document.documentElement.setAttribute('data-theme','dark')}if(window.ReactNativeWebView)document.documentElement.classList.add('in-app')`;
 
 export default function RootLayout({ children }: LayoutProps<'/'>) {
   return (

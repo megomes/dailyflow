@@ -2,7 +2,8 @@ import Constants from 'expo-constants';
 import * as Haptics from 'expo-haptics';
 import { useEffect, useRef, useState } from 'react';
 import { ActivityIndicator, AppState, BackHandler, Linking, Pressable, Text, View } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
+import { StatusBar } from 'expo-status-bar';
+import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { WebView, type WebViewMessageEvent } from 'react-native-webview';
 import type { Credential } from './auth';
 import { refreshSurfaces } from './background';
@@ -25,6 +26,9 @@ export function WebShell({ cred, path, onUnauthorized }: { cred: Credential; pat
   const [failed, setFailed] = useState(false);
   const [nonce, setNonce] = useState(0);
   const opened = useRef(path);
+  // The strips above and below the page (status and gesture bars) take the web theme's colors.
+  const insets = useSafeAreaInsets();
+  const [chrome, setChrome] = useState<{ top: string; bottom: string; light: boolean }>({ top: C.bg, bottom: C.bar, light: false });
 
   // Widget links (dailyflow:///tasks) navigate inside the web app.
   useEffect(() => {
@@ -52,9 +56,11 @@ export function WebShell({ cred, path, onUnauthorized }: { cred: Credential; pat
   }, []);
 
   function onMessage(e: WebViewMessageEvent) {
-    let msg: { type?: string; kind?: string };
+    let msg: { type?: string; kind?: string; top?: string; bottom?: string; light?: boolean };
     try { msg = JSON.parse(e.nativeEvent.data); } catch { return; }
-    if (msg.type === 'changed') {
+    if (msg.type === 'theme') {
+      if (msg.top && msg.bottom) setChrome({ top: msg.top, bottom: msg.bottom, light: !!msg.light });
+    } else if (msg.type === 'changed') {
       // Something changed and was synced: redraw widgets and the lock-screen notification (debounced).
       clearTimeout(timer.current);
       timer.current = setTimeout(() => void refreshSurfaces().catch(() => {}), 800);
@@ -86,12 +92,14 @@ export function WebShell({ cred, path, onUnauthorized }: { cred: Credential; pat
   }
 
   return (
-    <SafeAreaView edges={['top', 'bottom']} style={{ flex: 1, backgroundColor: C.bg }}>
+    <View style={{ flex: 1, backgroundColor: chrome.top }}>
+      <StatusBar style={chrome.light ? 'dark' : 'light'} />
+      <View style={{ height: insets.top, backgroundColor: chrome.top }} />
       <WebView
         key={nonce}
         ref={web}
         source={source}
-        style={{ flex: 1, backgroundColor: C.bg }}
+        style={{ flex: 1, backgroundColor: chrome.top }}
         originWhitelist={['*']}
         javaScriptEnabled
         domStorageEnabled
@@ -116,6 +124,7 @@ export function WebShell({ cred, path, onUnauthorized }: { cred: Credential; pat
         onHttpError={e => { if (e.nativeEvent.statusCode === 401 && e.nativeEvent.url.includes('/api/devices/web')) onUnauthorized(); }}
         onRenderProcessGone={() => web.current?.reload()}
       />
-    </SafeAreaView>
+      <View style={{ height: insets.bottom, backgroundColor: chrome.bottom }} />
+    </View>
   );
 }

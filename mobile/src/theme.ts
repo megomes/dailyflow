@@ -1,6 +1,6 @@
 /** Design tokens (design/tokens.css, dark — the app is dark-first). */
 export const C = {
-  bg: '#141416', surface: '#19191B', elevated: '#29292B', hover: '#242426', active: '#343436',
+  bg: '#0B0D12', bar: '#0D1016', surface: '#19191B', elevated: '#29292B', hover: '#242426', active: '#343436',
   border: '#303033', borderSubtle: '#262629', text: '#F3F3F4', text2: '#A1A1A6', muted: '#717176', disabled: '#55555A',
   now: '#DC3D92', focus: '#248CF2', ok: '#19B66A', danger: '#E5484D', warn: '#E5BA43',
 } as const;

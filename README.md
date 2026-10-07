@@ -121,6 +121,10 @@ npm run dist:win   # Windows installer
 | Desktop  | Electron                                                      |
 | Tests    | Vitest                                                        |
 
+## License
+
+[MIT](LICENSE)
+
 <br>
 
 <div align="center">

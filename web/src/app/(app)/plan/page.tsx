@@ -3,7 +3,7 @@ import Link from 'next/link';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { useLiveQuery } from 'dexie-react-hooks';
 import { Suspense, useEffect, useMemo, useRef, useState } from 'react';
-import { AlertTriangle, Check, ChevronLeft, Play, Plus } from 'lucide-react';
+import { AlertTriangle, Check, ChevronLeft, Play, Plus, Trash2 } from 'lucide-react';
 import { Timeline } from '@/components/Timeline';
 import { ConflictsCard } from '@/components/day/Cards';
 import { DayTasks } from '@/components/day/DayTasks';
@@ -19,6 +19,7 @@ import { useClock, useIsMobile } from '@/lib/hooks';
 import { addBlock, adoptPlan, deleteBlock, patchBlock, scheduleTask, setWake, startDay } from '@/lib/ops';
 import { ensureDay } from '@/lib/repo';
 import { addDays, dateFromIso, fmtDuration, fmtMin, parseHHMM } from '@/lib/time';
+import { freeSlot, wakeImpact } from '@/lib/wake';
 
 /** Guided planning (E5): Context → Build the day → Conflicts → Start. Every step can be skipped. */
 function PlanInner() {
@@ -59,6 +60,8 @@ function PlanInner() {
   const yTracked = (yRecs ?? []).filter(r => !r.deleted).reduce((s, r) => s + (recEnd(r, r.start) - r.start), 0);
   const selBlock = d.blocks.find(b => b.id === sel);
   const wake = d.day?.wakeAt ?? (d.blocks.length ? Math.min(...d.blocks.map(b => b.start)) : 6 * 60);
+  const lostAtWake = wakeImpact(d.blocks, wake);
+  const beforeWake = new Set(lostAtWake.hits.map(h => h.block.id));
 
   async function start() {
     started.current = true;
@@ -98,6 +101,25 @@ function PlanInner() {
             <label className="field"><span>{m.planning.wakeAt}</span><input id="plan-wake" className="input tabular" type="time" value={fmtMin(wake)} onChange={e => { const v = parseHHMM(e.target.value); if (v != null) void setWake(dayId, v); }} /></label>
             <span className="hint">{m.planning.wakeHint}</span>
           </section>
+          {lostAtWake.hits.length > 0 && (
+            <section className="card conflicts wake-lost">
+              <span className="label row"><AlertTriangle size={13} />{m.planning.wakeLost(fmtDuration(lostAtWake.lost), fmtMin(lostAtWake.from), fmtMin(wake))}</span>
+              {lostAtWake.hits.map(({ block: b, cut }) => {
+                const len = b.end - b.start;
+                const to = freeSlot(d.blocks, wake, len, b.id);
+                return (
+                  <div key={b.id} className="wake-hit" data-color={areaMap.get(b.areaId)?.color ?? 'gray'}>
+                    <span className="dot" /><span className="tabular muted">{fmtMin(b.start)}–{fmtMin(b.end)}</span><span className="title">{b.title}</span>
+                    <div className="row">
+                      {cut && <button type="button" className="btn sm" onClick={() => void patchBlock(b.id, { start: wake }, 'resize')}>{m.planning.wakeCut(fmtMin(wake))}</button>}
+                      <button type="button" className="btn sm" onClick={() => void patchBlock(b.id, { start: to, end: to + len }, 'move')}>{m.planning.wakeMove(fmtMin(to))}</button>
+                      <button type="button" className="btn sm ghost" onClick={() => void deleteBlock(b.id)}><Trash2 size={13} />{m.planning.wakeRemove}</button>
+                    </div>
+                  </div>
+                );
+              })}
+            </section>
+          )}
           <section className="card stack">
             <span className="label">{yId === today ? m.planning.todayLabel : m.planning.yesterday}</span>
             {yDay ? (
@@ -134,7 +156,7 @@ function PlanInner() {
             <DayTasks dayId={dayId} tasks={d.tasks} areaMap={areaMap} title={m.planning.buildTitle} />
           </div>
           <Timeline
-            columns={[{ id: 'plan', items: [...d.blocks.map(b => ({ ...b, badge: d.tasks.some(t => t.blockId === b.id) ? `${d.tasks.filter(t => t.blockId === b.id).length}` : undefined, badgeTone: capacity(b, d.tasks).over ? 'warn' as const : 'muted' as const }))], editable: true }]}
+            columns={[{ id: 'plan', items: [...d.blocks.map(b => ({ ...b, badge: beforeWake.has(b.id) ? m.planning.beforeWake : d.tasks.some(t => t.blockId === b.id) ? `${d.tasks.filter(t => t.blockId === b.id).length}` : undefined, badgeTone: beforeWake.has(b.id) || capacity(b, d.tasks).over ? 'warn' as const : 'muted' as const }))], editable: true }]}
             areas={areaMap}
             nowMin={isToday ? minute : null}
             selectedId={sel}

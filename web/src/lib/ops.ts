@@ -282,16 +282,10 @@ export async function patchBlock(id: string, patch: Partial<DayBlock>, kind: Rev
   return recordRevision(before.dayId, kind, snapshot(before), snapshot(after));
 }
 
-/** The day starts when you wake up: every block moves together so the first one begins at [minute] (note #30). */
+/** The plan keeps its times: blocks before waking are shown on the plan page to move or remove. */
 export async function setWake(dayId: string, minute: number) {
-  const blocks = (await getDB().dayBlocks.where('dayId').equals(dayId).toArray()).filter(b => !b.deleted && !b.fixed);
   await update<Day>('day', dayId, { wakeAt: minute });
-  if (!blocks.length) return;
-  const first = Math.min(...blocks.map(b => b.start));
-  const delta = Math.max(-first, Math.min(minute - first, 1440 - Math.max(...blocks.map(b => b.end))));
-  if (!delta) return;
-  for (const b of blocks) await update<DayBlock>('day_block', b.id, { start: b.start + delta, end: b.end + delta });
-  track('wake_time_set', { dayId, minute, shifted: blocks.length });
+  track('wake_time_set', { dayId, minute });
 }
 
 export async function deleteBlock(id: string) {

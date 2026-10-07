@@ -38,6 +38,7 @@ A ferramenta de revisão (`review/`) e o artifact publicado (https://claude.ai/a
 - 1.3.2 = timeline no celular: nome, horário e badge se reorganizam pela largura do bloco (container queries), pílulas de acordar/dormir numa linha só.
 - 1.3.3 = Today no celular com um scroll só (a coluna de cards não rola mais sozinha por dentro).
 - 1.3.4 = app Android: faixas da barra de status e de gestos na cor do tema (o web manda via postNative theme) e sem margem dobrada em cima/embaixo (html.in-app zera --sa-top/--sa-bottom). Web + OTA.
+- 1.4.0 = acordar mais tarde não empurra mais o plano: o template fica no lugar, o Plan mostra o tempo perdido no começo do dia e os blocos afetados (começar na hora de acordar, mover para o primeiro espaço livre ou remover); na timeline do Build eles ganham o selo "Before wake-up".
 
 ## App Android (`mobile/`)
 

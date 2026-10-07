@@ -635,6 +635,9 @@ html.vt-close::view-transition-new(root) { z-index: 1; }
 .mini-plan { display: flex; flex-direction: column; gap: 3px; }
 .mini-row { display: grid; grid-template-columns: 10px 48px minmax(0, auto) minmax(0, 1fr); gap: 8px; align-items: center; font-size: 13px; }
 .mini-row > span:last-child { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 12px; }
+.wake-hit { display: grid; grid-template-columns: 10px auto minmax(0, 1fr); gap: 4px 8px; align-items: center; font-size: 13px; }
+.wake-hit .title { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.wake-hit .row { grid-column: 2 / -1; flex-wrap: wrap; gap: 6px; }
 @media (max-width: 820px) { .plan-ctx { grid-template-columns: minmax(0, 1fr); } }
 .presets .free .input { width: 70px; height: 26px; padding: 0 8px; font-size: 12.5px; }
 .rev-list { margin: 0; padding: 0; list-style: none; display: flex; flex-direction: column; gap: 4px; font-size: 12.5px; }

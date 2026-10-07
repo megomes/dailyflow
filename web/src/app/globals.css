@@ -1246,3 +1246,8 @@ body { background: var(--app-glow), var(--bg-app); background-attachment: fixed;
   .tl-mark .mark-text { min-width: 0; overflow: hidden; text-overflow: ellipsis; }
   .tl-zoom button { height: 22px; min-width: 22px; font-size: 10.5px; }
 }
+
+/* Phones: Today is one page with one scroll; the cards column no longer scrolls on its own inside it. */
+@media (max-width: 820px) {
+  .today-side { max-height: none; overflow: visible; padding-bottom: 0; }
+}

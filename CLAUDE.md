@@ -36,6 +36,7 @@ A ferramenta de revisão (`review/`) e o artifact publicado (https://claude.ai/a
 - 1.3.0 = notas #48 (área de tempo perdido: Wasted time, hachurado na timeline, card próprio em Insights) e #49 (scrollbars no tema e fora do conteúdo).
 - 1.3.1 = nota #50: Today voltou a uma coluna no celular (o bloco Visual v2 sobrescrevia a grade e o padding do celular).
 - 1.3.2 = timeline no celular: nome, horário e badge se reorganizam pela largura do bloco (container queries), pílulas de acordar/dormir numa linha só.
+- 1.3.3 = Today no celular com um scroll só (a coluna de cards não rola mais sozinha por dentro).
 
 ## App Android (`mobile/`)
 

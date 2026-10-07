@@ -1,5 +1,8 @@
 import type { Metadata } from 'next';
 
+/** Who answers privacy and deletion requests (CONTACT_EMAIL). */
+const CONTACT = process.env.CONTACT_EMAIL ?? '';
+
 export const metadata: Metadata = { title: 'Privacy Policy · DailyFlow' };
 
 export default function PrivacyPage() {
@@ -32,7 +35,7 @@ export default function PrivacyPage() {
       <p>The app runs on Vercel and stores data in a Neon Postgres database; data is also cached on your own devices so the app works offline.</p>
 
       <h2>Contact</h2>
-      <p>Questions or deletion requests: <a href="mailto:matheuservilha@gmail.com">matheuservilha@gmail.com</a>.</p>
+      <p>Questions or deletion requests: <a href={`mailto:${CONTACT}`}>{CONTACT}</a>.</p>
     </>
   );
 }

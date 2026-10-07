@@ -176,12 +176,12 @@ Example:
 
 ```text
 06:00–09:00 Maker
-09:00–10:00 Drive / Felipe
+09:00–10:00 Drive / Leo
 10:00–11:00 Work
 11:00–12:00 Music
 12:00–14:00 Lunch + FlightSim
 14:00–17:30 Work
-17:30–18:30 Drive / Felipe
+17:30–18:30 Drive / Leo
 18:30–21:00 Family
 21:00–22:00 Reading / Sleep
 ```
@@ -215,7 +215,7 @@ Example:
 
 ```text
 06:20–08:50 Maker
-08:50–10:05 Commute / Felipe
+08:50–10:05 Commute / Leo
 10:05–11:28 Work
 11:30–12:00 Meeting
 12:00–13:05 Lunch
@@ -362,12 +362,12 @@ Initial default:
 | Time | Activity |
 |---|---|
 | 06:00–09:00 | Maker |
-| 09:00–10:00 | Drive / Felipe |
+| 09:00–10:00 | Drive / Leo |
 | 10:00–11:00 | Work |
 | 11:00–12:00 | Guitar or Piano |
 | 12:00–14:00 | Lunch + FlightSim / Leisure |
 | 14:00–17:30 | Work |
-| 17:30–18:30 | Drive / Felipe |
+| 17:30–18:30 | Drive / Leo |
 | 18:30–21:00 | Family + Dinner + Night Routine |
 | 21:00 onward | Reading / Sleep |
 

@@ -1048,13 +1048,13 @@ day: [
   { id:'DIA-04', t:'06:00', dev:'Desktop', st:'plan', do:'Lembro de “ligar para a oficina” no meio do planejamento: aperto N, digito e ela aparece no painel. Ao arrastar uma tarefa Maker, os blocos Maker se destacam.', app:'Captura sem sair do planejamento. Blocos da mesma área ficam em destaque; soltar numa área diferente mostra um aviso leve. O Maker mostra 3h40 estimado / 3h disponível.', flow:'F-01' },
   { id:'DIA-05', t:'06:01', dev:'Desktop', st:'plan', do:'Vejo o aviso de capacidade e escolho Manter mesmo assim (Etapa 3). Clico INICIAR DIA.', app:'Salva o Baseline imutável. A tela muda de planejamento para execução: Agora · Próximo · Hoje.', flow:'F-01' },
   { id:'DIA-06', t:'06:02', dev:'Desktop', st:'ativo', do:'Clico ▶ em “Fix Sortie sync”, preset 50/10.', app:'Sessão de foco começa. O registro de tempo fica ligado à tarefa, ao bloco Maker e à área Maker.', flow:'F-15' },
-  { id:'DIA-07', t:'08:55', dev:'Desktop', st:'ativo', do:'O bloco Maker termina. Paro a sessão.', app:'Agora passa a ser “Drive / Felipe”. A tarefa continua Em andamento (sessão ≠ tarefa).', flow:'F-15' },
+  { id:'DIA-07', t:'08:55', dev:'Desktop', st:'ativo', do:'O bloco Maker termina. Paro a sessão.', app:'Agora passa a ser “Drive / Leo”. A tarefa continua Em andamento (sessão ≠ tarefa).', flow:'F-15' },
   { id:'DIA-08', t:'09:20', dev:'Celular', st:'ativo', do:'Parado no carro, toco + e digito “Comprar PETG”.', app:'Vai direto para o Inbox. Nenhuma pergunta, nenhum campo obrigatório.', flow:'F-11' },
   { id:'DIA-09', t:'10:05', dev:'Desktop', st:'ativo', do:'Toco “Comecei” no bloco Work.', app:'Registro ao vivo inicia às 10:05 (o plano dizia 10:00; a diferença fica registrada, sem julgamento).', flow:'F-16' },
   { id:'DIA-10', t:'10:42', dev:'Desktop', st:'ativo', do:'Chega uma reunião nova 11:30–12:00 no Outlook. Escolho Mover Música para 13:00.', app:'Banner de conflito com 5 opções. Cria a Revisão #1 (motivo: conflito de calendário). O Baseline continua intacto.', flow:'F-03' },
   { id:'DIA-11', t:'12:00', dev:'—', st:'ativo', do:'Almoço. Não abro o app.', app:'Nada acontece. A lacuna 12:00–13:05 fica para ser resolvida no fechamento.', flow:'F-04' },
   { id:'DIA-12', t:'14:00', dev:'Desktop', st:'ativo', do:'O bloco “Focus Work” já estava publicado como Busy no Outlook.', app:'Colegas veem o horário ocupado. Se eu mover o bloco, o evento externo move junto.', flow:'F-07' },
-  { id:'DIA-13', t:'17:30', dev:'Celular', st:'ativo', do:'Olho o celular (PWA ou, no futuro, widget).', app:'AGORA Drive / Felipe · até 18:30 · PRÓXIMO Família.', flow:'F-10' },
+  { id:'DIA-13', t:'17:30', dev:'Celular', st:'ativo', do:'Olho o celular (PWA ou, no futuro, widget).', app:'AGORA Drive / Leo · até 18:30 · PRÓXIMO Família.', flow:'F-10' },
   { id:'DIA-14', t:'18:30', dev:'—', st:'ativo', do:'Família. Bloco aberto, sem tarefas, sem timer.', app:'Nada a fazer. Tempo aberto é tempo válido.', flow:'F-06' },
   { id:'DIA-15', t:'21:00', dev:'Desktop', st:'fech', do:'Clico Fechar dia. Passo 1: preencho a lacuna 12:00–13:05 como Almoço e confirmo Família.', app:'Mostra a linha do tempo real com lacunas e sobreposições destacadas e ações de 1 clique.', flow:'F-01' },
   { id:'DIA-16', t:'21:03', dev:'Desktop', st:'fech', do:'Passo 2: reviso tarefas. Passo 3: pulo a reflexão.', app:'2 concluídas. “Fix Sortie sync” volta ao Backlog com todo o histórico. Reflexão nunca bloqueia.', flow:'F-01' },
@@ -1121,7 +1121,7 @@ flows: [
     goal:'Adaptar sem culpa e, no fim, entender o que mudou e por quê.',
     steps:[
       ['Hoje · Ativo','09:10: aparece uma reunião 09:30–10:30 sobre o bloco Work.','Conflito. Escolho Encurtar Work. Revisão #1.'],
-      ['Hoje · Ativo','11:00: a escola liga, preciso buscar o Felipe às 12:00. Adiciono um bloco Deslocamento 11:45–12:30 (Fixo).','Conflito com Música. Escolho Remover Música hoje. Revisão #2.'],
+      ['Hoje · Ativo','11:00: a escola liga, preciso buscar o Leo às 12:00. Adiciono um bloco Deslocamento 11:45–12:30 (Fixo).','Conflito com Música. Escolho Remover Música hoje. Revisão #2.'],
       ['Hoje · Ativo','13:00: o almoço atrasou; FlightSim não cabe mais. Clico Replanejar restante do dia.','Proposta determinística: FlightSim 30 min às 13:30, Work 14:00–18:00. Eu confirmo ou ajusto. Revisão #3.'],
       ['Inspector','Abro o histórico do dia.','Baseline → R1 → R2 → R3, com horário e motivo de cada mudança. A tela principal continua limpa.'],
       ['Fechar · Passo 1','Reconstruo o real.','Ponto de partida: plano final. Ajusto bordas arrastando.'],
@@ -1748,9 +1748,9 @@ function makeWireframes({ icon, esc, iconSrc }) {
 
   /* ── Dados de exemplo ── */
   const TPL = [
-    { a: 6, b: 9, n: 'Maker', c: 'orange' }, { a: 9, b: 10, n: 'Drive / Felipe', c: 'cyan' }, { a: 10, b: 11, n: 'Work', c: 'blue' },
+    { a: 6, b: 9, n: 'Maker', c: 'orange' }, { a: 9, b: 10, n: 'Drive / Leo', c: 'cyan' }, { a: 10, b: 11, n: 'Work', c: 'blue' },
     { a: 11, b: 12, n: 'Music', c: 'purple' }, { a: 12, b: 14, n: 'Lunch + FlightSim', c: 'yellow' }, { a: 14, b: 17.5, n: 'Work', c: 'blue' },
-    { a: 17.5, b: 18.5, n: 'Drive / Felipe', c: 'cyan' }, { a: 18.5, b: 21, n: 'Family', c: 'green' }, { a: 21, b: 22, n: 'Reading', c: 'pink' },
+    { a: 17.5, b: 18.5, n: 'Drive / Leo', c: 'cyan' }, { a: 18.5, b: 21, n: 'Family', c: 'green' }, { a: 21, b: 22, n: 'Reading', c: 'pink' },
   ];
   const MEET = [{ a: 14, b: 15, n: 'Engineering Weekly', c: 'gray', cal: true, l: '56%' }, { a: 16, b: 16.5, n: '1:1 Marcos', c: 'gray', cal: true, l: '56%' }];
   const mod = (arr, map) => arr.map((b, i) => Object.assign({}, b, typeof map === 'function' ? map(b, i) : map));
@@ -1815,7 +1815,7 @@ function makeWireframes({ icon, esc, iconSrc }) {
       <div class="wf-split r">
         ${tl(mod(TPL, b => b.b <= 10.67 ? { dim: true } : { prov: true }), { pph: 14, now: 10.67, every: 2 })}
         <div class="wf-card">${lbl('Isso aconteceu?', ' ' + pin(2))}
-          ${[['Maker', '06:00–09:00', 'orange'], ['Drive / Felipe', '09:00–10:00', 'cyan'], ['Work', '10:00–10:40', 'blue']].map(([n, t, c]) => `<div class="wf-q">${dot(c)}<b>${n}</b><span class="wf-sub">${t}</span><span class="sp"></span>${btn('Sim')}${btn('Não', { ghost: true })}${btn('Ajustar', { ghost: true })}</div>`).join('')}
+          ${[['Maker', '06:00–09:00', 'orange'], ['Drive / Leo', '09:00–10:00', 'cyan'], ['Work', '10:00–10:40', 'blue']].map(([n, t, c]) => `<div class="wf-q">${dot(c)}<b>${n}</b><span class="wf-sub">${t}</span><span class="sp"></span>${btn('Sim')}${btn('Não', { ghost: true })}${btn('Ajustar', { ghost: true })}</div>`).join('')}
         </div></div>`),
   };
 
@@ -1865,7 +1865,7 @@ function makeWireframes({ icon, esc, iconSrc }) {
           <div class="wf-grp">Backlog</div>${task('DCS Companion', '1h40', { c: 'orange', pri: 'm' })}${task('Praticar “Numb”', '1h', { c: 'purple', pri: 'h' })}
           <div class="wf-row"><span class="wf-chip">Área: todas</span><span class="wf-chip">Do bloco selecionado</span></div>
         </div>
-        ${tl([{ a: 6, b: 9, n: 'Maker', c: 'orange', cap: '3h40 / 3h', over: true, tasks: MAKER_TASKS, p: 3 }, { a: 9, b: 10, n: 'Drive / Felipe', c: 'cyan', dim: true }, { a: 10, b: 11, n: 'Work', c: 'blue', cap: '0 / 1h', sel: true, html: '<div class="wb-drop">Soltar aqui · Work</div>' }, { a: 11, b: 12, n: 'Music', c: 'purple', dim: true }, { a: 12, b: 14, n: 'Lunch + FlightSim', c: 'yellow', dim: true }], { from: 6, to: 14, pph: 30, every: 1 })}
+        ${tl([{ a: 6, b: 9, n: 'Maker', c: 'orange', cap: '3h40 / 3h', over: true, tasks: MAKER_TASKS, p: 3 }, { a: 9, b: 10, n: 'Drive / Leo', c: 'cyan', dim: true }, { a: 10, b: 11, n: 'Work', c: 'blue', cap: '0 / 1h', sel: true, html: '<div class="wb-drop">Soltar aqui · Work</div>' }, { a: 11, b: 12, n: 'Music', c: 'purple', dim: true }, { a: 12, b: 14, n: 'Lunch + FlightSim', c: 'yellow', dim: true }], { from: 6, to: 14, pph: 30, every: 1 })}
         <div class="wf-col"><div class="wf-card">${lbl('Inspector')}<div class="wf-big sm">${dot('orange')}Maker</div><div class="wf-sub">06:00–09:00 · Flexível</div>
           <div class="wf-kv"><span>Capacidade</span><b>3h</b><span>Estimado</span><b class="warn">3h40</b><span>Tarefas</span><b>3</b></div></div>
           <div class="wf-banner info sm">${I('info')}<span>“DCS Companion” é Maker, mas foi para Work.</span>${pin(4)}</div><div class="wf-row wrap">${btn('Mover para Maker')}${btn('Manter', { ghost: true })}</div></div>
@@ -1944,7 +1944,7 @@ function makeWireframes({ icon, esc, iconSrc }) {
     t: 'Celular (PWA) · Hoje e captura rápida', kind: 'phone',
     notes: ['Mobile prioriza Agora, Próximo e a timeline. Nada de densidade de desktop.', '+ abre uma bottom sheet com um campo só.', 'Navegação: Hoje · Tarefas · Histórico · Mais.'],
     r: () => `<div class="wf-phones">${phone(`<div class="ph-h"><b>Hoje</b><span class="wf-sub">Seg 28 set</span></div>
-        <div class="wf-card now sm">${lbl('Agora ', pin(1))}<div class="wf-big">${dot('cyan')}Drive / Felipe</div><div class="wf-row sp"><span class="wf-sub">até 10:00 · 23 min</span>${bar(60, 'cyan')}</div>${btn('Comecei', { ic: 'play' })}</div>
+        <div class="wf-card now sm">${lbl('Agora ', pin(1))}<div class="wf-big">${dot('cyan')}Drive / Leo</div><div class="wf-row sp"><span class="wf-sub">até 10:00 · 23 min</span>${bar(60, 'cyan')}</div>${btn('Comecei', { ic: 'play' })}</div>
         <div class="wf-card sm">${lbl('Próximo')}<div class="wf-big sm">${dot('blue')}Work · 10:00</div></div>
         ${tl(TPL.slice(1, 6), { from: 9, to: 15, pph: 18, now: 9.62, every: 1, left: 26 })}
         <div class="ph-tabs"><span class="on">${I('home')}Hoje</span><span>${I('tasks')}Tarefas</span><span class="fab">${I('plus')}</span><span>${I('history')}Histórico</span><span>${I('menu')}Mais</span>${pin(3)}</div>`)}
@@ -1973,7 +1973,7 @@ function makeWireframes({ icon, esc, iconSrc }) {
           ${tl([{ a: 13.5, b: 14, n: 'FlightSim', c: 'yellow' }, { a: 14, b: 15, n: 'Eng. Weekly', c: 'gray', cal: true, lock: true }, { a: 15, b: 18, n: 'Work', c: 'blue' }, { a: 18, b: 19, n: 'Drive', c: 'cyan', lock: true }], { from: 13, to: 19, pph: 22, every: 1, left: 26 })}</div>
           <div class="wf-row end">${btn('Ajustar', { ghost: true })}${btn('Aplicar proposta', { pri: true })}</div></div>
         <div class="wf-card">${lbl('Histórico do dia ', pin(2))}<div class="wf-revs">
-          ${[['06:01', 'Baseline', 'Plano aceito no Iniciar dia', 'gray'], ['09:10', 'Revisão 1', 'Work encurtado · reunião inesperada', 'orange'], ['11:05', 'Revisão 2', 'Music removido · buscar Felipe', 'orange'], ['13:02', 'Revisão 3', 'Replanejar restante · 3 blocos', 'purple']].map(([t, n, d, c]) => `<div class="wf-rev"><i style="background:var(--accent-${c === 'gray' ? 'cyan' : c})"></i><span class="mono">${t}</span><div><b>${n}</b><span>${d}</span></div></div>`).join('')}</div></div>
+          ${[['06:01', 'Baseline', 'Plano aceito no Iniciar dia', 'gray'], ['09:10', 'Revisão 1', 'Work encurtado · reunião inesperada', 'orange'], ['11:05', 'Revisão 2', 'Music removido · buscar Leo', 'orange'], ['13:02', 'Revisão 3', 'Replanejar restante · 3 blocos', 'purple']].map(([t, n, d, c]) => `<div class="wf-rev"><i style="background:var(--accent-${c === 'gray' ? 'cyan' : c})"></i><span class="mono">${t}</span><div><b>${n}</b><span>${d}</span></div></div>`).join('')}</div></div>
       </div>`),
   };
 
@@ -2252,10 +2252,10 @@ function makeWireframes({ icon, esc, iconSrc }) {
 
   W.s3Conflict = {
     t: 'E3 · Mudar o plano com o dia em andamento', kind: 'desktop',
-    notes: ['Um bloco Fixo novo (buscar o Felipe) sobrepõe um Flexível.', 'Ações diretas; nenhuma é modal.', 'Motivo opcional em um toque.', 'Cada mudança vira uma revisão; o Baseline não muda.'],
-    r: () => win(`<div class="wf-banner warn">${I('alert', 'sm')}<div><b>“Buscar Felipe” (Fixo) sobrepõe Music</b><span>11:45–12:30 × 11:00–12:00</span></div>${pin(1)}<span class="sp"></span>${btn('Manter')}${btn('Mover Music', { p: 2 })}${btn('Encurtar')}${btn('Remover')}</div>
+    notes: ['Um bloco Fixo novo (buscar o Leo) sobrepõe um Flexível.', 'Ações diretas; nenhuma é modal.', 'Motivo opcional em um toque.', 'Cada mudança vira uma revisão; o Baseline não muda.'],
+    r: () => win(`<div class="wf-banner warn">${I('alert', 'sm')}<div><b>“Buscar Leo” (Fixo) sobrepõe Music</b><span>11:45–12:30 × 11:00–12:00</span></div>${pin(1)}<span class="sp"></span>${btn('Manter')}${btn('Mover Music', { p: 2 })}${btn('Encurtar')}${btn('Remover')}</div>
       <div class="wf-split r">
-        ${tl([{ a: 10, b: 11, n: 'Work', c: 'blue', check: true }, { a: 11, b: 12, n: 'Music', c: 'purple', warn: true }, { a: 11.75, b: 12.5, n: 'Buscar Felipe', c: 'cyan', lock: true, l: '56%' }, { a: 12.5, b: 14, n: 'Lunch + FlightSim', c: 'yellow' }, { a: 14, b: 17.5, n: 'Work', c: 'blue' }], { from: 10, to: 16, pph: 30, every: 1, now: 10.95 })}
+        ${tl([{ a: 10, b: 11, n: 'Work', c: 'blue', check: true }, { a: 11, b: 12, n: 'Music', c: 'purple', warn: true }, { a: 11.75, b: 12.5, n: 'Buscar Leo', c: 'cyan', lock: true, l: '56%' }, { a: 12.5, b: 14, n: 'Lunch + FlightSim', c: 'yellow' }, { a: 14, b: 17.5, n: 'Work', c: 'blue' }], { from: 10, to: 16, pph: 30, every: 1, now: 10.95 })}
         <div class="wf-col"><div class="wf-card">${lbl('Por que mudou? · opcional ', pin(3))}<div class="wf-areas">${['Família', 'Trabalho', 'Imprevisto', 'Energia', 'Outro'].map((x, i) => `<span class="wf-chip${i === 0 ? ' on' : ''}">${x}</span>`).join('')}</div></div>
           <div class="wf-toast">${I('history')}Revisão 2 criada · Baseline intacto${pin(4)}</div></div>
       </div>`),
@@ -2267,9 +2267,9 @@ function makeWireframes({ icon, esc, iconSrc }) {
     r: () => win(`${hdr('Hoje', 'Segunda, 28 set', seg(['Plano', 'Real', 'Comparar'], 2))}
       <div class="wf-cmp3">
         <div>${lbl('Baseline ', pin(1))}${tl([{ a: 10, b: 11, n: 'Work', c: 'blue' }, { a: 11, b: 12, n: 'Music', c: 'purple' }, { a: 12, b: 14, n: 'Lunch + FlightSim', c: 'yellow' }, { a: 14, b: 17.5, n: 'Work', c: 'blue' }].map(b => Object.assign(b, { prov: true })), { from: 10, to: 18, pph: 24, every: 1, left: 26 })}</div>
-        <div>${lbl('Final ', pin(2))}${tl([{ a: 10, b: 11, n: 'Work', c: 'blue' }, { a: 11, b: 12, n: 'Music', c: 'purple', ghost: true, html: '<span class="wb-badge">movido</span>' }, { a: 11.75, b: 12.5, n: 'Buscar Felipe', c: 'cyan', lock: true, html: '<span class="wb-badge new">novo</span>' }, { a: 12.5, b: 13.5, n: 'Lunch', c: 'yellow' }, { a: 13.5, b: 14.5, n: 'Music', c: 'purple' }, { a: 14.5, b: 18, n: 'Work', c: 'blue' }], { from: 10, to: 18, pph: 24, every: 1, left: 26 })}</div>
-        <div>${lbl('Real')}${tl([{ a: 10.08, b: 11.4, n: 'Work', c: 'blue' }, { a: 11.7, b: 12.6, n: 'Buscar Felipe', c: 'cyan' }, { a: 12.6, b: 13.6, n: 'Lunch', c: 'yellow' }, { a: 13.7, b: 14.3, n: 'Music', c: 'purple' }, { a: 14.4, b: 18, n: 'Work', c: 'blue' }], { from: 10, to: 18, pph: 24, every: 1, left: 26 })}</div>
-        <div class="wf-card">${lbl('O que mudou ', pin(3))}${[['history', '2 revisões', '10:52 e 11:03'], ['move', '1 bloco movido', 'Music 11:00 → 13:30'], ['x', '1 removido', 'FlightSim'], ['plus', '1 adicionado', 'Buscar Felipe (Fixo)'], ['clock', 'Variação', 'plano × real: 1h05']].map(([ic, a, b]) => `<div class="wf-li">${I(ic, 'sm')}<div><b>${a}</b><span>${b}</span></div></div>`).join('')}</div>
+        <div>${lbl('Final ', pin(2))}${tl([{ a: 10, b: 11, n: 'Work', c: 'blue' }, { a: 11, b: 12, n: 'Music', c: 'purple', ghost: true, html: '<span class="wb-badge">movido</span>' }, { a: 11.75, b: 12.5, n: 'Buscar Leo', c: 'cyan', lock: true, html: '<span class="wb-badge new">novo</span>' }, { a: 12.5, b: 13.5, n: 'Lunch', c: 'yellow' }, { a: 13.5, b: 14.5, n: 'Music', c: 'purple' }, { a: 14.5, b: 18, n: 'Work', c: 'blue' }], { from: 10, to: 18, pph: 24, every: 1, left: 26 })}</div>
+        <div>${lbl('Real')}${tl([{ a: 10.08, b: 11.4, n: 'Work', c: 'blue' }, { a: 11.7, b: 12.6, n: 'Buscar Leo', c: 'cyan' }, { a: 12.6, b: 13.6, n: 'Lunch', c: 'yellow' }, { a: 13.7, b: 14.3, n: 'Music', c: 'purple' }, { a: 14.4, b: 18, n: 'Work', c: 'blue' }], { from: 10, to: 18, pph: 24, every: 1, left: 26 })}</div>
+        <div class="wf-card">${lbl('O que mudou ', pin(3))}${[['history', '2 revisões', '10:52 e 11:03'], ['move', '1 bloco movido', 'Music 11:00 → 13:30'], ['x', '1 removido', 'FlightSim'], ['plus', '1 adicionado', 'Buscar Leo (Fixo)'], ['clock', 'Variação', 'plano × real: 1h05']].map(([ic, a, b]) => `<div class="wf-li">${I(ic, 'sm')}<div><b>${a}</b><span>${b}</span></div></div>`).join('')}</div>
       </div>`),
   };
 
@@ -2282,7 +2282,7 @@ function makeWireframes({ icon, esc, iconSrc }) {
             <div class="wf-live"><i></i>Registrando desde 10:05</div>
             ${task('Relatório semanal', '45m', { c: 'blue', pri: 'h' })}${task('Revisar PR do sync', '20m', { c: 'blue', pri: 'm' })}
             <div class="wf-row">${btn('Terminei', { pri: true, ic: 'stop' })}</div></div>${nextCard()}</div>
-        ${tl([{ a: 6, b: 9, n: 'Maker', c: 'orange', check: true, tasks: [['Fix Sortie sync', '1h30', true], ['Imprimir case', '30m', true]] }, { a: 9, b: 10, n: 'Drive / Felipe', c: 'cyan', check: true }, { a: 10, b: 11, n: 'Work', c: 'blue', cap: '1h05 / 1h', over: true, p: 2 }, { a: 11, b: 12, n: 'Music', c: 'purple', tasks: [['Praticar “Numb”', '1h']] }, { a: 12, b: 14, n: 'Lunch + FlightSim', c: 'yellow' }, { a: 14, b: 17.5, n: 'Work', c: 'blue', cap: '1h30 / 3h30' }], { from: 6, to: 18, pph: 22, every: 2, now: 10.62 })}
+        ${tl([{ a: 6, b: 9, n: 'Maker', c: 'orange', check: true, tasks: [['Fix Sortie sync', '1h30', true], ['Imprimir case', '30m', true]] }, { a: 9, b: 10, n: 'Drive / Leo', c: 'cyan', check: true }, { a: 10, b: 11, n: 'Work', c: 'blue', cap: '1h05 / 1h', over: true, p: 2 }, { a: 11, b: 12, n: 'Music', c: 'purple', tasks: [['Praticar “Numb”', '1h']] }, { a: 12, b: 14, n: 'Lunch + FlightSim', c: 'yellow' }, { a: 14, b: 17.5, n: 'Work', c: 'blue', cap: '1h30 / 3h30' }], { from: 6, to: 18, pph: 22, every: 2, now: 10.62 })}
         <div class="wf-card tasks">${lbl('Tarefas ', pin(3))}<div class="wf-grp">Continuar ${pin(4)}</div>${task('DCS Companion', '1h40 · 3 sessões', { c: 'orange', pri: 'm' })}
           <div class="wf-grp">High</div>${task('Enviar trimestral', 'prazo hoje', { c: 'blue', pri: 'h', drag: true })}
           <div class="wf-grp">Inbox · 3</div>${task('Comprar PETG', '', { c: 'cyan' })}${task('Ligar para a oficina', '', { c: 'cyan' })}</div>
@@ -3111,8 +3111,8 @@ const seg = (key, opts) => `<div class="seg" role="group">${opts.map(([v, l, n])
 /* ── Timeline mini (Baseline / Final / Real e mock do Hoje) ── */
 const T = (h, m = 0) => h + m / 60;
 const DAY = {
-  base: [[6, 9, 'Maker', 'orange'], [9, 10, 'Drive / Felipe', 'cyan'], [10, 11, 'Work', 'blue'], [11, 12, 'Music', 'purple'], [12, 14, 'Lunch + FlightSim', 'yellow'], [14, 17.5, 'Work', 'blue'], [17.5, 18.5, 'Drive / Felipe', 'cyan'], [18.5, 21, 'Family', 'green'], [21, 22, 'Reading', 'pink']],
-  final: [[6, 9, 'Maker', 'orange'], [9, 10, 'Drive / Felipe', 'cyan'], [10, 11, 'Work', 'blue'], [11.5, 12, 'Meeting', 'gray'], [12, 13, 'Lunch', 'yellow'], [13, 14, 'Music', 'purple'], [14, 18, 'Work', 'blue'], [18, 19, 'Drive / Felipe', 'cyan'], [19, 21, 'Family', 'green'], [21, 22, 'Reading', 'pink']],
+  base: [[6, 9, 'Maker', 'orange'], [9, 10, 'Drive / Leo', 'cyan'], [10, 11, 'Work', 'blue'], [11, 12, 'Music', 'purple'], [12, 14, 'Lunch + FlightSim', 'yellow'], [14, 17.5, 'Work', 'blue'], [17.5, 18.5, 'Drive / Leo', 'cyan'], [18.5, 21, 'Family', 'green'], [21, 22, 'Reading', 'pink']],
+  final: [[6, 9, 'Maker', 'orange'], [9, 10, 'Drive / Leo', 'cyan'], [10, 11, 'Work', 'blue'], [11.5, 12, 'Meeting', 'gray'], [12, 13, 'Lunch', 'yellow'], [13, 14, 'Music', 'purple'], [14, 18, 'Work', 'blue'], [18, 19, 'Drive / Leo', 'cyan'], [19, 21, 'Family', 'green'], [21, 22, 'Reading', 'pink']],
   real: [[T(6, 20), T(8, 50), 'Maker', 'orange'], [T(8, 50), T(10, 5), 'Commute', 'cyan'], [T(10, 5), T(11, 28), 'Work', 'blue'], [11.5, 12, 'Meeting', 'gray'], [12, T(13, 5), 'Lunch', 'yellow'], [T(13, 8), T(13, 52), 'Music', 'purple'], [T(14, 5), T(18, 10), 'Work', 'blue'], [T(18, 10), T(19, 5), 'Drive', 'cyan'], [T(19, 5), T(21, 20), 'Family', 'green'], [T(21, 20), 22, 'Reading', 'pink']],
 };
 const fmt = h => { const hh = Math.floor(h), mm = Math.round((h - hh) * 60); return `${String(hh).padStart(2, '0')}:${String(mm).padStart(2, '0')}`; };
@@ -3362,7 +3362,7 @@ PAGES.perguntas = () => {
 
 function dsPanel(theme) {
   const nav = [['home', 'Hoje', true], ['tasks', 'Tarefas'], ['history', 'Histórico'], ['chart', 'Insights'], ['gear', 'Configurações']];
-  const tl = [[6, 9, 'Maker', 'orange'], [9, 10, 'Drive / Felipe', 'cyan'], [10, 11, 'Work', 'blue'], [11, 12, 'Music', 'purple'], [12, 14, 'Lunch + FlightSim', 'yellow'], [14, 17.5, 'Work', 'blue'], [17.5, 18.5, 'Drive', 'cyan'], [18.5, 21, 'Family', 'green'], [21, 22, 'Reading', 'pink']];
+  const tl = [[6, 9, 'Maker', 'orange'], [9, 10, 'Drive / Leo', 'cyan'], [10, 11, 'Work', 'blue'], [11, 12, 'Music', 'purple'], [12, 14, 'Lunch + FlightSim', 'yellow'], [14, 17.5, 'Work', 'blue'], [17.5, 18.5, 'Drive', 'cyan'], [18.5, 21, 'Family', 'green'], [21, 22, 'Reading', 'pink']];
   return `<div class="ds-panel force-${theme}">
     <div class="ds-top"><span>${theme === 'dark' ? 'Escuro' : 'Claro (proposta)'}</span><span style="text-transform:none;letter-spacing:0;font-weight:500">Seg, 28 set · 10:37</span></div>
     <div class="ds-inner">

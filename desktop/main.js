@@ -8,7 +8,11 @@ const { app, BrowserWindow, Menu, Tray, globalShortcut, ipcMain, nativeImage, sc
 const fs = require('node:fs');
 const path = require('node:path');
 
-const APP_URL = (process.env.DAILYFLOW_URL || 'https://dailyflow-megomes.vercel.app').replace(/\/$/, '');
+// The DailyFlow server: DAILYFLOW_URL, or desktop/config.json ({ "url": "…" }, git-ignored, bundled in the installer).
+const APP_URL = (process.env.DAILYFLOW_URL || (() => {
+  try { return JSON.parse(fs.readFileSync(path.join(__dirname, 'config.json'), 'utf8')).url; } catch { return ''; }
+})() || '').replace(/\/$/, '');
+if (!APP_URL) throw new Error('Set the DailyFlow server in desktop/config.json (see config.example.json) or DAILYFLOW_URL.');
 const ORIGIN = new URL(APP_URL).origin;
 const PARTITION = 'persist:dailyflow';
 const PILL = { width: 340, height: 76 };

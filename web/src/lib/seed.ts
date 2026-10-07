@@ -29,12 +29,12 @@ type Row = [number, number, string, string];
 
 const WEEKDAY: Row[] = [
   [H(6), H(9), 'Maker', 'maker'],
-  [H(9), H(10), 'Drive / Felipe', 'commute'],
+  [H(9), H(10), 'School run', 'commute'],
   [H(10), H(11), 'Work', 'work'],
   [H(11), H(12), 'Guitar or Piano', 'music'],
   [H(12), H(14), 'Lunch + FlightSim', 'flightsim'],
   [H(14), H(17, 30), 'Work', 'work'],
-  [H(17, 30), H(18, 30), 'Drive / Felipe', 'commute'],
+  [H(17, 30), H(18, 30), 'School run', 'commute'],
   [H(18, 30), H(21), 'Family + Dinner + Night Routine', 'family'],
   [H(21), H(22), 'Reading / Sleep', 'sleep'],
 ];

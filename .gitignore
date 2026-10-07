@@ -9,3 +9,6 @@ out/
 *.tsbuildinfo
 next-env.d.ts
 .vercel
+
+# Desktop: the server URL baked into the installer
+desktop/config.json

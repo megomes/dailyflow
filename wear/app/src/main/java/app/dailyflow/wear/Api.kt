@@ -55,7 +55,7 @@ class Credentials(context: Context) {
         set(v) = prefs.edit().putString("token", v).apply()
     val paired get() = token != null
     fun clear() = prefs.edit().remove("token").apply()
-    companion object { const val DEFAULT_HOST = "https://dailyflow-megomes.vercel.app" }
+    companion object { val DEFAULT_HOST: String = BuildConfig.DEFAULT_HOST }
 }
 
 class Api(context: Context) {

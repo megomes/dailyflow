@@ -3,7 +3,8 @@ import * as SecureStore from 'expo-secure-store';
 /** Paired device credential (spec §78): host + device token, kept in the Android keystore. */
 const HOST = 'df.host';
 const TOKEN = 'df.token';
-export const DEFAULT_HOST = 'https://dailyflow-megomes.vercel.app';
+// Prefills the pairing screen: EXPO_PUBLIC_DAILYFLOW_HOST in mobile/.env.local (pairing links carry the host anyway).
+export const DEFAULT_HOST = process.env.EXPO_PUBLIC_DAILYFLOW_HOST ?? '';
 
 export interface Credential { host: string; token: string }
 

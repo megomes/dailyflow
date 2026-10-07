@@ -1,5 +1,8 @@
 import type { Metadata } from 'next';
 
+/** Who answers privacy and deletion requests (CONTACT_EMAIL). */
+const CONTACT = process.env.CONTACT_EMAIL ?? '';
+
 export const metadata: Metadata = { title: 'Terms of Service · DailyFlow' };
 
 export default function TermsPage() {
@@ -14,7 +17,7 @@ export default function TermsPage() {
         <li><strong>No warranty.</strong> The service is provided “as is”, without warranties of any kind, and may change or stop at any time.</li>
         <li><strong>Liability.</strong> To the extent allowed by law, the operator is not liable for indirect or consequential damages, or for lost data.</li>
         <li><strong>Changes.</strong> These terms may be updated; the date above shows the latest version.</li>
-        <li><strong>Contact.</strong> <a href="mailto:matheuservilha@gmail.com">matheuservilha@gmail.com</a>.</li>
+        <li><strong>Contact.</strong> <a href={`mailto:${CONTACT}`}>{CONTACT}</a>.</li>
       </ol>
     </>
   );

@@ -298,8 +298,8 @@ const seg = (key, opts) => `<div class="seg" role="group">${opts.map(([v, l, n])
 /* ── Timeline mini (Baseline / Final / Real e mock do Hoje) ── */
 const T = (h, m = 0) => h + m / 60;
 const DAY = {
-  base: [[6, 9, 'Maker', 'orange'], [9, 10, 'Drive / Felipe', 'cyan'], [10, 11, 'Work', 'blue'], [11, 12, 'Music', 'purple'], [12, 14, 'Lunch + FlightSim', 'yellow'], [14, 17.5, 'Work', 'blue'], [17.5, 18.5, 'Drive / Felipe', 'cyan'], [18.5, 21, 'Family', 'green'], [21, 22, 'Reading', 'pink']],
-  final: [[6, 9, 'Maker', 'orange'], [9, 10, 'Drive / Felipe', 'cyan'], [10, 11, 'Work', 'blue'], [11.5, 12, 'Meeting', 'gray'], [12, 13, 'Lunch', 'yellow'], [13, 14, 'Music', 'purple'], [14, 18, 'Work', 'blue'], [18, 19, 'Drive / Felipe', 'cyan'], [19, 21, 'Family', 'green'], [21, 22, 'Reading', 'pink']],
+  base: [[6, 9, 'Maker', 'orange'], [9, 10, 'Drive / Leo', 'cyan'], [10, 11, 'Work', 'blue'], [11, 12, 'Music', 'purple'], [12, 14, 'Lunch + FlightSim', 'yellow'], [14, 17.5, 'Work', 'blue'], [17.5, 18.5, 'Drive / Leo', 'cyan'], [18.5, 21, 'Family', 'green'], [21, 22, 'Reading', 'pink']],
+  final: [[6, 9, 'Maker', 'orange'], [9, 10, 'Drive / Leo', 'cyan'], [10, 11, 'Work', 'blue'], [11.5, 12, 'Meeting', 'gray'], [12, 13, 'Lunch', 'yellow'], [13, 14, 'Music', 'purple'], [14, 18, 'Work', 'blue'], [18, 19, 'Drive / Leo', 'cyan'], [19, 21, 'Family', 'green'], [21, 22, 'Reading', 'pink']],
   real: [[T(6, 20), T(8, 50), 'Maker', 'orange'], [T(8, 50), T(10, 5), 'Commute', 'cyan'], [T(10, 5), T(11, 28), 'Work', 'blue'], [11.5, 12, 'Meeting', 'gray'], [12, T(13, 5), 'Lunch', 'yellow'], [T(13, 8), T(13, 52), 'Music', 'purple'], [T(14, 5), T(18, 10), 'Work', 'blue'], [T(18, 10), T(19, 5), 'Drive', 'cyan'], [T(19, 5), T(21, 20), 'Family', 'green'], [T(21, 20), 22, 'Reading', 'pink']],
 };
 const fmt = h => { const hh = Math.floor(h), mm = Math.round((h - hh) * 60); return `${String(hh).padStart(2, '0')}:${String(mm).padStart(2, '0')}`; };
@@ -549,7 +549,7 @@ PAGES.perguntas = () => {
 
 function dsPanel(theme) {
   const nav = [['home', 'Hoje', true], ['tasks', 'Tarefas'], ['history', 'Histórico'], ['chart', 'Insights'], ['gear', 'Configurações']];
-  const tl = [[6, 9, 'Maker', 'orange'], [9, 10, 'Drive / Felipe', 'cyan'], [10, 11, 'Work', 'blue'], [11, 12, 'Music', 'purple'], [12, 14, 'Lunch + FlightSim', 'yellow'], [14, 17.5, 'Work', 'blue'], [17.5, 18.5, 'Drive', 'cyan'], [18.5, 21, 'Family', 'green'], [21, 22, 'Reading', 'pink']];
+  const tl = [[6, 9, 'Maker', 'orange'], [9, 10, 'Drive / Leo', 'cyan'], [10, 11, 'Work', 'blue'], [11, 12, 'Music', 'purple'], [12, 14, 'Lunch + FlightSim', 'yellow'], [14, 17.5, 'Work', 'blue'], [17.5, 18.5, 'Drive', 'cyan'], [18.5, 21, 'Family', 'green'], [21, 22, 'Reading', 'pink']];
   return `<div class="ds-panel force-${theme}">
     <div class="ds-top"><span>${theme === 'dark' ? 'Escuro' : 'Claro (proposta)'}</span><span style="text-transform:none;letter-spacing:0;font-weight:500">Seg, 28 set · 10:37</span></div>
     <div class="ds-inner">

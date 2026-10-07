@@ -22,11 +22,11 @@ Google (pessoal) e Microsoft 365/Teams (trabalho), **só leitura**. Cada evento 
 
 1. **Banco:** `web/db/migrations/2026-10-05-e9-calendars.sql` no Neon (branch `dev` e `main`).
 2. **Google:** Calendar API ativa; OAuth consent screen *In production* (em *Testing* o login expira em 7 dias); OAuth client **Web** com redirect URIs
-   `https://dailyflow-megomes.vercel.app/api/calendars/callback` e `http://localhost:3000/api/calendars/callback`.
+   `https://<your-app>.vercel.app/api/calendars/callback` e `http://localhost:3000/api/calendars/callback`.
 3. **Microsoft (Entra):** App registration (somente esta organização), redirect Web
-   `https://dailyflow-megomes.vercel.app/api/calendars/callback`, client secret, permissões delegadas `Calendars.Read`, `User.Read`, `offline_access`.
+   `https://<your-app>.vercel.app/api/calendars/callback`, client secret, permissões delegadas `Calendars.Read`, `User.Read`, `offline_access`.
 3b. **Outlook sem Entra (link ICS):** Outlook Web › Settings › Calendar › Shared calendars › *Publish a calendar* (nível “titles and locations” basta) → copiar o link ICS → DailyFlow › Settings › Calendars › *Calendar link (ICS)*. O link fica criptografado em `calendar_accounts.access_token` (provider `ics`); revogar = despublicar no Outlook. O ICS publicado não traz categorias nem recusas: “Blocker” é reconhecido pelo título (Block/Blocked/Blocker) e cancelados pelo prefixo “Cancelado:/Canceled:”. Migração: `web/db/migrations/2026-10-05-e9-ics.sql`.
-4. **Google — tela de consentimento (branding):** logo `web/public/brand/logo-120.png`, home `https://dailyflow-megomes.vercel.app/about`, privacidade `/privacy`, termos `/terms` (páginas públicas, fora do login).
+4. **Google — tela de consentimento (branding):** logo `web/public/brand/logo-120.png`, home `https://<your-app>.vercel.app/about`, privacidade `/privacy`, termos `/terms` (páginas públicas, fora do login).
 5. **Vercel (Production e Preview):** `APP_URL`, `CALENDAR_TOKEN_KEY` (32 bytes base64), `GOOGLE_CLIENT_ID`, `GOOGLE_CLIENT_SECRET`, `MS_CLIENT_ID`, `MS_CLIENT_SECRET`, `MS_TENANT` (id do tenant da Reasset).
 
 ## Arquitetura

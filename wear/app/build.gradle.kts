@@ -5,6 +5,11 @@ plugins {
     alias(libs.plugins.google.services)
 }
 
+// The DailyFlow server: dailyflow.host in wear/local.properties (git-ignored).
+val dailyflowHost: String = java.util.Properties().apply {
+    rootProject.file("local.properties").takeIf { it.exists() }?.inputStream()?.use { load(it) }
+}.getProperty("dailyflow.host", "")
+
 android {
     namespace = "app.dailyflow.wear"
     compileSdk = 36
@@ -14,6 +19,7 @@ android {
         targetSdk = 35
         versionCode = 7
         versionName = "0.3.4"
+        buildConfigField("String", "DEFAULT_HOST", "\"$dailyflowHost\"")
     }
     buildTypes {
         // Release is what goes on the watch: R8 + the libraries' startup profiles (debug Compose is very slow).
@@ -24,7 +30,7 @@ android {
             signingConfig = signingConfigs.getByName("debug")
         }
     }
-    buildFeatures { compose = true }
+    buildFeatures { compose = true; buildConfig = true }
     compileOptions {
         sourceCompatibility = JavaVersion.VERSION_17
         targetCompatibility = JavaVersion.VERSION_17
